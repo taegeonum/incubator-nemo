@@ -58,11 +58,6 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
   private final Coder<InputT> inputCoder;
   private final Map<TupleTag<?>, Coder<?>> outputCoders;
 
-  // bundle control
-  private transient boolean bundleStarted = false;
-  private transient long elementCount;
-  private final long maxBundleSize;
-
   /**
    * DoTransform Constructor.
    *
@@ -85,9 +80,6 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
     this.sideInputs = sideInputs;
     this.serializedOptions = new SerializablePipelineOptions(options);
     this.windowingStrategy = windowingStrategy;
-
-    // TODO #: parameterize the bundle size
-    this.maxBundleSize = 1;
   }
 
   @Override
@@ -108,19 +100,16 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
     }
 
     // create step context
-    // TODO #: this transform does not support keyed state.
-    // TODO #: We must implement the keyed state in group by key operations.
-    final StateInternals stateInternals = InMemoryStateInternals.forKey(null);
-    final TimerInternals timerInternals = new InMemoryTimerInternals();
+    // this transform does not support state and timer.
     final StepContext stepContext = new StepContext() {
       @Override
       public StateInternals stateInternals() {
-        return stateInternals;
+        throw new UnsupportedOperationException("Not support stateInternals in SimpleDoFnTransform");
       }
 
       @Override
       public TimerInternals timerInternals() {
-        return timerInternals;
+        throw new UnsupportedOperationException("Not support timerInternals in SimpleDoFnTransform");
       }
     };
 
@@ -140,54 +129,19 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
       inputCoder,
       outputCoders,
       windowingStrategy);
+
+    doFnRunner.startBundle();
   }
 
   @Override
   public void onData(final WindowedValue<InputT> data) {
-    checkInvokeStartBundle();
-
     doFnRunner.processElement(data);
-
-    checkInvokeFinishBundleByCount();
   }
 
   @Override
   public void close() {
-    invokeFinishBundle();
+    doFnRunner.finishBundle();
     doFnInvoker.invokeTeardown();
-  }
-
-  /**
-   * Check whether invoke startBundle, if it is, need to output elements that were buffered as part
-   * of finishing a bundle in snapshot() first.
-   *
-   * <p>In order to avoid having {@link DoFnRunner#processElement(WindowedValue)} or {@link
-   * DoFnRunner#onTimer(String, BoundedWindow, Instant, TimeDomain)} not between StartBundle and
-   * FinishBundle, this method needs to be called in each processElement and each processWatermark
-   * and onProcessingTime. Do not need to call in onEventTime, because it has been guaranteed in the
-   * processWatermark.
-   */
-  private void checkInvokeStartBundle() {
-    if (!bundleStarted) {
-      doFnRunner.startBundle();
-      bundleStarted = true;
-    }
-  }
-
-  /** Check whether invoke finishBundle by elements count. Called in processElement. */
-  private void checkInvokeFinishBundleByCount() {
-    elementCount++;
-    if (elementCount >= maxBundleSize) {
-      invokeFinishBundle();
-    }
-  }
-
-  private void invokeFinishBundle() {
-    if (bundleStarted) {
-      doFnRunner.finishBundle();
-      bundleStarted = false;
-      elementCount = 0L;
-    }
   }
 
   @Override
@@ -197,65 +151,4 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
     return sb.toString();
   }
 
-  /**
-   * Default output emitter that uses outputCollector.
-   * @param <OutputT> output type
-   */
-  public static final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputManager {
-    private final TupleTag<OutputT> mainOutputTag;
-    private final OutputCollector<WindowedValue<OutputT>> outputCollector;
-    private final Map<String, String> additionalOutputs;
-
-    DefaultOutputManager(final OutputCollector<WindowedValue<OutputT>> outputCollector,
-                         final Context context,
-                         final TupleTag<OutputT> mainOutputTag) {
-      this.outputCollector = outputCollector;
-      this.mainOutputTag = mainOutputTag;
-      this.additionalOutputs = context.getTagToAdditionalChildren();
-    }
-
-    @Override
-    public <T> void output(final TupleTag<T> tag, final WindowedValue<T> output) {
-      if (tag.equals(mainOutputTag)) {
-        outputCollector.emit((WindowedValue<OutputT>) output);
-      } else {
-        outputCollector.emit(additionalOutputs.get(tag.getId()), (WindowedValue<OutputT>) output);
-      }
-    }
-  }
-
-  /**
-   * A sideinput reader that reads/writes side input values to context.
-   */
-  public static final class BroadcastGlobalValueSideInputReader implements SideInputReader {
-
-    // Nemo context for storing/getting side inputs
-    private final Context context;
-
-    // The list of side inputs that we're handling
-    private final Collection<PCollectionView<?>> sideInputs;
-
-    BroadcastGlobalValueSideInputReader(final Context context,
-                                        final Collection<PCollectionView<?>> sideInputs) {
-      this.context = context;
-      this.sideInputs = sideInputs;
-    }
-
-    @Nullable
-    @Override
-    public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
-      // TODO #216: implement side input and windowing
-      return (T) context.getBroadcastVariable(view);
-    }
-
-    @Override
-    public <T> boolean contains(final PCollectionView<T> view) {
-      return sideInputs.contains(view);
-    }
-
-    @Override
-    public boolean isEmpty() {
-      return sideInputs.isEmpty();
-    }
-  }
 }
