@@ -18,8 +18,6 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.state.StateSpec;
@@ -28,7 +26,6 @@ import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.View;
-import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -50,7 +47,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public final class SimpleDoTransformTest {
+public final class SimpleDoFnTransformTest {
 
   // views and windows for testing side inputs
   private PCollectionView<Iterable<String>> view1;
@@ -69,8 +66,8 @@ public final class SimpleDoTransformTest {
 
     final TupleTag<String> outputTag = new TupleTag<>("main-output");
 
-    final SimpleDoTransform<String, String> simpleDoTransform =
-      new SimpleDoTransform<>(
+    final SimpleDoFnTransform<String, String> simpleDoFnTransform =
+      new SimpleDoFnTransform<>(
         new IdentityDoFn<>(),
         null,
         null,
@@ -82,13 +79,13 @@ public final class SimpleDoTransformTest {
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
-    simpleDoTransform.prepare(context, oc);
+    simpleDoFnTransform.prepare(context, oc);
 
-    simpleDoTransform.onData(WindowedValue.valueInGlobalWindow("Hello"));
+    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow("Hello"));
 
     assertEquals(((TestOutputCollector<String>) oc).outputs.get(0), WindowedValue.valueInGlobalWindow("Hello"));
 
-    simpleDoTransform.close();
+    simpleDoFnTransform.close();
   }
 
   @Test
@@ -107,8 +104,8 @@ public final class SimpleDoTransformTest {
         .put(additionalOutput2.getId(), additionalOutput2.getId())
         .build();
 
-    final SimpleDoTransform<String, String> simpleDoTransform =
-      new SimpleDoTransform<>(
+    final SimpleDoFnTransform<String, String> simpleDoFnTransform =
+      new SimpleDoFnTransform<>(
         new MultiOutputDoFn(additionalOutput1, additionalOutput2),
         null,
         null,
@@ -123,11 +120,11 @@ public final class SimpleDoTransformTest {
     when(context.getTagToAdditionalChildren()).thenReturn(tagsMap);
 
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
-    simpleDoTransform.prepare(context, oc);
+    simpleDoFnTransform.prepare(context, oc);
 
-    simpleDoTransform.onData(WindowedValue.valueInGlobalWindow("one"));
-    simpleDoTransform.onData(WindowedValue.valueInGlobalWindow("two"));
-    simpleDoTransform.onData(WindowedValue.valueInGlobalWindow("hello"));
+    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow("one"));
+    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow("two"));
+    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow("hello"));
 
     // main output
     assertEquals(WindowedValue.valueInGlobalWindow("got: hello"),
@@ -149,7 +146,7 @@ public final class SimpleDoTransformTest {
       new Tuple<>(additionalOutput2.getId(), WindowedValue.valueInGlobalWindow("got: hello"))
     ));
 
-    simpleDoTransform.close();
+    simpleDoFnTransform.close();
   }
 
 
@@ -169,8 +166,8 @@ public final class SimpleDoTransformTest {
     final Map<String, PCollectionView<Iterable<String>>> eventAndViewMap =
       ImmutableMap.of(first.getValue(), view1, second.getValue(), view2);
 
-    final SimpleDoTransform<String, Tuple<String, Iterable<String>>> simpleDoTransform =
-      new SimpleDoTransform<>(
+    final SimpleDoFnTransform<String, Tuple<String, Iterable<String>>> simpleDoFnTransform =
+      new SimpleDoFnTransform<>(
         new SimpleSideInputDoFn<>(eventAndViewMap),
         null,
         null,
@@ -181,10 +178,10 @@ public final class SimpleDoTransformTest {
         PipelineOptionsFactory.as(NemoPipelineOptions.class));
 
     final OutputCollector<WindowedValue<Tuple<String, Iterable<String>>>> oc = new TestOutputCollector<>();
-    simpleDoTransform.prepare(context, oc);
+    simpleDoFnTransform.prepare(context, oc);
 
-    simpleDoTransform.onData(first);
-    simpleDoTransform.onData(second);
+    simpleDoFnTransform.onData(first);
+    simpleDoFnTransform.onData(second);
 
     assertEquals(WindowedValue.valueInGlobalWindow(new Tuple<>("first", ImmutableList.of("1"))),
       ((TestOutputCollector<Tuple<String,Iterable<String>>>) oc).getOutput().get(0));
@@ -192,7 +189,7 @@ public final class SimpleDoTransformTest {
     assertEquals(WindowedValue.valueInGlobalWindow(new Tuple<>("second", ImmutableList.of("2"))),
       ((TestOutputCollector<Tuple<String,Iterable<String>>>) oc).getOutput().get(1));
 
-    simpleDoTransform.close();
+    simpleDoFnTransform.close();
   }
 
   @Test
@@ -221,8 +218,8 @@ public final class SimpleDoTransformTest {
 
     final TupleTag<KV<String, Long>> outputTag = new TupleTag<>("main-output");
 
-    final SimpleDoTransform<KV<String, Long>, KV<String, Long>> simpleDoTransform =
-      new SimpleDoTransform<>(
+    final SimpleDoFnTransform<KV<String, Long>, KV<String, Long>> simpleDoFnTransform =
+      new SimpleDoFnTransform<>(
         filterElementsEqualToCountFn,
         null,
         null,
@@ -235,18 +232,18 @@ public final class SimpleDoTransformTest {
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<KV<String, Long>>> oc = new TestOutputCollector<>();
-    simpleDoTransform.prepare(context, oc);
+    simpleDoFnTransform.prepare(context, oc);
 
     // count: 3 for key "a"
-    simpleDoTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("a", 100L)));
-    simpleDoTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("a", 100L)));
-    simpleDoTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("a", 3L)));
+    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("a", 100L)));
+    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("a", 100L)));
+    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("a", 3L)));
 
     assertEquals(ImmutableList.of(
       WindowedValue.valueInGlobalWindow(KV.of("a", 3L))),
       ((TestOutputCollector<KV<String,Long>>) oc).getOutput());
 
-    simpleDoTransform.close();
+    simpleDoFnTransform.close();
   }
 
   private static final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> {

@@ -42,7 +42,7 @@ import java.util.Map;
  * @param <InputT> input type.
  * @param <OutputT> output type.
  */
-public final class SimpleDoTransform<InputT, OutputT> implements
+public final class StatefulDoFnTransform<InputT, OutputT> implements
   Transform<WindowedValue<InputT>, WindowedValue<OutputT>> {
 
   private OutputCollector<WindowedValue<OutputT>> outputCollector;
@@ -69,14 +69,14 @@ public final class SimpleDoTransform<InputT, OutputT> implements
    * @param doFn    doFn.
    * @param options Pipeline options.
    */
-  public SimpleDoTransform(final DoFn<InputT, OutputT> doFn,
-                           final Coder<InputT> inputCoder,
-                           final Map<TupleTag<?>, Coder<?>> outputCoders,
-                           final TupleTag<OutputT> mainOutputTag,
-                           final List<TupleTag<?>> additionalOutputTags,
-                           final WindowingStrategy<?, ?> windowingStrategy,
-                           final Collection<PCollectionView<?>> sideInputs,
-                           final PipelineOptions options) {
+  public StatefulDoFnTransform(final DoFn<InputT, OutputT> doFn,
+                               final Coder<InputT> inputCoder,
+                               final Map<TupleTag<?>, Coder<?>> outputCoders,
+                               final TupleTag<OutputT> mainOutputTag,
+                               final List<TupleTag<?>> additionalOutputTags,
+                               final WindowingStrategy<?, ?> windowingStrategy,
+                               final Collection<PCollectionView<?>> sideInputs,
+                               final PipelineOptions options) {
     this.doFn = doFn;
     this.inputCoder = inputCoder;
     this.outputCoders = outputCoders;
