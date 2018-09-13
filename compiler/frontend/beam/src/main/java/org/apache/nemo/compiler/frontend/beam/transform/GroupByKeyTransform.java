@@ -15,6 +15,7 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
@@ -46,7 +47,9 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
 
   @Override
   public void onData(final I element) {
-    final KV kv = (KV) element;
+    System.out.println("Group by key!!");
+    final WindowedValue<KV> windowedValue = (WindowedValue<KV>) element;
+    final KV kv = windowedValue.getValue();
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
     keyToValues.get(kv.getKey()).add(kv.getValue());
   }
