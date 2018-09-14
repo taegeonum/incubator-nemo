@@ -42,7 +42,6 @@ public final class FlattenTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final T element) {
-    System.out.println("Flatten: " + element);
     collectedElements.add(element);
   }
 

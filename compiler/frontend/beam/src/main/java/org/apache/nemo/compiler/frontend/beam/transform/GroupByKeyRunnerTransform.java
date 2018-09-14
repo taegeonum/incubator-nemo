@@ -49,7 +49,6 @@ public final class GroupByKeyRunnerTransform<I> implements Transform<I, KV<Objec
 
   @Override
   public void onData(final I element) {
-    System.out.println("Group by key!!");
     final KV kv = (KV) element;
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
     keyToValues.get(kv.getKey()).add(kv.getValue());

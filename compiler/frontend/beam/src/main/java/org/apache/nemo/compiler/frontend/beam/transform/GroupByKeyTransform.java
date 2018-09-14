@@ -47,8 +47,7 @@ public final class GroupByKeyTransform<I> implements Transform<I, WindowedValue<
 
   @Override
   public void onData(final I element) {
-    // TODO #: support window in group by key
-    System.out.println("Group by key!!");
+    // TODO #: support windows in group by key
     final WindowedValue<KV> windowedValue = (WindowedValue<KV>) element;
     final KV kv = windowedValue.getValue();
     //final KV kv = (KV) element;
@@ -58,7 +57,7 @@ public final class GroupByKeyTransform<I> implements Transform<I, WindowedValue<
 
   @Override
   public void close() {
-    // TODO #: support window in group by key
+    // TODO #: support windows in group by key
     if (keyToValues.isEmpty()) {
       LOG.warn("Beam GroupByKeyTransform received no data!");
     } else {
