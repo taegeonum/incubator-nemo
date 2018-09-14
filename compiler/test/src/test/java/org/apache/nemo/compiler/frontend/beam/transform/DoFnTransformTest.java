@@ -155,8 +155,10 @@ public final class DoFnTransformTest {
   public void testSideInputs() {
     // mock context
     final Transform.Context context = mock(Transform.Context.class);
-    when(context.getBroadcastVariable(view1)).thenReturn(ImmutableList.of("1"));
-    when(context.getBroadcastVariable(view2)).thenReturn(ImmutableList.of("2"));
+    when(context.getBroadcastVariable(view1)).thenReturn(
+      WindowedValue.valueInGlobalWindow(ImmutableList.of("1")));
+    when(context.getBroadcastVariable(view2)).thenReturn(
+      WindowedValue.valueInGlobalWindow(ImmutableList.of("2")));
 
     TupleTag<Tuple<String, Iterable<String>>> outputTag = new TupleTag<>("main-output");
 

@@ -17,6 +17,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.runners.core.SideInputReader;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 
@@ -44,7 +45,7 @@ public final class BroadcastGlobalValueSideInputReader implements SideInputReade
   @Override
   public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
     // TODO #216: implement side input and windowing
-    return (T) context.getBroadcastVariable(view);
+    return ((WindowedValue<T>) context.getBroadcastVariable(view)).getValue();
   }
 
   @Override

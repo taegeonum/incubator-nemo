@@ -20,6 +20,7 @@ import org.apache.beam.runners.core.construction.ParDoTranslation;
 import org.apache.beam.runners.core.construction.TransformInputs;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.AppliedPTransform;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -31,7 +32,7 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.PipelineVisitor.*;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
-import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
+import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedWindowSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.io.Read;
@@ -40,7 +41,6 @@ import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
 import org.apache.beam.sdk.values.*;
-import org.apache.reef.io.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,7 +120,7 @@ public final class PipelineTranslator
   private static void boundedReadTranslator(final TranslationContext ctx,
                                             final PrimitiveTransformVertex transformVertex,
                                             final Read.Bounded<?> transform) {
-    final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
+    final IRVertex vertex = new BeamBoundedWindowSourceVertex<>(transform.getSource());
     ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
@@ -549,17 +549,18 @@ public final class PipelineTranslator
             + "for an edge from %s to %s", communicationPatternSelector, src, dst));
       }
       final IREdge edge = new IREdge(communicationPattern, src, dst);
-      final Coder<?> coder;
+      final Coder coder;
+      final Coder windowCoder;
       if (input instanceof PCollection) {
         coder = ((PCollection) input).getCoder();
+        windowCoder = ((PCollection) input).getWindowingStrategy().getWindowFn().windowCoder();
       } else if (input instanceof PCollectionView) {
         coder = getCoderForView((PCollectionView) input, pipeline);
+        windowCoder = ((PCollectionView) input).getPCollection()
+          .getWindowingStrategy().getWindowFn().windowCoder();
       } else {
-        coder = null;
-      }
-      if (coder == null) {
         throw new RuntimeException(String.format("While adding an edge from %s, to %s, coder for PValue %s cannot "
-            + "be determined", src, dst, input));
+          + "be determined", src, dst, input));
       }
 
       edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
@@ -569,8 +570,11 @@ public final class PipelineTranslator
         edge.setProperty(KeyEncoderProperty.of(new BeamEncoderFactory(keyCoder)));
         edge.setProperty(KeyDecoderProperty.of(new BeamDecoderFactory(keyCoder)));
       }
-      edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
-      edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
+
+      edge.setProperty(EncoderProperty.of(
+        new BeamEncoderFactory<>(WindowedValue.getFullCoder(coder, windowCoder))));
+      edge.setProperty(DecoderProperty.of(
+        new BeamDecoderFactory<>(WindowedValue.getFullCoder(coder, windowCoder))));
 
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));

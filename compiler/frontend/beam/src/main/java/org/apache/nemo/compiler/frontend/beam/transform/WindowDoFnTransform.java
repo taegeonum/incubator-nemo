@@ -28,8 +28,10 @@ import java.util.Collection;
 
 /**
  * Windowing transform implementation.
- * This transform simply windows the given elements into finite windows according to a user-specified WindowDoFnTransform.
+ * This transform simply windows the given elements into
+ * finite windows according to a user-specified WindowDoFnTransform.
  * @param <T> input/output type.
+ * @param <W> window type
  */
 public final class WindowDoFnTransform<T, W extends BoundedWindow>
   implements Transform<WindowedValue<T>, WindowedValue<T>> {
@@ -51,6 +53,7 @@ public final class WindowDoFnTransform<T, W extends BoundedWindow>
 
   @Override
   public void onData(final WindowedValue<T> windowedValue) {
+    System.out.println("Window doTransform of " + windowFn + ", input: " + windowedValue);
     final BoundedWindow boundedWindow = Iterables.getOnlyElement(windowedValue.getWindows());
     final T element = windowedValue.getValue();
     final Instant timestamp = windowedValue.getTimestamp();
@@ -78,7 +81,6 @@ public final class WindowDoFnTransform<T, W extends BoundedWindow>
 
       // Emit compressed windows for efficiency
       outputCollector.emit(WindowedValue.of(element, timestamp, windows, PaneInfo.NO_FIRING));
-
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
