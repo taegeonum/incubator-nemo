@@ -57,6 +57,8 @@ public final class WindowDoFnTransform<T, W extends BoundedWindow>
     final T element = windowedValue.getValue();
     final Instant timestamp = windowedValue.getTimestamp();
 
+    System.out.println("WindowDoFnTransform: " + windowedValue);
+
     try {
       final Collection<W> windows =
         ((WindowFn<T, W>) windowFn)

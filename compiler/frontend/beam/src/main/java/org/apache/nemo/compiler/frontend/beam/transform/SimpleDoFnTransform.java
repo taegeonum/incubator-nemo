@@ -133,6 +133,7 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
 
   @Override
   public void onData(final WindowedValue<InputT> data) {
+    System.out.println("SimpleDoTransform: " + data);
     doFnRunner.processElement(data);
   }
 
