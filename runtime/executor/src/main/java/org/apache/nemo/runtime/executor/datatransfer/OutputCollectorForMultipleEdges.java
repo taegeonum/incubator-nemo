@@ -25,7 +25,8 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 /**
  * OutputCollector implementation.
@@ -37,8 +38,8 @@ import java.util.*;
  *
  * @param <O> output type.
  */
-public final class OperatorVertexOutputCollector<O> implements OutputCollector<O> {
-  private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
+public final class OutputCollectorForMultipleEdges<O> implements OutputCollector<O> {
+  private static final Logger LOG = LoggerFactory.getLogger(OutputCollectorForMultipleEdges.class.getName());
 
   private final IRVertex irVertex;
   private final List<OperatorVertex> internalMainOutputs;
@@ -54,11 +55,11 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
    * @param externalMainOutputs external main outputs
    * @param externalAdditionalOutputs external additional outputs
    */
-  public OperatorVertexOutputCollector(final IRVertex irVertex,
-                                       final List<OperatorVertex> internalMainOutputs,
-                                       final Map<String, List<OperatorVertex>> internalAdditionalOutputs,
-                                       final List<OutputWriter> externalMainOutputs,
-                                       final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
+  public OutputCollectorForMultipleEdges(final IRVertex irVertex,
+                                         final List<OperatorVertex> internalMainOutputs,
+                                         final Map<String, List<OperatorVertex>> internalAdditionalOutputs,
+                                         final List<OutputWriter> externalMainOutputs,
+                                         final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
