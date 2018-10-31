@@ -37,6 +37,7 @@ public interface OutputCollector<O> extends Serializable {
 
   /**
    * Emit watermark to downstream vertices.
+   * @param watermark watermark
    */
   void emitWatermark(Watermark watermark);
 

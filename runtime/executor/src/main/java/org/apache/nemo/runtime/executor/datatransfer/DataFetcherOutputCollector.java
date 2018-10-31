@@ -34,16 +34,25 @@ public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
 
   /**
    * It forwards output to the next operator.
+   * @param nextOperatorVertex next operator
    */
   public DataFetcherOutputCollector(final OperatorVertex nextOperatorVertex) {
     this.nextOperatorVertex = nextOperatorVertex;
   }
 
+  /**
+   * Emit data to the next operator's transform.
+   * @param output value.
+   */
   @Override
   public void emit(final O output) {
     nextOperatorVertex.getTransform().onData(output);
   }
 
+  /**
+   * Emit watermark to the next operator's transform.
+   * @param watermark watermark
+   */
   @Override
   public void emitWatermark(final Watermark watermark) {
     nextOperatorVertex.getTransform().onWatermark(watermark);
