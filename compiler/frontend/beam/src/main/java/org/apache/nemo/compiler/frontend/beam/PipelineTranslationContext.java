@@ -40,6 +40,7 @@ import org.apache.nemo.compiler.frontend.beam.coder.SideInputCoder;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * A collection of translators for the Beam PTransforms.
@@ -177,6 +178,28 @@ final class PipelineTranslationContext {
     edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
 
     builder.connectVertices(edge);
+
+    // Adjust edge communication pattern.
+    // From:
+    //  A - (OneToOne) -> Flatten - (OneToOne) -> GBK/GBKW
+    // To:
+    //  A - (shuffle) -> Flatten - (OneToOne) -> GBK/GBKW
+    final IRVertex src = edge.getSrc();
+    final IRVertex dst = edge.getDst();
+    final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
+    final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
+
+    if (srcTransform instanceof FlattenTransform &&
+      (dstTransform instanceof GroupByKeyTransform || dstTransform instanceof  GroupByKeyAndWindowDoFnTransform)) {
+      final List<IREdge> adjustedEdges = builder.getIncomingEdges(src).stream()
+        .map(incomingEdge -> {
+          final IREdge adjustedEdge =
+            new IREdge(CommunicationPatternProperty.Value.Shuffle, incomingEdge.getSrc(), incomingEdge.getDst());
+          incomingEdge.copyExecutionPropertiesTo(adjustedEdge);
+          return adjustedEdge;
+        }).collect(Collectors.toList());
+      adjustedEdges.forEach(adjustedEdge -> builder.updateEdge(adjustedEdge));
+    }
   }
 
   /**
@@ -226,23 +249,16 @@ final class PipelineTranslationContext {
   }
 
   private CommunicationPatternProperty.Value getCommPattern(final IRVertex src, final IRVertex dst) {
-    final Class<?> constructUnionTableFn;
-    try {
-      constructUnionTableFn = Class.forName("org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
-    } catch (final ClassNotFoundException e) {
-      throw new RuntimeException(e);
-    }
 
     final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
     final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
-    final DoFn srcDoFn = srcTransform instanceof DoFnTransform ? ((DoFnTransform) srcTransform).getDoFn() : null;
 
-    if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
-      return CommunicationPatternProperty.Value.Shuffle;
-    }
-    if (srcTransform instanceof FlattenTransform) {
+    if (srcTransform instanceof FlattenTransform &&
+      (dstTransform instanceof GroupByKeyAndWindowDoFnTransform || dstTransform instanceof GroupByKeyTransform)) {
+      //  A - (shuffle) -> Flatten - (OneToOne) -> GBK/GBKW
       return CommunicationPatternProperty.Value.OneToOne;
     }
+
     if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
       || dstTransform instanceof GroupByKeyTransform) {
       return CommunicationPatternProperty.Value.Shuffle;
