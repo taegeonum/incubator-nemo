@@ -57,6 +57,7 @@ public final class IREdge extends Edge<IRVertex> {
    *
    * @param src         source vertex.
    * @param dst         destination vertex.
+   * @param executionProperties execution properties.
    */
   public IREdge(final IRVertex src,
                 final IRVertex dst,

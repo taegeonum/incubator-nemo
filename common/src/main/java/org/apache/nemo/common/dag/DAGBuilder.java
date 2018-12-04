@@ -142,29 +142,6 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   }
 
   /**
-   * Update current edge to the new edge
-   * @param newEdge new edge
-   * @return buidler
-   */
-  public DAGBuilder<V, E> updateEdge(final E newEdge) {
-    final Set<E> e = new HashSet<>(incomingEdges.get(newEdge.getDst()));
-    // e contains the edge that has the same src and dst of newEdge.
-    e.retainAll(outgoingEdges.get(newEdge.getSrc()));
-
-    if (e.size() != 1) {
-      throw new IllegalVertexOperationException("Edge " + newEdge + " is not added to the builder");
-    }
-
-    final Edge origin = e.iterator().next();
-    incomingEdges.get(newEdge.getDst()).remove(origin);
-    incomingEdges.get(newEdge.getDst()).add(newEdge);
-
-    outgoingEdges.get(newEdge.getSrc()).remove(origin);
-    outgoingEdges.get(newEdge.getSrc()).add(newEdge);
-    return this;
-  }
-
-  /**
    * Connect vertices at the edge.
    *
    * @param edge edge to add.
@@ -186,10 +163,6 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
           + vertices.stream().map(V::getId).collect(Collectors.toSet()));
     }
     return this;
-  }
-
-  public Set<E> getIncomingEdges(final V vertex) {
-    return incomingEdges.get(vertex);
   }
 
   /**

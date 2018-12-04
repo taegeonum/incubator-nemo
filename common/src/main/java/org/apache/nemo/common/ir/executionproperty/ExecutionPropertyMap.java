@@ -78,10 +78,10 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     return map;
   }
 
-  public static ExecutionPropertyMap<EdgeExecutionProperty> of(final IREdge irEdge) {
-    return of(irEdge, null);
-  }
-
+  /**
+   * Set communication pattern.
+   * @param commPattern communication pattern
+   */
   public void setCommunicationPattern(final CommunicationPatternProperty.Value commPattern) {
     put((T) CommunicationPatternProperty.of(commPattern));
     switch (commPattern) {
