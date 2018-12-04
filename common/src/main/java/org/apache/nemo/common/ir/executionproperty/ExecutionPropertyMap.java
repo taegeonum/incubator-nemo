@@ -68,28 +68,36 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
       final IREdge irEdge,
       final CommunicationPatternProperty.Value commPattern) {
     final ExecutionPropertyMap<EdgeExecutionProperty> map = new ExecutionPropertyMap<>(irEdge.getId());
-    map.put(CommunicationPatternProperty.of(commPattern));
     map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     map.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
     map.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
-    switch (commPattern) {
-      case Shuffle:
-        map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-        break;
-      case BroadCast:
-        map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-        break;
-      case OneToOne:
-        map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-        break;
-      default:
-        map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+
+    if (commPattern != null) {
+      map.put(CommunicationPatternProperty.of(commPattern));
+
+      switch (commPattern) {
+        case Shuffle:
+          map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+          map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+          break;
+        case BroadCast:
+          map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
+          map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+          break;
+        case OneToOne:
+          map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
+          map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+          break;
+        default:
+          map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+          map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+      }
     }
     return map;
+  }
+
+  public static ExecutionPropertyMap<EdgeExecutionProperty> of(final IREdge irEdge) {
+    return of(irEdge, null);
   }
 
   /**

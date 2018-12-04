@@ -152,8 +152,8 @@ final class PipelineTranslationContext {
         throw new IllegalStateException(String.format("Cannot find a vertex that emits pValue %s", input));
       }
 
-      final CommunicationPatternProperty.Value communicationPattern = getCommPattern(src, dst);
-      final IREdge edge = new IREdge(communicationPattern, src, dst);
+      //final CommunicationPatternProperty.Value communicationPattern = getCommPattern(src, dst);
+      final IREdge edge = new IREdge(src, dst);
 
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));

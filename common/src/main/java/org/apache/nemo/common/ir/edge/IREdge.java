@@ -53,6 +53,18 @@ public final class IREdge extends Edge<IRVertex> {
   }
 
   /**
+   * Constructor of IREdge.
+   *
+   * @param src         source vertex.
+   * @param dst         destination vertex.
+   */
+  public IREdge(final IRVertex src,
+                final IRVertex dst) {
+    super(IdManager.newEdgeId(), src, dst);
+    this.executionProperties = ExecutionPropertyMap.of(this);
+  }
+
+  /**
    * Set an executionProperty of the IREdge.
    * @param executionProperty the execution property.
    * @return the IREdge with the execution property set.
