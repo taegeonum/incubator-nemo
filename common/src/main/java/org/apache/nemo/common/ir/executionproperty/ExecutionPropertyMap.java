@@ -73,31 +73,34 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     map.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
 
     if (commPattern != null) {
-      map.put(CommunicationPatternProperty.of(commPattern));
-
-      switch (commPattern) {
-        case Shuffle:
-          map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-          map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-          break;
-        case BroadCast:
-          map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
-          map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-          break;
-        case OneToOne:
-          map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
-          map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-          break;
-        default:
-          map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-          map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-      }
+      map.setCommunicationPattern(commPattern);
     }
     return map;
   }
 
   public static ExecutionPropertyMap<EdgeExecutionProperty> of(final IREdge irEdge) {
     return of(irEdge, null);
+  }
+
+  public void setCommunicationPattern(final CommunicationPatternProperty.Value commPattern) {
+    put((T) CommunicationPatternProperty.of(commPattern));
+    switch (commPattern) {
+      case Shuffle:
+        put((T) PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+        put((T) DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+        break;
+      case BroadCast:
+        put((T) PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
+        put((T) DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+        break;
+      case OneToOne:
+        put((T) PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
+        put((T) DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+        break;
+      default:
+        put((T) PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+        put((T) DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+    }
   }
 
   /**

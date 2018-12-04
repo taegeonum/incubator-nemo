@@ -57,6 +57,6 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   }
 
   DAG<IRVertex, IREdge> getConvertedPipeline() {
-    return context.getBuilder().build();
+    return context.buildDAG();
   }
 }

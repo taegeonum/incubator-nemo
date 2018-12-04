@@ -26,6 +26,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.*;
+import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
@@ -152,8 +153,8 @@ final class PipelineTranslationContext {
         throw new IllegalStateException(String.format("Cannot find a vertex that emits pValue %s", input));
       }
 
-      //final CommunicationPatternProperty.Value communicationPattern = getCommPattern(src, dst);
-      final IREdge edge = new IREdge(src, dst);
+      final CommunicationPatternProperty.Value communicationPattern = getCommPattern(src, dst);
+      final IREdge edge = new IREdge(communicationPattern, src, dst);
 
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
@@ -178,28 +179,6 @@ final class PipelineTranslationContext {
     edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
 
     builder.connectVertices(edge);
-
-    // Adjust edge communication pattern.
-    // From:
-    //  A - (OneToOne) -> Flatten - (OneToOne) -> GBK/GBKW
-    // To:
-    //  A - (shuffle) -> Flatten - (OneToOne) -> GBK/GBKW
-    final IRVertex src = edge.getSrc();
-    final IRVertex dst = edge.getDst();
-    final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
-    final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
-
-    if (srcTransform instanceof FlattenTransform &&
-      (dstTransform instanceof GroupByKeyTransform || dstTransform instanceof  GroupByKeyAndWindowDoFnTransform)) {
-      final List<IREdge> adjustedEdges = builder.getIncomingEdges(src).stream()
-        .map(incomingEdge -> {
-          final IREdge adjustedEdge =
-            new IREdge(CommunicationPatternProperty.Value.Shuffle, incomingEdge.getSrc(), incomingEdge.getDst());
-          incomingEdge.copyExecutionPropertiesTo(adjustedEdge);
-          return adjustedEdge;
-        }).collect(Collectors.toList());
-      adjustedEdges.forEach(adjustedEdge -> builder.updateEdge(adjustedEdge));
-    }
   }
 
   /**
@@ -240,8 +219,37 @@ final class PipelineTranslationContext {
     return pipelineOptions;
   }
 
-  DAGBuilder getBuilder() {
-    return builder;
+  DAG<IRVertex, IREdge> buildDAG() {
+    // We iterate all vertices and remove FlattenTransform
+    // to directly connect the parent and child operations of FlattenTransform.
+    final DAG<IRVertex, IREdge> originDag = builder.build();
+    final DAGBuilder<IRVertex, IREdge> newBuilder = new DAGBuilder<>();
+
+    // Add vertices w/o Flatten
+    originDag.getVertices().forEach(vertex -> {
+      final Transform transform = vertex instanceof OperatorVertex ? ((OperatorVertex) vertex).getTransform() : null;
+      if (!(transform instanceof FlattenTransform)) {
+        newBuilder.addVertex(vertex);
+      }
+    });
+
+    for (final IRVertex vertex : originDag.getTopologicalSort()) {
+      final Transform transform = vertex instanceof OperatorVertex ? ((OperatorVertex) vertex).getTransform() : null;
+      if (transform instanceof FlattenTransform) {
+        for (final IREdge incomingEdge : originDag.getIncomingEdgesOf(vertex))  {
+          for (final IREdge outgoingEdge : originDag.getOutgoingEdgesOf(vertex)) {
+            final CommunicationPatternProperty.Value commPattern =
+              outgoingEdge.getExecutionProperties().get(CommunicationPatternProperty.class).get();
+            final IREdge newEdge = new IREdge(incomingEdge.getSrc(),
+              outgoingEdge.getDst(), incomingEdge.getExecutionProperties());
+            newEdge.getExecutionProperties().setCommunicationPattern(commPattern);
+            newBuilder.connectVertices(newEdge);
+          }
+        }
+      }
+    }
+
+    return newBuilder.build();
   }
 
   TransformHierarchy.Node getProducerBeamNodeOf(final PValue pValue) {
@@ -249,15 +257,7 @@ final class PipelineTranslationContext {
   }
 
   private CommunicationPatternProperty.Value getCommPattern(final IRVertex src, final IRVertex dst) {
-
-    final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
     final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
-
-    if (srcTransform instanceof FlattenTransform &&
-      (dstTransform instanceof GroupByKeyAndWindowDoFnTransform || dstTransform instanceof GroupByKeyTransform)) {
-      //  A - (shuffle) -> Flatten - (OneToOne) -> GBK/GBKW
-      return CommunicationPatternProperty.Value.OneToOne;
-    }
 
     if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
       || dstTransform instanceof GroupByKeyTransform) {

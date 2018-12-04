@@ -59,9 +59,10 @@ public final class IREdge extends Edge<IRVertex> {
    * @param dst         destination vertex.
    */
   public IREdge(final IRVertex src,
-                final IRVertex dst) {
+                final IRVertex dst,
+                final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties) {
     super(IdManager.newEdgeId(), src, dst);
-    this.executionProperties = ExecutionPropertyMap.of(this);
+    this.executionProperties = executionProperties;
   }
 
   /**
