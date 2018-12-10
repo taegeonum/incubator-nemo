@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.*;
@@ -54,15 +55,14 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   private final ConcurrentLinkedQueue elementQueue;
 
-  private long serBytes = 0;
-  private long encodedBytes = 0;
+  private final List<Long> serBytesForEachInput;
+  private final List<Long> encodedBytesForEachInput;
 
   private int numOfIterators; // == numOfIncomingEdges
   private int numOfFinishMarks = 0;
 
   // A watermark manager
   private InputWatermarkManager inputWatermarkManager;
-
 
   MultiThreadParentTaskDataFetcher(final IRVertex dataSource,
                                    final InputReader readerForParentTask,
@@ -72,6 +72,8 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     this.firstFetch = true;
     this.elementQueue = new ConcurrentLinkedQueue();
     this.queueInsertionThreads = Executors.newCachedThreadPool();
+    this.serBytesForEachInput = new ArrayList<>();
+    this.encodedBytesForEachInput = new ArrayList<>();
   }
 
   @Override
@@ -100,6 +102,11 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private void fetchDataLazily() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     numOfIterators = futures.size();
+    // initialize
+    for (int i = 0; i < futures.size(); i++) {
+      serBytesForEachInput.add(0L);
+      encodedBytesForEachInput.add(0L);
+    }
 
     if (numOfIterators > 1) {
       inputWatermarkManager = new MultiInputWatermarkManager(numOfIterators, new WatermarkCollector());
@@ -107,60 +114,63 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       inputWatermarkManager = new SingleInputWatermarkManager(new WatermarkCollector());
     }
 
-    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-      // A thread for each iterator
-      queueInsertionThreads.submit(() -> {
-        if (exception == null) {
-          // Consume this iterator to the end.
-          while (iterator.hasNext()) { // blocked on the iterator.
-            final Object element = iterator.next();
-            if (element instanceof WatermarkWithIndex) {
-              // watermark element
-              // the input watermark manager is accessed by multiple threads
-              // so we should synchronize it
-              synchronized (inputWatermarkManager) {
-                final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
-                inputWatermarkManager.trackAndEmitWatermarks(
-                  watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
+    for (int i = 0; i < futures.size(); i++) {
+      final CompletableFuture<DataUtil.IteratorWithNumBytes> compFuture = futures.get(i);
+      final int index = i;
+      compFuture.whenComplete((iterator, exception) -> {
+        // A thread for each iterator
+        queueInsertionThreads.submit(() -> {
+          if (exception == null) {
+            // Consume this iterator to the end.
+            while (iterator.hasNext()) { // blocked on the iterator.
+              final Object element = iterator.next();
+              if (element instanceof WatermarkWithIndex) {
+                // watermark element
+                // the input watermark manager is accessed by multiple threads
+                // so we should synchronize it
+                synchronized (inputWatermarkManager) {
+                  final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
+                  inputWatermarkManager.trackAndEmitWatermarks(
+                    watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
+                }
+              } else {
+                // data element
+                elementQueue.offer(element);
               }
-            } else {
-              // data element
-              elementQueue.offer(element);
             }
+
+            // This iterator is finished.
+            countBytes(iterator, index);
+            elementQueue.offer(Finishmark.getInstance());
+          } else {
+            exception.printStackTrace();
+            throw new RuntimeException(exception);
           }
-
-          // This iterator is finished.
-          countBytesSynchronized(iterator);
-          elementQueue.offer(Finishmark.getInstance());
-        } else {
-          exception.printStackTrace();
-          throw new RuntimeException(exception);
-        }
+        });
       });
-
-    }));
+    }
   }
 
   final long getSerializedBytes() {
-    return serBytes;
+    return serBytesForEachInput.stream().reduce(0L, (x, y) -> x + y);
   }
 
   final long getEncodedBytes() {
-    return encodedBytes;
+    return encodedBytesForEachInput.stream().reduce(0L, (x, y) -> x + y);
   }
 
-  private synchronized void countBytesSynchronized(final DataUtil.IteratorWithNumBytes iterator) {
+  private void countBytes(final DataUtil.IteratorWithNumBytes iterator, final int index) {
     try {
-      serBytes += iterator.getNumSerializedBytes();
+      serBytesForEachInput.set(index, serBytesForEachInput.get(index) + iterator.getNumSerializedBytes());
     } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-      serBytes = -1;
+      serBytesForEachInput.set(index, -1L);
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of serialized data - the data is not ready yet ", e);
     }
     try {
-      encodedBytes += iterator.getNumEncodedBytes();
+      encodedBytesForEachInput.set(index, encodedBytesForEachInput.get(index) + iterator.getNumEncodedBytes());
     } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-      encodedBytes = -1;
+      encodedBytesForEachInput.set(index, -1L);
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
     }
