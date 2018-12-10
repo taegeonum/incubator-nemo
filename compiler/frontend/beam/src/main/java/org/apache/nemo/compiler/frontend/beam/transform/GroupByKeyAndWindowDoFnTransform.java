@@ -117,21 +117,18 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-    // drop late data
-    if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
-      checkAndInvokeBundle();
-      // We can call Beam's DoFnRunner#processElement here,
-      // but it may generate some overheads if we call the method for each data.
-      // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
-      // TODO #250: But, this approach can delay the event processing in streaming,
-      // TODO #250: if the watermark is not triggered for a long time.
+    checkAndInvokeBundle();
+    // We can call Beam's DoFnRunner#processElement here,
+    // but it may generate some overheads if we call the method for each data.
+    // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
+    // TODO #250: But, this approach can delay the event processing in streaming,
+    // TODO #250: if the watermark is not triggered for a long time.
 
-      final KV<K, InputT> kv = element.getValue();
-      keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
-      keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
+    final KV<K, InputT> kv = element.getValue();
+    keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
+    keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
 
-      checkAndFinishBundle();
-    }
+    checkAndFinishBundle();
   }
 
   /**
@@ -199,6 +196,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark watermark) {
+    //LOG.info("{} receive watermark {}", getContext().getIRVertex().getId(),
+    //  new Instant(watermark.getTimestamp()));
     checkAndInvokeBundle();
     inputWatermark = watermark;
     processElementsAndTriggerTimers(Instant.now(), Instant.now());
@@ -360,6 +359,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
           new Watermark(output.getTimestamp().getMillis() + 1));
         timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
       }
+      LOG.info("{}, {}, GBKW output: {}", getContext().getIRVertex().getId(),
+        System.currentTimeMillis(), output);
       outputCollector.emit(output);
     }
 

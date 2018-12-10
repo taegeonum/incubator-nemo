@@ -67,9 +67,11 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onData(final WindowedValue<InputT> data) {
+    //LOG.info("{} OnData: {}", getContext().getIRVertex().getId(), data);
     // Do not need any push-back logic.
     checkAndInvokeBundle();
     getDoFnRunner().processElement(data);
+
     checkAndFinishBundle();
   }
 
@@ -87,6 +89,38 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
-    return oc;
+    return new WrapOC(oc);
+  }
+
+  final class WrapOC implements OutputCollector<OutputT> {
+
+    private final OutputCollector<OutputT> oc;
+
+    WrapOC(final OutputCollector<OutputT> oc) {
+      this.oc = oc;
+    }
+
+    @Override
+    public void emit(OutputT output) {
+      /*
+      if (getContext().getIRVertex().getId().equals("vertex12") ||
+        getContext().getIRVertex().getId().equals("vertex17")) {
+        LOG.info("{} {} Output: {}", System.currentTimeMillis(), getContext().getIRVertex().getId(),
+          output);
+      }
+      */
+      oc.emit(output);
+    }
+
+    @Override
+    public void emitWatermark(Watermark watermark) {
+
+      oc.emitWatermark(watermark);
+    }
+
+    @Override
+    public <T> void emit(String dstVertexId, T output) {
+      oc.emit(dstVertexId, output);
+    }
   }
 }
