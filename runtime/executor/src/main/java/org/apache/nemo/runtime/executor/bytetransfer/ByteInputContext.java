@@ -27,7 +27,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Container for multiple input streams. Represents a transfer context on receiver-side.
@@ -43,18 +50,33 @@ public final class ByteInputContext extends ByteTransferContext {
   private static final Logger LOG = LoggerFactory.getLogger(ByteInputContext.class.getName());
 
   private final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
-  private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
+  private final BlockingQueue<ByteBufInputStream> byteBufInputStreams = new ArrayBlockingQueue<>(5);
   private volatile ByteBufInputStream currentByteBufInputStream = null;
+
+  private boolean closed = false;
+  private final Lock lock = new ReentrantLock();
+  private final Condition empty = lock.newCondition();
 
   private final Iterator<InputStream> inputStreams = new Iterator<InputStream>() {
     @Override
     public boolean hasNext() {
-      try {
-        return byteBufInputStreams.peek() != null;
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeException(e);
+      while (byteBufInputStreams.peek() == null) {
+        try {
+          lock.lock();
+
+          if (closed) {
+            return false;
+          } else {
+            empty.await();
+          }
+        } catch (final InterruptedException e) {
+          e.printStackTrace();
+        } finally {
+          lock.unlock();
+        }
       }
+
+      return true;
     }
 
     @Override
@@ -105,10 +127,22 @@ public final class ByteInputContext extends ByteTransferContext {
    */
   void onNewStream() {
     if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
+      try {
+        currentByteBufInputStream.close();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
     }
+
     currentByteBufInputStream = new ByteBufInputStream();
-    byteBufInputStreams.put(currentByteBufInputStream);
+    byteBufInputStreams.add(currentByteBufInputStream);
+    try {
+      lock.lock();
+      empty.signalAll();
+    } finally {
+      lock.unlock();
+    }
   }
 
   /**
@@ -120,7 +154,15 @@ public final class ByteInputContext extends ByteTransferContext {
       throw new RuntimeException("Cannot accept ByteBuf: No sub-stream is opened.");
     }
     if (byteBuf.readableBytes() > 0) {
-      currentByteBufInputStream.byteBufQueue.put(byteBuf);
+      try {
+        currentByteBufInputStream.inputStreamLock.writeLock().lock();
+        if (currentByteBufInputStream.byteBufQueue.peek() == null) {
+          currentByteBufInputStream.inputStreamEmpty.signalAll();
+        }
+        currentByteBufInputStream.byteBufQueue.add(byteBuf);
+      } finally {
+        currentByteBufInputStream.inputStreamLock.writeLock().unlock();
+      }
     } else {
       // ignore empty data frames
       byteBuf.release();
@@ -132,11 +174,27 @@ public final class ByteInputContext extends ByteTransferContext {
    */
   void onContextClose() {
     if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
+      try {
+        currentByteBufInputStream.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
     }
-    byteBufInputStreams.close();
+
+    closeStreams();
     completedFuture.complete(inputStreams);
     deregister();
+  }
+
+  private void closeStreams() {
+    try {
+      lock.lock();
+      closed = true;
+      empty.signalAll();
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
@@ -144,9 +202,15 @@ public final class ByteInputContext extends ByteTransferContext {
     setChannelError(cause);
 
     if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.closeExceptionally(cause);
+      try {
+        currentByteBufInputStream.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
     }
-    byteBufInputStreams.closeExceptionally(cause);
+
+    closeStreams();
     completedFuture.completeExceptionally(cause);
     deregister();
   }
@@ -156,27 +220,65 @@ public final class ByteInputContext extends ByteTransferContext {
    */
   private static final class ByteBufInputStream extends InputStream {
 
-    private final ClosableBlockingQueue<ByteBuf> byteBufQueue = new ClosableBlockingQueue<>();
+    private final BlockingQueue<ByteBuf> byteBufQueue = new LinkedBlockingQueue<>();
+    private final ReentrantReadWriteLock inputStreamLock = new ReentrantReadWriteLock();
+    private final Condition inputStreamEmpty = inputStreamLock.readLock().newCondition();
+    private boolean inputStreamClosed = false;
+
+    @Override
+    public void close() throws IOException {
+      super.close();
+      try {
+        inputStreamLock.readLock().lock();
+        inputStreamClosed = true;
+        inputStreamEmpty.signalAll();
+      } finally {
+        inputStreamLock.readLock().unlock();
+      }
+    }
 
     @Override
     public int read() throws IOException {
-      try {
-        final ByteBuf head = byteBufQueue.peek();
-        if (head == null) {
-          // end of stream event
-          return -1;
-        }
-        final int b = head.readUnsignedByte();
-        if (head.readableBytes() == 0) {
-          // remove and release header if no longer required
-          byteBufQueue.take();
-          head.release();
-        }
-        return b;
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IOException(e);
+
+      if (!waitUntilDataAvailable()) {
+        return -1;
       }
+
+      final ByteBuf head = byteBufQueue.peek();
+      final int b = head.readUnsignedByte();
+      if (head.readableBytes() == 0) {
+        // remove and release header if no longer required
+        try {
+          byteBufQueue.take();
+        } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new IOException(e);
+        }
+        head.release();
+      }
+
+      return b;
+    }
+
+    private boolean waitUntilDataAvailable() throws IOException {
+      while (byteBufQueue.peek() == null) {
+        try {
+          inputStreamLock.readLock().lock();
+
+          if (inputStreamClosed) {
+            // end of stream event
+            return false;
+          } else {
+            inputStreamEmpty.await();
+          }
+        } catch (final InterruptedException e) {
+          e.printStackTrace();
+          throw new IOException(e);
+        } finally {
+          inputStreamLock.readLock().unlock();
+        }
+      }
+      return true;
     }
 
     @Override
@@ -193,11 +295,10 @@ public final class ByteInputContext extends ByteTransferContext {
         // the number of bytes to read
         int capacity = maxLength;
         while (capacity > 0) {
-          final ByteBuf head = byteBufQueue.peek();
-          if (head == null) {
-            // end of stream event
+          if (!waitUntilDataAvailable()) {
             return readBytes == 0 ? -1 : readBytes;
           }
+          final ByteBuf head = byteBufQueue.peek();
           final int toRead = Math.min(head.readableBytes(), capacity);
           head.readBytes(bytes, baseOffset + readBytes, toRead);
           if (head.readableBytes() == 0) {
@@ -219,48 +320,43 @@ public final class ByteInputContext extends ByteTransferContext {
       if (n <= 0) {
         return 0;
       }
-      try {
-        // the number of bytes that has been skipped so far
-        long skippedBytes = 0;
-        // the number of bytes to skip
-        long toSkip = n;
-        while (toSkip > 0) {
-          final ByteBuf head = byteBufQueue.peek();
-          if (head == null) {
-            // end of stream event
-            return skippedBytes;
-          }
-          if (head.readableBytes() > toSkip) {
-            head.skipBytes((int) toSkip);
-            skippedBytes += toSkip;
-            return skippedBytes;
-          } else {
-            // discard the whole ByteBuf
-            skippedBytes += head.readableBytes();
-            toSkip -= head.readableBytes();
-            byteBufQueue.take();
-            head.release();
-          }
+      // the number of bytes that has been skipped so far
+      long skippedBytes = 0;
+      // the number of bytes to skip
+      long toSkip = n;
+      while (toSkip > 0) {
+        if (waitUntilDataAvailable()) {
+          // end of stream event
+          return skippedBytes;
         }
-        return skippedBytes;
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IOException(e);
+        final ByteBuf head = byteBufQueue.peek();
+        if (head.readableBytes() > toSkip) {
+          head.skipBytes((int) toSkip);
+          skippedBytes += toSkip;
+          return skippedBytes;
+        } else {
+          // discard the whole ByteBuf
+          skippedBytes += head.readableBytes();
+          toSkip -= head.readableBytes();
+          try {
+            byteBufQueue.take();
+          } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException(e);
+          }
+          head.release();
+        }
       }
+      return skippedBytes;
     }
 
     @Override
     public int available() throws IOException {
-      try {
+      if (waitUntilDataAvailable()) {
+        return 0;
+      } else {
         final ByteBuf head = byteBufQueue.peek();
-        if (head == null) {
-          return 0;
-        } else {
-          return head.readableBytes();
-        }
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IOException(e);
+        return head.readableBytes();
       }
     }
   }
