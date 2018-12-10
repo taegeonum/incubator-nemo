@@ -25,12 +25,11 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Queue;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -50,7 +49,7 @@ public final class ByteInputContext extends ByteTransferContext {
   private static final Logger LOG = LoggerFactory.getLogger(ByteInputContext.class.getName());
 
   private final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
-  private final BlockingQueue<ByteBufInputStream> byteBufInputStreams = new ArrayBlockingQueue<>(5);
+  private final Queue<ByteBufInputStream> byteBufInputStreams = new ConcurrentLinkedQueue<>();
   private volatile ByteBufInputStream currentByteBufInputStream = null;
 
   private boolean closed = false;
@@ -81,13 +80,11 @@ public final class ByteInputContext extends ByteTransferContext {
 
     @Override
     public InputStream next() {
-      try {
-        return byteBufInputStreams.take();
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOG.error("Interrupted while taking byte buf.", e);
+      final InputStream is = byteBufInputStreams.poll();
+      if (is == null) {
         throw new NoSuchElementException();
       }
+      return is;
     }
   };
 
@@ -155,13 +152,15 @@ public final class ByteInputContext extends ByteTransferContext {
     }
     if (byteBuf.readableBytes() > 0) {
       try {
-        currentByteBufInputStream.inputStreamLock.writeLock().lock();
+        currentByteBufInputStream.inputStreamLock.lock();
         if (currentByteBufInputStream.byteBufQueue.peek() == null) {
+          currentByteBufInputStream.byteBufQueue.add(byteBuf);
           currentByteBufInputStream.inputStreamEmpty.signalAll();
+        } else {
+          currentByteBufInputStream.byteBufQueue.add(byteBuf);
         }
-        currentByteBufInputStream.byteBufQueue.add(byteBuf);
       } finally {
-        currentByteBufInputStream.inputStreamLock.writeLock().unlock();
+        currentByteBufInputStream.inputStreamLock.unlock();
       }
     } else {
       // ignore empty data frames
@@ -220,20 +219,20 @@ public final class ByteInputContext extends ByteTransferContext {
    */
   private static final class ByteBufInputStream extends InputStream {
 
-    private final BlockingQueue<ByteBuf> byteBufQueue = new LinkedBlockingQueue<>();
-    private final ReentrantReadWriteLock inputStreamLock = new ReentrantReadWriteLock();
-    private final Condition inputStreamEmpty = inputStreamLock.readLock().newCondition();
+    private final Queue<ByteBuf> byteBufQueue = new ConcurrentLinkedQueue<>();
+    private final Lock inputStreamLock = new ReentrantLock();
+    private final Condition inputStreamEmpty = inputStreamLock.newCondition();
     private boolean inputStreamClosed = false;
 
     @Override
     public void close() throws IOException {
       super.close();
       try {
-        inputStreamLock.readLock().lock();
+        inputStreamLock.lock();
         inputStreamClosed = true;
         inputStreamEmpty.signalAll();
       } finally {
-        inputStreamLock.readLock().unlock();
+        inputStreamLock.unlock();
       }
     }
 
@@ -248,12 +247,7 @@ public final class ByteInputContext extends ByteTransferContext {
       final int b = head.readUnsignedByte();
       if (head.readableBytes() == 0) {
         // remove and release header if no longer required
-        try {
-          byteBufQueue.take();
-        } catch (final InterruptedException e) {
-          Thread.currentThread().interrupt();
-          throw new IOException(e);
-        }
+        byteBufQueue.poll();
         head.release();
       }
 
@@ -263,7 +257,7 @@ public final class ByteInputContext extends ByteTransferContext {
     private boolean waitUntilDataAvailable() throws IOException {
       while (byteBufQueue.peek() == null) {
         try {
-          inputStreamLock.readLock().lock();
+          inputStreamLock.lock();
 
           if (inputStreamClosed) {
             // end of stream event
@@ -275,7 +269,7 @@ public final class ByteInputContext extends ByteTransferContext {
           e.printStackTrace();
           throw new IOException(e);
         } finally {
-          inputStreamLock.readLock().unlock();
+          inputStreamLock.unlock();
         }
       }
       return true;
@@ -289,30 +283,25 @@ public final class ByteInputContext extends ByteTransferContext {
       if (baseOffset < 0 || maxLength < 0 || maxLength > bytes.length - baseOffset) {
         throw new IndexOutOfBoundsException();
       }
-      try {
-        // the number of bytes that has been read so far
-        int readBytes = 0;
-        // the number of bytes to read
-        int capacity = maxLength;
-        while (capacity > 0) {
-          if (!waitUntilDataAvailable()) {
-            return readBytes == 0 ? -1 : readBytes;
-          }
-          final ByteBuf head = byteBufQueue.peek();
-          final int toRead = Math.min(head.readableBytes(), capacity);
-          head.readBytes(bytes, baseOffset + readBytes, toRead);
-          if (head.readableBytes() == 0) {
-            byteBufQueue.take();
-            head.release();
-          }
-          readBytes += toRead;
-          capacity -= toRead;
+      // the number of bytes that has been read so far
+      int readBytes = 0;
+      // the number of bytes to read
+      int capacity = maxLength;
+      while (capacity > 0) {
+        if (!waitUntilDataAvailable()) {
+          return readBytes == 0 ? -1 : readBytes;
         }
-        return readBytes;
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IOException(e);
+        final ByteBuf head = byteBufQueue.peek();
+        final int toRead = Math.min(head.readableBytes(), capacity);
+        head.readBytes(bytes, baseOffset + readBytes, toRead);
+        if (head.readableBytes() == 0) {
+          byteBufQueue.poll();
+          head.release();
+        }
+        readBytes += toRead;
+        capacity -= toRead;
       }
+      return readBytes;
     }
 
     @Override
@@ -338,12 +327,7 @@ public final class ByteInputContext extends ByteTransferContext {
           // discard the whole ByteBuf
           skippedBytes += head.readableBytes();
           toSkip -= head.readableBytes();
-          try {
-            byteBufQueue.take();
-          } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException(e);
-          }
+          byteBufQueue.poll();
           head.release();
         }
       }
