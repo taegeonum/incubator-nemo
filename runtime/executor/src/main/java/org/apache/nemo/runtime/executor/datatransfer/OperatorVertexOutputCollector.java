@@ -123,6 +123,12 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   public void emit(final O output) {
     //LOG.info("{} emits {}", irVertex.getId(), output);
 
+    if (irVertex.getId().equals("vertex9") || irVertex.getId().equals("vertex12")
+      || irVertex.getId().equals("vertex13") || irVertex.getId().equals("vertex16")) {
+      LOG.info("{}/{} output {}", irVertex.getId(), Thread.currentThread().getId(),
+        System.currentTimeMillis());
+    }
+
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       emit(internalVertex.getNextOperator(), output);
     }

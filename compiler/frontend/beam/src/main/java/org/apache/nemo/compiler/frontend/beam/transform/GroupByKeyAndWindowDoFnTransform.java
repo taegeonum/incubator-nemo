@@ -359,8 +359,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
           new Watermark(output.getTimestamp().getMillis() + 1));
         timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
       }
-      LOG.info("{}, {}, GBKW output: {}", getContext().getIRVertex().getId(),
-        System.currentTimeMillis(), output);
+
       outputCollector.emit(output);
     }
 
