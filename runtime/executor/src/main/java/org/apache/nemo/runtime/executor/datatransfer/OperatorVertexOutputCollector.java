@@ -58,6 +58,10 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private SideInputLambdaCollector sideInputOutputCollector;
   private MainInputLambdaCollector mainInputLambdaCollector;
 
+  private long prevLogTime = System.currentTimeMillis();
+  private long recentDataEmitTime = System.currentTimeMillis();
+  private final long logPeriod = 5000;
+
   /**
    * Constructor of the output collector.
    * @param irVertex the ir vertex that emits the output
@@ -125,8 +129,13 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
     if (irVertex.getId().equals("vertex9") || irVertex.getId().equals("vertex12")
       || irVertex.getId().equals("vertex13") || irVertex.getId().equals("vertex16")) {
-      LOG.info("{}/{} output {}", irVertex.getId(), Thread.currentThread().getId(),
-        System.currentTimeMillis());
+      recentDataEmitTime = System.currentTimeMillis();
+
+      if (recentDataEmitTime - prevLogTime >= logPeriod) {
+        prevLogTime = recentDataEmitTime;
+        LOG.info("{}/{} output {}", irVertex.getId(), Thread.currentThread().getId(),
+          System.currentTimeMillis());
+      }
     }
 
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
