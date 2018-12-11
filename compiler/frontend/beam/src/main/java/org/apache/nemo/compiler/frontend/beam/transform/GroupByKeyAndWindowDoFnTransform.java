@@ -200,7 +200,14 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     //  new Instant(watermark.getTimestamp()));
     checkAndInvokeBundle();
     inputWatermark = watermark;
+
+    final long st = System.currentTimeMillis();
     processElementsAndTriggerTimers(Instant.now(), Instant.now());
+    final long et = System.currentTimeMillis();
+
+    LOG.info("{}/{} latency {} watermark {}", getContext().getIRVertex().getId(), Thread.currentThread().getId(),
+      (et - st), new Instant(watermark.getTimestamp()));
+
     // Emit watermark to downstream operators
     emitOutputWatermark();
     checkAndFinishBundle();
@@ -246,6 +253,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         KeyedWorkItems.timersWorkItem(key, timerDataList);
       // The DoFnRunner interface requires WindowedValue,
       // but this windowed value is actually not used in the ReduceFnRunner internal.
+      LOG.info("{}/{} emits {}", getContext().getIRVertex().getId(), Thread.currentThread().getId(),
+        System.currentTimeMillis());
+
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
     }
   }
