@@ -205,12 +205,15 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     processElementsAndTriggerTimers(Instant.now(), Instant.now());
     final long et = System.currentTimeMillis();
 
-    LOG.info("{}/{} latency {} watermark {}", getContext().getIRVertex().getId(), Thread.currentThread().getId(),
+    LOG.info("{}/{} latency {} before emit watermark  {}", getContext().getIRVertex().getId(), Thread.currentThread().getId(),
       (et - st), new Instant(watermark.getTimestamp()));
 
     // Emit watermark to downstream operators
     emitOutputWatermark();
+
     checkAndFinishBundle();
+    LOG.info("{}/{} latency {} after emit watermark  {}", getContext().getIRVertex().getId(), Thread.currentThread().getId(),
+      (System.currentTimeMillis() - st), new Instant(watermark.getTimestamp()));
   }
 
   /**
