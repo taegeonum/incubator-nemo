@@ -314,7 +314,7 @@ public final class ByteInputContext extends ByteTransferContext {
       // the number of bytes to skip
       long toSkip = n;
       while (toSkip > 0) {
-        if (waitUntilDataAvailable()) {
+        if (!waitUntilDataAvailable()) {
           // end of stream event
           return skippedBytes;
         }
@@ -336,7 +336,7 @@ public final class ByteInputContext extends ByteTransferContext {
 
     @Override
     public int available() throws IOException {
-      if (waitUntilDataAvailable()) {
+      if (!waitUntilDataAvailable()) {
         return 0;
       } else {
         final ByteBuf head = byteBufQueue.peek();
