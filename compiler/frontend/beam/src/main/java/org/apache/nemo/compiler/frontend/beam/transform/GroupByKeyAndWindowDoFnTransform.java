@@ -253,9 +253,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         KeyedWorkItems.timersWorkItem(key, timerDataList);
       // The DoFnRunner interface requires WindowedValue,
       // but this windowed value is actually not used in the ReduceFnRunner internal.
-      LOG.info("{}/{} emits {}", getContext().getIRVertex().getId(), Thread.currentThread().getId(),
-        System.currentTimeMillis());
-
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
     }
   }
