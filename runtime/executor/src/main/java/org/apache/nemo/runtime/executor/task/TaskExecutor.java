@@ -449,6 +449,7 @@ public final class TaskExecutor {
     long prevLogTime = System.currentTimeMillis();
     long processingTime = 0;
     long fetchTime = 0;
+    long noElementTime = 0;
     final long pd = 3000;
 
     // empty means we've consumed all task-external input data
@@ -461,13 +462,14 @@ public final class TaskExecutor {
       while (availableIterator.hasNext()) {
 
         if (System.currentTimeMillis() - prevLogTime >= pd) {
-          LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
+          LOG.info("{} Fetch time: {}, NoElemTime: {}, Processing time: {}", taskId, fetchTime,
+            noElementTime, processingTime);
           prevLogTime = System.currentTimeMillis();
         }
 
         final DataFetcher dataFetcher = availableIterator.next();
+        final long a = System.currentTimeMillis();
         try {
-          final long a = System.currentTimeMillis();
           final Object element = dataFetcher.fetchDataElement();
           fetchTime += (System.currentTimeMillis() - a);
 
@@ -479,6 +481,7 @@ public final class TaskExecutor {
             availableIterator.remove();
           }
         } catch (final NoSuchElementException e) {
+          noElementTime += (System.currentTimeMillis() - a);
           // No element in current data fetcher, fetch data from next fetcher
           // move current data fetcher to pending.
           availableIterator.remove();
@@ -508,8 +511,8 @@ public final class TaskExecutor {
           }
 
           final DataFetcher dataFetcher = pendingIterator.next();
+          final long a = System.currentTimeMillis();
           try {
-            final long a = System.currentTimeMillis();
             final Object element = dataFetcher.fetchDataElement();
             fetchTime += (System.currentTimeMillis() - a);
 
@@ -525,6 +528,7 @@ public final class TaskExecutor {
             }
 
           } catch (final NoSuchElementException e) {
+            noElementTime += (System.currentTimeMillis() - a);
             // The current data fetcher is still pending.. try next data fetcher
           } catch (final IOException e) {
             // IOException means that this task should be retried.
