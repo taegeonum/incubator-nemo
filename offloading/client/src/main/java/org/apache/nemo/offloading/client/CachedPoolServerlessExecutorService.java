@@ -163,12 +163,15 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         final boolean trySpeculative = (processingCnt / (double) createdWorkers) > 0.3;
         if (trySpeculative) {
           final long avgProcessingTime = totalProcessingTime / processingCnt;
+          LOG.info("AvgProcessingTime: {}, ProcessingCnt: {}, CreatedWorkers: {}",
+            avgProcessingTime, processingCnt, createdWorkers);
+
           for (final Pair<Long, OffloadingWorker> pair : runningWorkers) {
             // running workers
             // 여기서 speculiatve periodic하게 한번 더
             // 1초 정도 더 길면 speculative execution
             if (!hasBeenPerformedSpeculativeExecution(pair.right()) &&
-              curT - pair.left() > avgProcessingTime + 1000) {
+              curT - pair.left() > avgProcessingTime + 2000) {
               final boolean isExecuted = speculativeExecutionForRunningWorker(pair.right());
               if (isExecuted) {
                 LOG.info("Speculative execution for running worker: dataId: {}, time: {}",
@@ -274,8 +277,14 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       final int dataId = pair.right();
       final ByteBuf dataBuf = pair.left();
       final boolean speculative = speculativeDataProcessedMap.containsKey(dataId);
-      outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId));
-      runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+      try {
+        outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId));
+        runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+      } catch (final IllegalReferenceCountException e) {
+        // the data is already processed ... just finish the worker
+        worker.finishOffloading();
+        finishedWorkers += 1;
+      }
     } else {
       // speculative execution
       speculativeExecution(worker);
