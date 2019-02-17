@@ -171,11 +171,12 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             // 여기서 speculiatve periodic하게 한번 더
             // 1초 정도 더 길면 speculative execution
             if (!hasBeenPerformedSpeculativeExecution(pair.right()) &&
-              curT - pair.left() > avgProcessingTime + 2000) {
+              curT - pair.left() > (avgProcessingTime * 1.3)) {
+              final Pair<ByteBuf, Integer> input = pair.right().getCurrentProcessingInput();
               final boolean isExecuted = speculativeExecutionForRunningWorker(pair.right());
               if (isExecuted) {
                 LOG.info("Speculative execution for running worker: dataId: {}, time: {}",
-                  pair.right().getCurrentProcessingInput().right(), (curT - pair.left()));
+                  input.right(), (curT - pair.left()));
               }
             }
           }
@@ -253,6 +254,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   private OffloadingWorker selectRunningWorkerForSpeculativeExecution(final OffloadingWorker readyWorker) {
     int cnt = Integer.MAX_VALUE;
     OffloadingWorker target = null;
+
+    if (runningWorkers.isEmpty()) {
+      return null;
+    }
+
     // first find a worker that does not perform speculative execution
     for (final Pair<Long, OffloadingWorker> runningWorkerPair : runningWorkers) {
       final OffloadingWorker runningWorker = runningWorkerPair.right();
