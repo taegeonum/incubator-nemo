@@ -160,6 +160,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
         // speculative execution for long running workers
         // 1/3 정도 처리되었을때 평균 재기
+        /*
         final boolean trySpeculative = (processingCnt / (double) createdWorkers) > 0.3;
         if (trySpeculative) {
           final long avgProcessingTime = totalProcessingTime / processingCnt;
@@ -180,6 +181,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             }
           }
         }
+        */
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -342,6 +344,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
       if (!speculativeDataProcessedMap.containsKey(dataId)) {
         speculativeDataProcessedMap.put(dataId, false);
+      } else {
+        throw new RuntimeException("Should be the first speculative execution");
       }
 
       createdWorkers += 1;
