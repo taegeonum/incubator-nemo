@@ -163,8 +163,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         final boolean trySpeculative = (processingCnt / (double) createdWorkers) > 0.3;
         if (trySpeculative) {
           final long avgProcessingTime = totalProcessingTime / processingCnt;
-          LOG.info("AvgProcessingTime: {}, ProcessingCnt: {}, CreatedWorkers: {}",
-            avgProcessingTime, processingCnt, createdWorkers);
 
           for (final Pair<Long, OffloadingWorker> pair : runningWorkers) {
             // running workers
@@ -175,8 +173,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
               final Pair<ByteBuf, Integer> input = pair.right().getCurrentProcessingInput();
               final boolean isExecuted = speculativeExecutionForRunningWorker(pair.right());
               if (isExecuted) {
-                LOG.info("Speculative execution for running worker: dataId: {}, time: {}",
-                  input.right(), (curT - pair.left()));
+                LOG.info("Speculative execution for running worker: dataId: {}, time: {}, avgTime: {}," +
+                    "processingCnt: {}, createdWorkers: {}, finishedWorkers: {}",
+                  input.right(), (curT - pair.left()), avgProcessingTime, processingCnt, createdWorkers, finishedWorkers);
               }
             }
           }
