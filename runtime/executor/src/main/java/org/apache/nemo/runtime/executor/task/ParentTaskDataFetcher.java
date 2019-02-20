@@ -122,6 +122,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   private void fetchDataLazily() throws IOException {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     this.expectedNumOfIterators = futures.size();
+    LOG.info("Expected num of iterators: {}", expectedNumOfIterators);
 
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
       try {
