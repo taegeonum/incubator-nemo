@@ -184,7 +184,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       //LOG.info("{}, On watermark at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
       System.out.println("Pushback latency: " + (System.currentTimeMillis() - st));
     } else {
-      LOG.info("Main element: {}", data);
+      //LOG.info("Main element: {}", data);
 
       // This element is the Main Input
       checkAndInvokeBundle();
