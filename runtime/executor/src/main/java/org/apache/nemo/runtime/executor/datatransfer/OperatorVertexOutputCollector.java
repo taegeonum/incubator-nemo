@@ -119,7 +119,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       emit(internalVertex.getNextOperator(), output);
     }
 
-    if (!irVertex.getId().equals("vertex6")) {
+    if (!irVertex.getId().equals("vertex6") && !irVertex.getId().equals("vertex8")) {
       for (final OutputWriter externalWriter : externalMainOutputs) {
         emit(externalWriter, output);
       }
@@ -137,7 +137,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     }
 
 
-    if (!irVertex.getId().equals("vertex6")) {
+    if (!irVertex.getId().equals("vertex6") && !irVertex.getId().equals("vertex8")) {
       if (externalAdditionalOutputs.containsKey(dstVertexId)) {
         for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
           emit(externalWriter, (O) output);
