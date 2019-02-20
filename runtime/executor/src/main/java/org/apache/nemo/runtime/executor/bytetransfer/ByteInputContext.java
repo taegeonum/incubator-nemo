@@ -86,6 +86,7 @@ public final class ByteInputContext extends ByteTransferContext {
                    final byte[] contextDescriptor,
                    final ContextManager contextManager) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
+    LOG.info("Create byte input context: {}/{}", remoteExecutorId, contextId);
   }
 
   /**

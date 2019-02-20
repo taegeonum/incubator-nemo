@@ -236,6 +236,7 @@ public final class DataUtil {
 
     @Override
     public boolean hasNext() {
+      LOG.info("InputStreamIterator hasNext at thread {}", Thread.currentThread().getId());
       if (hasNext) {
         return true;
       }
@@ -250,6 +251,7 @@ public final class DataUtil {
               inputStream.getQueue().peek();
               LOG.info("First End decode at thread {}", Thread.currentThread().getId());
             } catch (InterruptedException e) {
+              LOG.info("Exception {}", Thread.currentThread().getId());
               e.printStackTrace();
             }
             decoder = serializer.getDecoderFactory().create(inputStream);
@@ -270,6 +272,7 @@ public final class DataUtil {
           return true;
         } catch (final IOException e) {
           e.printStackTrace();
+          LOG.info("Exception {}", Thread.currentThread().getId());
           if (!e.getMessage().contains("EOF")) {
             throw new RuntimeException(e);
           }
@@ -290,6 +293,7 @@ public final class DataUtil {
 
     @Override
     public T next() {
+      LOG.info("InputStreamIterator next at thread {}", Thread.currentThread().getId());
       if (hasNext()) {
         final T element = next;
         next = null;
