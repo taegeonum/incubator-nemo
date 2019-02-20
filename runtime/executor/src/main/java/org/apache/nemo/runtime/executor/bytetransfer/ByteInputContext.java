@@ -52,6 +52,7 @@ public final class ByteInputContext extends ByteTransferContext {
       try {
         return byteBufInputStreams.peek() != null;
       } catch (final InterruptedException e) {
+        e.printStackTrace();
         Thread.currentThread().interrupt();
         throw new RuntimeException(e);
       }
@@ -62,6 +63,7 @@ public final class ByteInputContext extends ByteTransferContext {
       try {
         return byteBufInputStreams.take();
       } catch (final InterruptedException e) {
+        e.printStackTrace();
         Thread.currentThread().interrupt();
         LOG.error("Interrupted while taking byte buf.", e);
         throw new NoSuchElementException();
@@ -174,6 +176,7 @@ public final class ByteInputContext extends ByteTransferContext {
         }
         return b;
       } catch (final InterruptedException e) {
+        e.printStackTrace();
         Thread.currentThread().interrupt();
         throw new IOException(e);
       }
@@ -209,6 +212,7 @@ public final class ByteInputContext extends ByteTransferContext {
         }
         return readBytes;
       } catch (final InterruptedException e) {
+        e.printStackTrace();
         Thread.currentThread().interrupt();
         throw new IOException(e);
       }
@@ -244,6 +248,7 @@ public final class ByteInputContext extends ByteTransferContext {
         }
         return skippedBytes;
       } catch (final InterruptedException e) {
+        e.printStackTrace();
         Thread.currentThread().interrupt();
         throw new IOException(e);
       }
@@ -259,6 +264,7 @@ public final class ByteInputContext extends ByteTransferContext {
           return head.readableBytes();
         }
       } catch (final InterruptedException e) {
+        e.printStackTrace();
         Thread.currentThread().interrupt();
         throw new IOException(e);
       }

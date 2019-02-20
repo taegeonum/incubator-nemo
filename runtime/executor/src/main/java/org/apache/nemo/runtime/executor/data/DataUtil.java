@@ -252,6 +252,7 @@ public final class DataUtil {
             }
           }
         } catch (final IOException e) {
+          e.printStackTrace();
           // We cannot recover IOException thrown by buildInputStream.
           throw new RuntimeException(e);
         }
@@ -260,6 +261,10 @@ public final class DataUtil {
           hasNext = true;
           return true;
         } catch (final IOException e) {
+          if (!e.getMessage().contains("EOF")) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
           // IOException from decoder indicates EOF event.
           numSerializedBytes += serializedCountingStream.getCount();
           numEncodedBytes += encodedCountingStream.getCount();
