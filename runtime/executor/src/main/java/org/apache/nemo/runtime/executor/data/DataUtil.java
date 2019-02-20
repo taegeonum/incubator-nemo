@@ -265,8 +265,8 @@ public final class DataUtil {
           hasNext = true;
           return true;
         } catch (final IOException e) {
+          e.printStackTrace();
           if (!e.getMessage().contains("EOF")) {
-            e.printStackTrace();
             throw new RuntimeException(e);
           }
 //
