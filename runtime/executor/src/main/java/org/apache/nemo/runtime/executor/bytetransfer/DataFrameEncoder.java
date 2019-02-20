@@ -79,7 +79,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     }
 
     // recycle DataFrame object
-    //in.recycle();
+    in.recycle();
   }
 
   /**
@@ -87,17 +87,23 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
    */
   static final class DataFrame {
 
-    /*
     private static final Recycler<DataFrame> RECYCLER = new Recycler<DataFrame>() {
       @Override
       protected DataFrame newObject(final Recycler.Handle handle) {
         return new DataFrame(handle);
       }
     };
-    */
 
+    /**
+     * Creates a {@link DataFrame}.
+     *
+     * @param handle the recycler handle
+     */
+    private DataFrame(final Recycler.Handle handle) {
+      this.handle = handle;
+    }
 
-
+    private final Recycler.Handle handle;
     private ByteTransferContext.ContextId contextId;
     @Nullable
     private Object body;
@@ -106,27 +112,48 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     private boolean closesContext;
 
     /**
-     * Creates a {@link DataFrame}.
+     * Creates a {@link DataFrame} to supply content to sub-stream.
      *
-     * @param handle the recycler handle
+     * @param contextId   the context id
+     * @param body        the body or {@code null}
+     * @param length      the length of the body, in bytes
+     * @param opensSubStream whether this frame opens a new sub-stream or not
+     * @return the {@link DataFrame} object
      */
-    public DataFrame(final ByteTransferContext.ContextId contextId,
-                     @Nullable final Object body,
-                     final long length,
-                     final boolean opensSubStream) {
-      this.contextId = contextId;
-      this.body = body;
-      this.length = length;
-      this.opensSubStream = opensSubStream;
-      this.closesContext = false;
+    static DataFrame newInstance(final ByteTransferContext.ContextId contextId,
+                                 @Nullable final Object body,
+                                 final long length,
+                                 final boolean opensSubStream) {
+      final DataFrame dataFrame = RECYCLER.get();
+      dataFrame.contextId = contextId;
+      dataFrame.body = body;
+      dataFrame.length = length;
+      dataFrame.opensSubStream = opensSubStream;
+      dataFrame.closesContext = false;
+      return dataFrame;
     }
 
-    public DataFrame(final ByteTransferContext.ContextId contextId) {
-      this.contextId = contextId;
-      this.body = null;
-      this.length = 0;
-      this.opensSubStream = false;
-      this.closesContext = true;
+    /**
+     * Creates a {@link DataFrame} to close the whole context.
+     * @param contextId   the context id
+     * @return the {@link DataFrame} object
+     */
+    static DataFrame newInstance(final ByteTransferContext.ContextId contextId) {
+      final DataFrame dataFrame = RECYCLER.get();
+      dataFrame.contextId = contextId;
+      dataFrame.body = null;
+      dataFrame.length = 0;
+      dataFrame.opensSubStream = false;
+      dataFrame.closesContext = true;
+      return dataFrame;
+    }
+
+    /**
+     * Recycles this object.
+     */
+    void recycle() {
+      body = null;
+      handle.recycle(this);
     }
   }
 }
