@@ -125,6 +125,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     // drop late data
+    /*
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
       checkAndInvokeBundle();
       // We can call Beam's DoFnRunner#processElement here,
@@ -145,6 +146,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
       checkAndFinishBundle();
     }
+    */
   }
 
   /**
@@ -210,7 +212,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
 
-
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;
@@ -240,10 +241,12 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     checkAndFinishBundle();
 
     final long et = System.currentTimeMillis();
+    /*
     LOG.info("{}/{} latency {}, triggerTime: {}, watermark: {}, emitOutputWatermarkTime: {}",
       getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st),
       (ee - st),
       new Instant(watermark.getTimestamp()), (et - et1));
+      */
   }
 
   /**
