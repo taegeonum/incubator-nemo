@@ -246,7 +246,9 @@ public final class DataUtil {
         try {
           if (decoder == null) {
             try {
+              LOG.info("First Start decode at thread {}", Thread.currentThread().getId());
               inputStream.getQueue().peek();
+              LOG.info("First End decode at thread {}", Thread.currentThread().getId());
             } catch (InterruptedException e) {
               e.printStackTrace();
             }
@@ -261,7 +263,9 @@ public final class DataUtil {
           throw new RuntimeException(e);
         }
         try {
+          LOG.info("Start decode at thread {}", Thread.currentThread().getId());
           next = decoder.decode();
+          LOG.info("End decode at thread {}", Thread.currentThread().getId());
           hasNext = true;
           return true;
         } catch (final IOException e) {
