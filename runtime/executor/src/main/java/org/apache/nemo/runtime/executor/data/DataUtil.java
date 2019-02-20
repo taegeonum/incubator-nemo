@@ -232,6 +232,11 @@ public final class DataUtil {
                         final Serializer<?, T> serializer) {
       this.inputStream = inputStream;
       this.serializer = serializer;
+      try {
+        this.decoder = serializer.getDecoderFactory().create(inputStream);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
 
     @Override
@@ -240,30 +245,17 @@ public final class DataUtil {
       if (hasNext) {
         return true;
       }
-      if (cannotContinueDecoding) {
-        return false;
-      }
+
       while (true) {
         try {
-          if (decoder == null) {
-            try {
-              LOG.info("First Start decode at thread {}", Thread.currentThread().getId());
-              inputStream.getQueue().peek();
-              LOG.info("First End decode at thread {}", Thread.currentThread().getId());
-            } catch (InterruptedException e) {
-              LOG.info("Exception {}", Thread.currentThread().getId());
-              e.printStackTrace();
-            }
-            decoder = serializer.getDecoderFactory().create(inputStream);
-          } else {
-            cannotContinueDecoding = true;
-            return false;
-          }
-        } catch (final IOException e) {
+          LOG.info("First Start decode at thread {}", Thread.currentThread().getId());
+          inputStream.getQueue().peek();
+          LOG.info("First End decode at thread {}", Thread.currentThread().getId());
+        } catch (InterruptedException e) {
+          LOG.info("Exception {}", Thread.currentThread().getId());
           e.printStackTrace();
-          // We cannot recover IOException thrown by buildInputStream.
-          throw new RuntimeException(e);
         }
+
         try {
           LOG.info("Start decode at thread {}", Thread.currentThread().getId());
           next = decoder.decode();
@@ -276,17 +268,6 @@ public final class DataUtil {
           if (!e.getMessage().contains("EOF")) {
             throw new RuntimeException(e);
           }
-//
-//          if (!curInputStream.isEmpty()) {
-//            LOG.info("TTT: curInputStream is not empty... {}", curInputStream.size());
-//          }
-
-          // IOException from decoder indicates EOF event.
-          //numSerializedBytes += serializedCountingStream.getCount();
-          //numEncodedBytes += encodedCountingStream.getCount();
-          //serializedCountingStream = null;
-          //encodedCountingStream = null;
-          decoder = null;
         }
       }
     }
@@ -296,6 +277,7 @@ public final class DataUtil {
       LOG.info("InputStreamIterator next at thread {}", Thread.currentThread().getId());
       if (hasNext()) {
         final T element = next;
+        LOG.info("Get element at thread {} / {}", Thread.currentThread().getId(), element);
         next = null;
         hasNext = false;
         return element;
