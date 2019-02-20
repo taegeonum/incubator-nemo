@@ -71,12 +71,13 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     assert (in.length <= LENGTH_MAX);
     header.writeInt((int) in.length);
 
+    if (in.body != null) {
+      header.writeBytes(in.body);
+    }
+
     out.add(header);
 
     // encode body
-    if (in.body != null) {
-      out.add(in.body);
-    }
 
     // recycle DataFrame object
     in.recycle();
@@ -106,7 +107,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     private final Recycler.Handle handle;
     private ByteTransferContext.ContextId contextId;
     @Nullable
-    private Object body;
+    private ByteBuf body;
     private long length;
     private boolean opensSubStream;
     private boolean closesContext;
@@ -121,7 +122,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
      * @return the {@link DataFrame} object
      */
     static DataFrame newInstance(final ByteTransferContext.ContextId contextId,
-                                 @Nullable final Object body,
+                                 @Nullable final ByteBuf body,
                                  final long length,
                                  final boolean opensSubStream) {
       final DataFrame dataFrame = RECYCLER.get();

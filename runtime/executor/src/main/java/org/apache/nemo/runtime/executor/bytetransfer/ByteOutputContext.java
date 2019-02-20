@@ -164,6 +164,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * @throws IOException when failed to open the file, an exception has been set, or this stream was closed
      */
     public ByteOutputStream writeFileArea(final FileArea fileArea) throws IOException {
+      /*
       final Path path = Paths.get(fileArea.getPath());
       long cursor = fileArea.getPosition();
       long bytesToSend = fileArea.getCount();
@@ -176,6 +177,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
         bytesToSend -= size;
         init = false;
       }
+      */
       return this;
     }
 
@@ -237,7 +239,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * @throws IOException when an exception has been set or this stream was closed
      */
     private void writeDataFrame(
-      final Object body, final long length, final boolean openSubStream) throws IOException {
+      final ByteBuf body, final long length, final boolean openSubStream) throws IOException {
       ensureNoException();
       if (closed) {
         throw new IOException("Stream already closed.");

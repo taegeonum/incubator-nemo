@@ -251,6 +251,7 @@ public final class DataUtil {
           try {
             this.decoder = serializer.getDecoderFactory().create(bis);
             next = decoder.decode();
+            bis.close();
             byteBuf.release();
             hasNext = true;
             return true;
