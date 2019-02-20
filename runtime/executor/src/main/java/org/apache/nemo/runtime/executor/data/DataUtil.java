@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
-import com.sun.xml.internal.messaging.saaj.util.ByteInputStream;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
