@@ -117,7 +117,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       eventHandler = new EventHandler<WindowedValue<OutputT>>() {
         @Override
         public void onNext(WindowedValue<OutputT> msg) {
-          LOG.info("Result {}", msg);
+
           getOutputCollector().emit(msg);
         }
       };
@@ -335,6 +335,22 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
-    return oc;
+    return new OutputCollector() {
+      @Override
+      public void emit(Object output) {
+        LOG.info("Result {}", output);
+        oc.emit(output);
+      }
+
+      @Override
+      public void emitWatermark(Watermark watermark) {
+        oc.emitWatermark(watermark);
+      }
+
+      @Override
+      public void emit(String dstVertexId, Object output) {
+        oc.emit(dstVertexId, output);
+      }
+    };
   }
 }

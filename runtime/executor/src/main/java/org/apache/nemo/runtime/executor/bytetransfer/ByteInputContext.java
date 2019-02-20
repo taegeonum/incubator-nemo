@@ -107,6 +107,9 @@ public final class ByteInputContext extends ByteTransferContext {
    */
   void onNewStream() {
     if (currentByteBufInputStream != null) {
+      if (!currentByteBufInputStream.byteBufQueue.queue.isEmpty()) {
+        LOG.info("HAHA is not empty TT ... {}", currentByteBufInputStream.byteBufQueue.queue.size());
+      }
       currentByteBufInputStream.byteBufQueue.close();
     }
     currentByteBufInputStream = new ByteBufInputStream();
@@ -134,6 +137,9 @@ public final class ByteInputContext extends ByteTransferContext {
    */
   void onContextClose() {
     if (currentByteBufInputStream != null) {
+      if (!currentByteBufInputStream.byteBufQueue.queue.isEmpty()) {
+        LOG.info("HAHA is not empty TT ... {}", currentByteBufInputStream.byteBufQueue.queue.size());
+      }
       currentByteBufInputStream.byteBufQueue.close();
     }
     byteBufInputStreams.close();
