@@ -251,6 +251,10 @@ public final class DataUtil {
           try {
             this.decoder = serializer.getDecoderFactory().create(bis);
             next = decoder.decode();
+
+            if (byteBuf.readableBytes() > 0) {
+              throw new RuntimeException("Readable byte is larger than 0: " + byteBuf.readableBytes());
+            }
             bis.close();
             byteBuf.release();
             hasNext = true;

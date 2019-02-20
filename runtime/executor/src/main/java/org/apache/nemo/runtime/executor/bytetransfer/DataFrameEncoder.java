@@ -71,13 +71,13 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     assert (in.length <= LENGTH_MAX);
     header.writeInt((int) in.length);
 
-    if (in.body != null) {
-      header.writeBytes(in.body);
-    }
 
     out.add(header);
 
     // encode body
+    if (in.body != null) {
+      out.add(in.body);
+    }
 
     // recycle DataFrame object
     in.recycle();
