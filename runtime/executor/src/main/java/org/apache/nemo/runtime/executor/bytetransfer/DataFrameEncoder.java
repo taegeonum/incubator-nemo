@@ -24,6 +24,8 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.util.Recycler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -36,6 +38,7 @@ import java.util.List;
  */
 @ChannelHandler.Sharable
 final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.DataFrame> {
+  private static final Logger LOG = LoggerFactory.getLogger(DataFrameEncoder.class.getName());
 
   private static final int TRANSFER_INDEX_LENGTH = Integer.BYTES;
   private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
@@ -69,8 +72,8 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
 
     // in.length should not exceed the range of unsigned int
     assert (in.length <= LENGTH_MAX);
+    LOG.info("ByteBuf write length: {}", in.length);
     header.writeInt((int) in.length);
-
 
     out.add(header);
 

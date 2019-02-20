@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.netty.handler.codec.MessageToMessageDecoder;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirection;
 import io.netty.buffer.ByteBuf;
@@ -63,7 +64,7 @@ import java.util.List;
  *
  * @see ByteTransportChannelInitializer
  */
-final class FrameDecoder extends ByteToMessageDecoder {
+final class FrameDecoder extends MessageToMessageDecoder<ByteBuf> {
 
   private static final int HEADER_LENGTH = 9;
 
@@ -130,7 +131,7 @@ final class FrameDecoder extends ByteToMessageDecoder {
     }
     final byte flags = in.readByte();
     final int transferIndex = in.readInt();
-    final long length = in.readUnsignedInt();
+    final long length = in.readInt();
     if (length < 0) {
       throw new IllegalStateException(String.format("Frame length is negative: %d", length));
     }
