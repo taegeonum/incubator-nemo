@@ -137,9 +137,11 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     }
 
 
-    if (externalAdditionalOutputs.containsKey(dstVertexId)) {
-      for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
-        emit(externalWriter, (O) output);
+    if (!irVertex.getId().equals("vertex6")) {
+      if (externalAdditionalOutputs.containsKey(dstVertexId)) {
+        for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
+          emit(externalWriter, (O) output);
+        }
       }
     }
   }

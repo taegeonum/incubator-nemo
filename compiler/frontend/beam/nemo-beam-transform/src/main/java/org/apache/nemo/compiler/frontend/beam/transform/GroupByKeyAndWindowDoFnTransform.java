@@ -125,6 +125,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     // drop late data
+    /*
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
       checkAndInvokeBundle();
       // We can call Beam's DoFnRunner#processElement here,
@@ -145,6 +146,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
       checkAndFinishBundle();
     }
+    */
   }
 
   /**
