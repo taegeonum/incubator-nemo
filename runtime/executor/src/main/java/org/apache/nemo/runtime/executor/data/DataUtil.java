@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
-import com.google.common.io.CountingInputStream;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -241,30 +240,30 @@ public final class DataUtil {
 
     @Override
     public boolean hasNext() {
-      LOG.info("InputStreamIterator hasNext at thread {}", Thread.currentThread().getId());
+      //LOG.info("InputStreamIterator hasNext at thread {}", Thread.currentThread().getId());
       if (hasNext) {
         return true;
       }
 
       while (true) {
         try {
-          LOG.info("First Start decode at thread {}", Thread.currentThread().getId());
+          //LOG.info("First Start decode at thread {}", Thread.currentThread().getId());
           inputStream.getQueue().peek();
-          LOG.info("First End decode at thread {}", Thread.currentThread().getId());
+          //LOG.info("First End decode at thread {}", Thread.currentThread().getId());
         } catch (InterruptedException e) {
-          LOG.info("Exception {}", Thread.currentThread().getId());
+          //LOG.info("Exception {}", Thread.currentThread().getId());
           e.printStackTrace();
         }
 
         try {
-          LOG.info("Start decode at thread {}", Thread.currentThread().getId());
+          //LOG.info("Start decode at thread {}", Thread.currentThread().getId());
           next = decoder.decode();
-          LOG.info("End decode at thread {}", Thread.currentThread().getId());
+          //LOG.info("End decode at thread {}", Thread.currentThread().getId());
           hasNext = true;
           return true;
         } catch (final IOException e) {
-          e.printStackTrace();
-          LOG.info("Exception {}", Thread.currentThread().getId());
+          //e.printStackTrace();
+          //LOG.info("Exception {}", Thread.currentThread().getId());
           if (!e.getMessage().contains("EOF")) {
             throw new RuntimeException(e);
           }
@@ -274,10 +273,10 @@ public final class DataUtil {
 
     @Override
     public T next() {
-      LOG.info("InputStreamIterator next at thread {}", Thread.currentThread().getId());
+      //LOG.info("InputStreamIterator next at thread {}", Thread.currentThread().getId());
       if (hasNext()) {
         final T element = next;
-        LOG.info("Get element at thread {} / {}", Thread.currentThread().getId(), element);
+        //LOG.info("Get element at thread {} / {}", Thread.currentThread().getId(), element);
         next = null;
         hasNext = false;
         return element;
