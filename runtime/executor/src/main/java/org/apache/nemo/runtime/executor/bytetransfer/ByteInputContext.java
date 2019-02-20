@@ -42,11 +42,11 @@ public final class ByteInputContext extends ByteTransferContext {
 
   private static final Logger LOG = LoggerFactory.getLogger(ByteInputContext.class.getName());
 
-  private final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
+  private final CompletableFuture<Iterator<ByteBufInputStream>> completedFuture = new CompletableFuture<>();
   private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
   private volatile ByteBufInputStream currentByteBufInputStream = null;
 
-  private final Iterator<InputStream> inputStreams = new Iterator<InputStream>() {
+  private final Iterator<ByteBufInputStream> inputStreams = new Iterator<ByteBufInputStream>() {
     @Override
     public boolean hasNext() {
       try {
@@ -59,7 +59,7 @@ public final class ByteInputContext extends ByteTransferContext {
     }
 
     @Override
-    public InputStream next() {
+    public ByteBufInputStream next() {
       try {
         return byteBufInputStreams.take();
       } catch (final InterruptedException e) {
@@ -90,7 +90,7 @@ public final class ByteInputContext extends ByteTransferContext {
    * This method always returns the same {@link Iterator} instance.
    * @return {@link Iterator} of {@link InputStream}s.
    */
-  public Iterator<InputStream> getInputStreams() {
+  public Iterator<ByteBufInputStream> getInputStreams() {
     return inputStreams;
   }
 
@@ -98,7 +98,7 @@ public final class ByteInputContext extends ByteTransferContext {
    * Returns a future, which is completed when the corresponding transfer for this context gets done.
    * @return a {@link CompletableFuture} for the same value that {@link #getInputStreams()} returns
    */
-  public CompletableFuture<Iterator<InputStream>> getCompletedFuture() {
+  public CompletableFuture<Iterator<ByteBufInputStream>> getCompletedFuture() {
     return completedFuture;
   }
 
@@ -107,9 +107,6 @@ public final class ByteInputContext extends ByteTransferContext {
    */
   void onNewStream() {
     if (currentByteBufInputStream != null) {
-      if (!currentByteBufInputStream.byteBufQueue.queue.isEmpty()) {
-        LOG.info("HAHA is not empty TT ... {}", currentByteBufInputStream.byteBufQueue.queue.size());
-      }
       currentByteBufInputStream.byteBufQueue.close();
     }
     currentByteBufInputStream = new ByteBufInputStream();
@@ -137,9 +134,6 @@ public final class ByteInputContext extends ByteTransferContext {
    */
   void onContextClose() {
     if (currentByteBufInputStream != null) {
-      if (!currentByteBufInputStream.byteBufQueue.queue.isEmpty()) {
-        LOG.info("HAHA is not empty TT ... {}", currentByteBufInputStream.byteBufQueue.queue.size());
-      }
       currentByteBufInputStream.byteBufQueue.close();
     }
     byteBufInputStreams.close();
@@ -162,7 +156,7 @@ public final class ByteInputContext extends ByteTransferContext {
   /**
    * An {@link InputStream} implementation that reads data from a composition of {@link ByteBuf}s.
    */
-  private static final class ByteBufInputStream extends InputStream {
+   public static final class ByteBufInputStream extends InputStream {
 
     private final ClosableBlockingQueue<ByteBuf> byteBufQueue = new ClosableBlockingQueue<>();
 
@@ -186,6 +180,14 @@ public final class ByteInputContext extends ByteTransferContext {
         Thread.currentThread().interrupt();
         throw new IOException(e);
       }
+    }
+
+    public boolean isEmpty() {
+      return byteBufQueue.queue.isEmpty();
+    }
+
+    public int size() {
+      return byteBufQueue.queue.size();
     }
 
     @Override

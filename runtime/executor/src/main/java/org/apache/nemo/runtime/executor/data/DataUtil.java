@@ -19,9 +19,11 @@
 package org.apache.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
+import com.sun.xml.internal.messaging.saaj.util.ByteInputStream;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.DecodeStreamChainer;
@@ -206,8 +208,9 @@ public final class DataUtil {
    */
   public static final class InputStreamIterator<T> implements IteratorWithNumBytes<T> {
 
-    private final Iterator<InputStream> inputStreams;
+    private final Iterator<ByteInputContext.ByteBufInputStream> inputStreams;
     private final Serializer<?, T> serializer;
+    private ByteInputContext.ByteBufInputStream curInputStream;
 
     private volatile CountingInputStream serializedCountingStream = null;
     private volatile CountingInputStream encodedCountingStream = null;
@@ -224,7 +227,7 @@ public final class DataUtil {
      * @param inputStreams The streams to read data from.
      * @param serializer   The serializer.
      */
-    InputStreamIterator(final Iterator<InputStream> inputStreams,
+    InputStreamIterator(final Iterator<ByteInputContext.ByteBufInputStream> inputStreams,
                         final Serializer<?, T> serializer) {
       this.inputStreams = inputStreams;
       this.serializer = serializer;
@@ -242,7 +245,8 @@ public final class DataUtil {
         try {
           if (decoder == null) {
             if (inputStreams.hasNext()) {
-              serializedCountingStream = new CountingInputStream(inputStreams.next());
+              curInputStream = inputStreams.next();
+              serializedCountingStream = new CountingInputStream(curInputStream);
               encodedCountingStream = new CountingInputStream(buildInputStream(
                   serializedCountingStream, serializer.getDecodeStreamChainers()));
               decoder = serializer.getDecoderFactory().create(encodedCountingStream);
@@ -265,6 +269,11 @@ public final class DataUtil {
             e.printStackTrace();
             throw new RuntimeException(e);
           }
+
+          if (!curInputStream.isEmpty()) {
+            LOG.info("TTT: curInputStream is not empty... {}", curInputStream.size());
+          }
+
           // IOException from decoder indicates EOF event.
           numSerializedBytes += serializedCountingStream.getCount();
           numEncodedBytes += encodedCountingStream.getCount();
