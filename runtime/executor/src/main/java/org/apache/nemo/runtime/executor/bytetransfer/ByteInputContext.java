@@ -26,7 +26,6 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -42,10 +41,13 @@ public final class ByteInputContext extends ByteTransferContext {
 
   private static final Logger LOG = LoggerFactory.getLogger(ByteInputContext.class.getName());
 
-  private final CompletableFuture<Iterator<ByteBufInputStream>> completedFuture = new CompletableFuture<>();
-  private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
-  private volatile ByteBufInputStream currentByteBufInputStream = null;
+  private final CompletableFuture<ByteBufInputStream> completedFuture = new CompletableFuture<>();
+  //private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
+  //private volatile ByteBufInputStream currentByteBufInputStream = null;
 
+  private final ByteBufInputStream inputStream = new ByteBufInputStream();
+
+  /*
   private final Iterator<ByteBufInputStream> inputStreams = new Iterator<ByteBufInputStream>() {
     @Override
     public boolean hasNext() {
@@ -70,6 +72,7 @@ public final class ByteInputContext extends ByteTransferContext {
       }
     }
   };
+  */
 
   /**
    * Creates an input context.
@@ -90,15 +93,14 @@ public final class ByteInputContext extends ByteTransferContext {
    * This method always returns the same {@link Iterator} instance.
    * @return {@link Iterator} of {@link InputStream}s.
    */
-  public Iterator<ByteBufInputStream> getInputStreams() {
-    return inputStreams;
+  public ByteBufInputStream getInputStream() {
+    return inputStream;
   }
 
   /**
    * Returns a future, which is completed when the corresponding transfer for this context gets done.
-   * @return a {@link CompletableFuture} for the same value that {@link #getInputStreams()} returns
    */
-  public CompletableFuture<Iterator<ByteBufInputStream>> getCompletedFuture() {
+  public CompletableFuture<ByteBufInputStream> getCompletedFuture() {
     return completedFuture;
   }
 
@@ -106,11 +108,7 @@ public final class ByteInputContext extends ByteTransferContext {
    * Called when a punctuation for sub-stream incarnation is detected.
    */
   void onNewStream() {
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
-    }
-    currentByteBufInputStream = new ByteBufInputStream();
-    byteBufInputStreams.put(currentByteBufInputStream);
+    // do nothing
   }
 
   /**
@@ -118,11 +116,8 @@ public final class ByteInputContext extends ByteTransferContext {
    * @param byteBuf the {@link ByteBuf} to supply
    */
   void onByteBuf(final ByteBuf byteBuf) {
-    if (currentByteBufInputStream == null) {
-      throw new RuntimeException("Cannot accept ByteBuf: No sub-stream is opened.");
-    }
     if (byteBuf.readableBytes() > 0) {
-      currentByteBufInputStream.byteBufQueue.put(byteBuf);
+      inputStream.byteBufQueue.put(byteBuf);
     } else {
       // ignore empty data frames
       byteBuf.release();
@@ -133,11 +128,8 @@ public final class ByteInputContext extends ByteTransferContext {
    * Called when {@link #onByteBuf(ByteBuf)} event is no longer expected.
    */
   void onContextClose() {
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
-    }
-    byteBufInputStreams.close();
-    completedFuture.complete(inputStreams);
+    inputStream.byteBufQueue.close();
+    completedFuture.complete(inputStream);
     deregister();
   }
 
@@ -145,10 +137,6 @@ public final class ByteInputContext extends ByteTransferContext {
   public void onChannelError(@Nullable final Throwable cause) {
     setChannelError(cause);
 
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.closeExceptionally(cause);
-    }
-    byteBufInputStreams.closeExceptionally(cause);
     completedFuture.completeExceptionally(cause);
     deregister();
   }
@@ -180,6 +168,10 @@ public final class ByteInputContext extends ByteTransferContext {
         Thread.currentThread().interrupt();
         throw new IOException(e);
       }
+    }
+
+    public ClosableBlockingQueue<ByteBuf> getQueue() {
+      return byteBufQueue;
     }
 
     public boolean isEmpty() {

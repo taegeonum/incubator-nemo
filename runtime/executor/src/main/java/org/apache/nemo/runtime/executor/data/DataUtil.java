@@ -89,11 +89,15 @@ public final class DataUtil {
     // We recommend to wrap with LimitedInputStream once more when
     // reading input from chained compression InputStream.
     try (final LimitedInputStream limitedInputStream = new LimitedInputStream(inputStream, partitionSize)) {
+
+      /*
       final InputStreamIterator iterator =
           new InputStreamIterator(Collections.singletonList(limitedInputStream).iterator(), serializer);
       iterator.forEachRemaining(deserializedData::add);
       return new NonSerializedPartition(key, deserializedData, iterator.getNumSerializedBytes(),
           iterator.getNumEncodedBytes());
+          */
+      return null;
     }
   }
 
@@ -207,12 +211,11 @@ public final class DataUtil {
    */
   public static final class InputStreamIterator<T> implements IteratorWithNumBytes<T> {
 
-    private final Iterator<ByteInputContext.ByteBufInputStream> inputStreams;
+    private final ByteInputContext.ByteBufInputStream inputStream;
     private final Serializer<?, T> serializer;
-    private ByteInputContext.ByteBufInputStream curInputStream;
 
-    private volatile CountingInputStream serializedCountingStream = null;
-    private volatile CountingInputStream encodedCountingStream = null;
+    //private volatile CountingInputStream serializedCountingStream = null;
+    //private volatile CountingInputStream encodedCountingStream = null;
     private volatile boolean hasNext = false;
     private volatile T next;
     private volatile boolean cannotContinueDecoding = false;
@@ -223,12 +226,11 @@ public final class DataUtil {
     /**
      * Construct {@link Iterator} from {@link InputStream} and {@link DecoderFactory}.
      *
-     * @param inputStreams The streams to read data from.
      * @param serializer   The serializer.
      */
-    InputStreamIterator(final Iterator<ByteInputContext.ByteBufInputStream> inputStreams,
+    InputStreamIterator(final ByteInputContext.ByteBufInputStream inputStream,
                         final Serializer<?, T> serializer) {
-      this.inputStreams = inputStreams;
+      this.inputStream = inputStream;
       this.serializer = serializer;
     }
 
@@ -243,16 +245,15 @@ public final class DataUtil {
       while (true) {
         try {
           if (decoder == null) {
-            if (inputStreams.hasNext()) {
-              curInputStream = inputStreams.next();
-              serializedCountingStream = new CountingInputStream(curInputStream);
-              encodedCountingStream = new CountingInputStream(buildInputStream(
-                  serializedCountingStream, serializer.getDecodeStreamChainers()));
-              decoder = serializer.getDecoderFactory().create(encodedCountingStream);
-            } else {
-              cannotContinueDecoding = true;
-              return false;
+            try {
+              inputStream.getQueue().peek();
+            } catch (InterruptedException e) {
+              e.printStackTrace();
             }
+            decoder = serializer.getDecoderFactory().create(inputStream);
+          } else {
+            cannotContinueDecoding = true;
+            return false;
           }
         } catch (final IOException e) {
           e.printStackTrace();
@@ -274,10 +275,10 @@ public final class DataUtil {
 //          }
 
           // IOException from decoder indicates EOF event.
-          numSerializedBytes += serializedCountingStream.getCount();
-          numEncodedBytes += encodedCountingStream.getCount();
-          serializedCountingStream = null;
-          encodedCountingStream = null;
+          //numSerializedBytes += serializedCountingStream.getCount();
+          //numEncodedBytes += encodedCountingStream.getCount();
+          //serializedCountingStream = null;
+          //encodedCountingStream = null;
           decoder = null;
         }
       }

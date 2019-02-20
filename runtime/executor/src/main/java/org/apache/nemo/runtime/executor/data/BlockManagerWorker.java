@@ -223,9 +223,12 @@ public final class BlockManagerWorker {
           }
         });
 
+        return null;
+        /*
         return contextFuture
             .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
                 serializerManager.getSerializer(runtimeEdgeId)));
+                */
       }
     });
   }

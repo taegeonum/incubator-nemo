@@ -117,7 +117,7 @@ public final class PipeManagerWorker {
 
       // Connect to the executor
       return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
-        .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
+        .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStream(),
           serializerManager.getSerializer(runtimeEdgeId)));
     });
   }
