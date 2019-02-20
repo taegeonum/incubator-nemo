@@ -268,10 +268,10 @@ public final class DataUtil {
             e.printStackTrace();
             throw new RuntimeException(e);
           }
-
-          if (!curInputStream.isEmpty()) {
-            LOG.info("TTT: curInputStream is not empty... {}", curInputStream.size());
-          }
+//
+//          if (!curInputStream.isEmpty()) {
+//            LOG.info("TTT: curInputStream is not empty... {}", curInputStream.size());
+//          }
 
           // IOException from decoder indicates EOF event.
           numSerializedBytes += serializedCountingStream.getCount();
