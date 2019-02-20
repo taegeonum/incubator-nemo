@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.codec.LengthFieldPrepender;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;
@@ -102,11 +104,14 @@ final class ByteTransportChannelInitializer extends ChannelInitializer<SocketCha
       byteTransfer.get(), byteTransport.get().getChannelGroup(), localExecutorId, ch);
     ch.pipeline()
         // inbound
-        .addLast(new FrameDecoder(contextManager))
-        // outbound
-        .addLast(controlFrameEncoder)
-        .addLast(dataFrameEncoder)
-        // inbound
-        .addLast(contextManager);
+      .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
+        Integer.MAX_VALUE, 0, 4, 0, 4))
+      .addLast("frameEncoder", new LengthFieldPrepender(4))
+      .addLast(new FrameDecoder(contextManager))
+      // outbound
+      .addLast(controlFrameEncoder)
+      .addLast(dataFrameEncoder)
+      // inbound
+      .addLast(contextManager);
   }
 }
