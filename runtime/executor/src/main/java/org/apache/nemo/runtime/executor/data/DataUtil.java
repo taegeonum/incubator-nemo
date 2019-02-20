@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -231,11 +233,7 @@ public final class DataUtil {
                         final Serializer<?, T> serializer) {
       this.inputStream = inputStream;
       this.serializer = serializer;
-      try {
-        this.decoder = serializer.getDecoderFactory().create(inputStream);
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+
     }
 
     @Override
@@ -248,25 +246,22 @@ public final class DataUtil {
       while (true) {
         try {
           //LOG.info("First Start decode at thread {}", Thread.currentThread().getId());
-          inputStream.getQueue().peek();
+          final ByteBuf byteBuf = inputStream.byteBufQueue.take();
+          final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+          try {
+            this.decoder = serializer.getDecoderFactory().create(bis);
+            next = decoder.decode();
+            byteBuf.release();
+            hasNext = true;
+            return true;
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
           //LOG.info("First End decode at thread {}", Thread.currentThread().getId());
         } catch (InterruptedException e) {
           //LOG.info("Exception {}", Thread.currentThread().getId());
           e.printStackTrace();
-        }
-
-        try {
-          //LOG.info("Start decode at thread {}", Thread.currentThread().getId());
-          next = decoder.decode();
-          //LOG.info("End decode at thread {}", Thread.currentThread().getId());
-          hasNext = true;
-          return true;
-        } catch (final IOException e) {
-          //e.printStackTrace();
-          //LOG.info("Exception {}", Thread.currentThread().getId());
-          if (!e.getMessage().contains("EOF")) {
-            throw new RuntimeException(e);
-          }
         }
       }
     }

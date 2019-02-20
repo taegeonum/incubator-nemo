@@ -26,7 +26,9 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Container for multiple input streams. Represents a transfer context on receiver-side.
@@ -118,7 +120,7 @@ public final class ByteInputContext extends ByteTransferContext {
    */
   void onByteBuf(final ByteBuf byteBuf) {
     if (byteBuf.readableBytes() > 0) {
-      inputStream.byteBufQueue.put(byteBuf);
+      inputStream.byteBufQueue.add(byteBuf);
     } else {
       // ignore empty data frames
       byteBuf.release();
@@ -129,7 +131,6 @@ public final class ByteInputContext extends ByteTransferContext {
    * Called when {@link #onByteBuf(ByteBuf)} event is no longer expected.
    */
   void onContextClose() {
-    inputStream.byteBufQueue.close();
     completedFuture.complete(inputStream);
     deregister();
   }
@@ -147,8 +148,14 @@ public final class ByteInputContext extends ByteTransferContext {
    */
    public static final class ByteBufInputStream extends InputStream {
 
-    private final ClosableBlockingQueue<ByteBuf> byteBufQueue = new ClosableBlockingQueue<>();
+    public final BlockingQueue<ByteBuf> byteBufQueue = new LinkedBlockingQueue<>();
 
+    @Override
+    public int read() throws IOException {
+      throw new RuntimeException("Unsupported operation");
+    }
+
+    /*
     @Override
     public int read() throws IOException {
       try {
@@ -270,5 +277,6 @@ public final class ByteInputContext extends ByteTransferContext {
         throw new IOException(e);
       }
     }
+    */
   }
 }
