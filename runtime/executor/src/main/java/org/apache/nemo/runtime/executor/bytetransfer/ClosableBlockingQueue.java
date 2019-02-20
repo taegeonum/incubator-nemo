@@ -22,6 +22,8 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayDeque;
 import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * A blocking queue implementation which is capable of closing.
@@ -31,7 +33,7 @@ import java.util.Queue;
 @ThreadSafe
 public final class ClosableBlockingQueue<T> implements AutoCloseable {
 
-  public final Queue<T> queue;
+  public final BlockingQueue<T> queue;
   private volatile boolean closed = false;
   private volatile Throwable throwable = null;
 
@@ -39,7 +41,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * Creates a closable blocking queue.
    */
   public ClosableBlockingQueue() {
-    queue = new ArrayDeque<>();
+    queue = new LinkedBlockingQueue<>();
   }
 
   /**
@@ -48,7 +50,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @param numElements the lower bound on initial capacity of the queue
    */
   public ClosableBlockingQueue(final int numElements) {
-    queue = new ArrayDeque<>(numElements);
+    queue = new LinkedBlockingQueue<>(numElements);
   }
 
   /**
@@ -58,7 +60,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @throws IllegalStateException if the input end of this queue has been closed
    * @throws NullPointerException if {@code element} is {@code null}
    */
-  public synchronized void put(final T element) {
+  public void put(final T element) {
     if (element == null) {
       throw new NullPointerException();
     }
@@ -66,23 +68,21 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
       throw new IllegalStateException("This queue has been closed");
     }
     queue.add(element);
-    notifyAll();
   }
 
   /**
    * Mark the input end of this queue as closed.
    */
   @Override
-  public synchronized void close() {
+  public void close() {
     closed = true;
-    notifyAll();
   }
 
   /**
    * Mark the input end of this queue as closed.
    * @param throwableToSet a throwable to set as the cause
    */
-  public synchronized void closeExceptionally(final Throwable throwableToSet) {
+  public void closeExceptionally(final Throwable throwableToSet) {
     this.throwable = throwableToSet;
     close();
   }
@@ -94,9 +94,10 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @throws InterruptedException when interrupted while waiting
    */
   @Nullable
-  public synchronized T take() throws InterruptedException {
+  public T take() throws InterruptedException {
+
     while (queue.isEmpty() && !closed) {
-      wait();
+      Thread.sleep(300);
     }
 
     // This should come after wait(), to be always checked on close
@@ -115,9 +116,9 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @throws InterruptedException when interrupted while waiting
    */
   @Nullable
-  public synchronized T peek() throws InterruptedException {
+  public T peek() throws InterruptedException {
     while (queue.isEmpty() && !closed) {
-      wait();
+      Thread.sleep(300);
     }
 
     // This should come after wait(), to be always checked on close
