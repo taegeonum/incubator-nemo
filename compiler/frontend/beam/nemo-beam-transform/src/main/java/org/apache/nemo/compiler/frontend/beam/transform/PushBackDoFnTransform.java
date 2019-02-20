@@ -290,7 +290,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     long pushedBackAgainWatermark = Long.MAX_VALUE;
     int cnt = 0;
     for (final WindowedValue<InputT> curPushedBack : curPushedBacks) {
-	checkAndInvokeBundle();
+      checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
         getPushBackRunner().processElementInReadyWindows(curPushedBack);
       cnt += 1;
