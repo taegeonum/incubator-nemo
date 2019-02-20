@@ -119,8 +119,10 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       emit(internalVertex.getNextOperator(), output);
     }
 
-    for (final OutputWriter externalWriter : externalMainOutputs) {
-      emit(externalWriter, output);
+    if (!irVertex.getId().equals("vertex6")) {
+      for (final OutputWriter externalWriter : externalMainOutputs) {
+        emit(externalWriter, output);
+      }
     }
   }
 
