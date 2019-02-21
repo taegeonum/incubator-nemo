@@ -101,6 +101,8 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     numOfIterators = futures.size();
 
+    LOG.info("# of iterators in data fetcher: {}", numOfIterators);
+
     if (numOfIterators > 1) {
       inputWatermarkManager = new MultiInputWatermarkManager(numOfIterators, new WatermarkCollector());
     } else {
