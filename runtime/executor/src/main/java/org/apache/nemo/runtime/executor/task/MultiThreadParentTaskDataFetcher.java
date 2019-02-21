@@ -52,7 +52,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   // Non-finals (lazy fetching)
   private boolean firstFetch = true;
 
-  private final BlockingQueue elementQueue;
+  private final ConcurrentLinkedQueue elementQueue;
 
   private long serBytes = 0;
   private long encodedBytes = 0;
@@ -70,7 +70,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     super(dataSource, outputCollector);
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
-    this.elementQueue = new LinkedBlockingQueue();
+    this.elementQueue = new ConcurrentLinkedQueue();
     this.queueInsertionThreads = Executors.newCachedThreadPool();
   }
 
@@ -82,15 +82,10 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     }
 
     while (true) {
-      final Object element;
-      try {
-        element = elementQueue.take();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-
-      if (element instanceof Finishmark) {
+      final Object element = elementQueue.poll();
+      if (element == null) {
+        throw new NoSuchElementException();
+      } else if (element instanceof Finishmark) {
         numOfFinishMarks++;
         if (numOfFinishMarks == numOfIterators) {
           return Finishmark.getInstance();
