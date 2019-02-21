@@ -137,6 +137,7 @@ public final class TaskExecutor {
     // Prepare data structures
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, intermediateDataIOFactory);
     this.dataFetchers = pair.left();
+    LOG.info("# of data fetchers: {} / {} ... {}", dataFetchers.size(), taskId, dataFetchers);
     this.sortedHarnesses = pair.right();
   }
 
