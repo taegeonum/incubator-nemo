@@ -49,6 +49,9 @@ import org.apache.nemo.runtime.executor.datatransfer.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
@@ -478,6 +481,34 @@ public final class TaskExecutor {
   private boolean handleDataFetchers(final List<DataFetcher> fetchers) {
     final List<DataFetcher> availableFetchers = new LinkedList<>(fetchers);
     final List<DataFetcher> pendingFetchers = new LinkedList<>();
+    final BlockingQueue<Pair<DataFetcher, Object>> queue = new LinkedBlockingQueue<>();
+    final AtomicInteger finished = new AtomicInteger(0);
+
+    fetchers.forEach(dataFetcher -> {
+      new Thread(() -> {
+        while (true) {
+          try {
+            final long a = System.currentTimeMillis();
+            final Object element = dataFetcher.fetchDataElement();
+
+            if (element instanceof Finishmark) {
+              finished.incrementAndGet();
+              break;
+            }
+
+            queue.add(Pair.of(dataFetcher, element));
+          } catch (final NoSuchElementException e) {
+            throw new RuntimeException("No!!");
+          } catch (final IOException e) {
+            // IOException means that this task should be retried.
+            taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
+              Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
+            LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
+            throw new RuntimeException(e);
+          }
+        }
+      }).start();
+    });
 
     // Polling interval.
     final long pollingInterval = 100; // ms
@@ -492,6 +523,57 @@ public final class TaskExecutor {
     long processed1 = 0;
     long processed2 = 0;
 
+
+    while (finished.get() < fetchers.size()) {
+
+      if (fetchers.size() >= 2) {
+        if (System.currentTimeMillis() - prevLogTime >= pd) {
+          LOG.info("Task {} Available: {}, Pending: {}, AV: {}, PD: {}, Processed Main: {}, Processed Side: {}",
+            taskId, availableFetchers.size(),
+            pendingFetchers.size(), availableFetchers, pendingFetchers,
+            processed1, processed2);
+          prevLogTime = System.currentTimeMillis();
+        }
+      }
+
+      try {
+        final Pair<DataFetcher, Object> element = queue.take();
+        final Object event = element.right();
+        final DataFetcher dataFetcher = element.left();
+
+        if (dataFetcher.getDataSource().getId().equals("vertex6")) {
+          processed1 += 1;
+        } else if (dataFetcher.getDataSource().getId().equals("vertex15")) {
+          processed2 += 1;
+        }
+
+        if (event instanceof Watermark) {
+          // Watermark
+          processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
+        } else {
+          // Process data element
+          processElement(dataFetcher.getOutputCollector(), event);
+        }
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+
+    // Close all data fetchers
+    fetchers.forEach(fetcher -> {
+      try {
+        fetcher.close();
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    });
+
+    return true;
+
+
+    /*
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
 
@@ -618,8 +700,7 @@ public final class TaskExecutor {
         throw new RuntimeException(e);
       }
     });
-
-    return true;
+    */
   }
 
   ////////////////////////////////////////////// Helper methods for setting up initial data structures
