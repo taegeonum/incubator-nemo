@@ -104,9 +104,6 @@ final class ByteTransportChannelInitializer extends ChannelInitializer<SocketCha
       byteTransfer.get(), byteTransport.get().getChannelGroup(), localExecutorId, ch);
     ch.pipeline()
         // inbound
-      .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
-        Integer.MAX_VALUE, 0, 4, 0, 4))
-      .addLast("frameEncoder", new LengthFieldPrepender(4))
       .addLast(new FrameDecoder(contextManager))
       // outbound
       .addLast(controlFrameEncoder)

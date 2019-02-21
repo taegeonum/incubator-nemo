@@ -25,6 +25,8 @@ import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirect
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -65,6 +67,7 @@ import java.util.List;
  * @see ByteTransportChannelInitializer
  */
 final class FrameDecoder extends MessageToMessageDecoder<ByteBuf> {
+  private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
 
   private static final int HEADER_LENGTH = 9;
 
@@ -78,7 +81,7 @@ final class FrameDecoder extends MessageToMessageDecoder<ByteBuf> {
   /**
    * The number of bytes consisting body of a data frame to be read next.
    */
-  private long dataBodyBytesToRead = 0;
+  private int dataBodyBytesToRead = 0;
 
   /**
    * The {@link ByteInputContext} to which received bytes are added.
@@ -131,7 +134,7 @@ final class FrameDecoder extends MessageToMessageDecoder<ByteBuf> {
     }
     final byte flags = in.readByte();
     final int transferIndex = in.readInt();
-    final long length = in.readInt();
+    final int length = in.readInt();
     if (length < 0) {
       throw new IllegalStateException(String.format("Frame length is negative: %d", length));
     }
@@ -207,26 +210,25 @@ final class FrameDecoder extends MessageToMessageDecoder<ByteBuf> {
    * @param in  the {@link ByteBuf} from which to read data
    * @throws InterruptedException when interrupted while adding to {@link ByteBuf} queue
    */
-  private void onDataBodyAdded(final ByteBuf in) {
+  private boolean onDataBodyAdded(final ByteBuf in) {
     assert (controlBodyBytesToRead == 0);
     assert (dataBodyBytesToRead > 0);
     assert (inputContext != null);
 
     // length should not exceed Integer.MAX_VALUE (since in.readableBytes() returns an int)
-    final long length = Math.min(dataBodyBytesToRead, in.readableBytes());
+
+    LOG.info("Data body bytes to read: {} / {}", dataBodyBytesToRead, in.readableBytes());
 
     if (in.readableBytes() < dataBodyBytesToRead) {
-      throw new RuntimeException("Readbale bytes: " + in.readableBytes() + " but required bytes: " + dataBodyBytesToRead);
+      return false;
     }
 
-    assert (length <= Integer.MAX_VALUE);
-    final ByteBuf body = in.readRetainedSlice((int) length);
+    final ByteBuf body = in.readRetainedSlice((int) dataBodyBytesToRead);
     inputContext.onByteBuf(body);
+    dataBodyBytesToRead = 0;
+    onDataFrameEnd();
 
-    dataBodyBytesToRead -= length;
-    if (dataBodyBytesToRead == 0) {
-      onDataFrameEnd();
-    }
+    return in.readableBytes() > 0;
   }
 
   /**
