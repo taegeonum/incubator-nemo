@@ -220,15 +220,14 @@ final class FrameDecoder extends ByteToMessageDecoder {
 
     //LOG.info("Data body bytes to read: {} / {}", dataBodyBytesToRead, in.readableBytes());
 
-    if (in.readableBytes() < dataBodyBytesToRead) {
-      return false;
-    }
-
-    final ByteBuf body = in.readRetainedSlice((int) dataBodyBytesToRead);
+    final int length = Math.min(in.readableBytes(), dataBodyBytesToRead);
+    final ByteBuf body = in.readRetainedSlice((int) length);
     inputContext.onByteBuf(body);
-    dataBodyBytesToRead = 0;
-    onDataFrameEnd();
+    dataBodyBytesToRead -= length;
 
+    if (dataBodyBytesToRead == 0) {
+      onDataFrameEnd();
+    }
     return in.readableBytes() > 0;
   }
 

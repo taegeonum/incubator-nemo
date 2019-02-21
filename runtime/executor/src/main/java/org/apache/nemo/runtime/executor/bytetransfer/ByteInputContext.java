@@ -148,46 +148,31 @@ public final class ByteInputContext extends ByteTransferContext {
    */
    public static final class ByteBufInputStream extends InputStream {
 
-    public final BlockingQueue<ByteBuf> byteBufQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<ByteBuf> byteBufQueue = new LinkedBlockingQueue<>();
+    private ByteBuf curBuf = null;
 
     @Override
     public int read() throws IOException {
-      throw new RuntimeException("Unsupported operation");
-    }
 
-    /*
-    @Override
-    public int read() throws IOException {
-      try {
-        final ByteBuf head = byteBufQueue.peek();
-        if (head == null) {
-          // end of stream event
-          return -1;
-        }
-        final int b = head.readUnsignedByte();
-        if (head.readableBytes() == 0) {
-          // remove and release header if no longer required
-          byteBufQueue.take();
-          head.release();
-        }
-        return b;
-      } catch (final InterruptedException e) {
-        e.printStackTrace();
-        Thread.currentThread().interrupt();
-        throw new IOException(e);
+      getCurBuf();
+      final int b = curBuf.readUnsignedByte();
+      if (curBuf.readableBytes() == 0) {
+        // remove and release header if no longer required
+        curBuf.release();
+        curBuf = null;
       }
+      return b;
     }
 
-    public ClosableBlockingQueue<ByteBuf> getQueue() {
-      return byteBufQueue;
-    }
-
-    public boolean isEmpty() {
-      return byteBufQueue.queue.isEmpty();
-    }
-
-    public int size() {
-      return byteBufQueue.queue.size();
+    private void getCurBuf() throws IOException {
+      if (curBuf == null) {
+        try {
+          curBuf = byteBufQueue.take();
+        } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new IOException(e);
+        }
+      }
     }
 
     @Override
@@ -198,32 +183,22 @@ public final class ByteInputContext extends ByteTransferContext {
       if (baseOffset < 0 || maxLength < 0 || maxLength > bytes.length - baseOffset) {
         throw new IndexOutOfBoundsException();
       }
-      try {
-        // the number of bytes that has been read so far
-        int readBytes = 0;
-        // the number of bytes to read
-        int capacity = maxLength;
-        while (capacity > 0) {
-          final ByteBuf head = byteBufQueue.peek();
-          if (head == null) {
-            // end of stream event
-            return readBytes == 0 ? -1 : readBytes;
-          }
-          final int toRead = Math.min(head.readableBytes(), capacity);
-          head.readBytes(bytes, baseOffset + readBytes, toRead);
-          if (head.readableBytes() == 0) {
-            byteBufQueue.take();
-            head.release();
-          }
-          readBytes += toRead;
-          capacity -= toRead;
+      // the number of bytes that has been read so far
+      int readBytes = 0;
+      // the number of bytes to read
+      int capacity = maxLength;
+      while (capacity > 0) {
+        getCurBuf();
+        final int toRead = Math.min(curBuf.readableBytes(), capacity);
+        curBuf.readBytes(bytes, baseOffset + readBytes, toRead);
+        if (curBuf.readableBytes() == 0) {
+          curBuf.release();
+          curBuf = null;
         }
-        return readBytes;
-      } catch (final InterruptedException e) {
-        e.printStackTrace();
-        Thread.currentThread().interrupt();
-        throw new IOException(e);
+        readBytes += toRead;
+        capacity -= toRead;
       }
+      return readBytes;
     }
 
     @Override
@@ -231,52 +206,31 @@ public final class ByteInputContext extends ByteTransferContext {
       if (n <= 0) {
         return 0;
       }
-      try {
-        // the number of bytes that has been skipped so far
-        long skippedBytes = 0;
-        // the number of bytes to skip
-        long toSkip = n;
-        while (toSkip > 0) {
-          final ByteBuf head = byteBufQueue.peek();
-          if (head == null) {
-            // end of stream event
-            return skippedBytes;
-          }
-          if (head.readableBytes() > toSkip) {
-            head.skipBytes((int) toSkip);
-            skippedBytes += toSkip;
-            return skippedBytes;
-          } else {
-            // discard the whole ByteBuf
-            skippedBytes += head.readableBytes();
-            toSkip -= head.readableBytes();
-            byteBufQueue.take();
-            head.release();
-          }
+      // the number of bytes that has been skipped so far
+      long skippedBytes = 0;
+      // the number of bytes to skip
+      long toSkip = n;
+      while (toSkip > 0) {
+        getCurBuf();
+        if (curBuf.readableBytes() > toSkip) {
+          curBuf.skipBytes((int) toSkip);
+          skippedBytes += toSkip;
+          return skippedBytes;
+        } else {
+          // discard the whole ByteBuf
+          skippedBytes += curBuf.readableBytes();
+          toSkip -= curBuf.readableBytes();
+          curBuf.release();
+          curBuf = null;
         }
-        return skippedBytes;
-      } catch (final InterruptedException e) {
-        e.printStackTrace();
-        Thread.currentThread().interrupt();
-        throw new IOException(e);
       }
+      return skippedBytes;
     }
 
     @Override
     public int available() throws IOException {
-      try {
-        final ByteBuf head = byteBufQueue.peek();
-        if (head == null) {
-          return 0;
-        } else {
-          return head.readableBytes();
-        }
-      } catch (final InterruptedException e) {
-        e.printStackTrace();
-        Thread.currentThread().interrupt();
-        throw new IOException(e);
-      }
+      getCurBuf();
+      return curBuf.readableBytes();
     }
-    */
   }
 }

@@ -243,31 +243,15 @@ public final class DataUtil {
         return true;
       }
 
-      while (true) {
-        try {
-          //LOG.info("First Start decode at thread {}", Thread.currentThread().getId());
-          final ByteBuf byteBuf = inputStream.byteBufQueue.take();
-          final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
-          try {
-            this.decoder = serializer.getDecoderFactory().create(bis);
-            next = decoder.decode();
-
-            if (byteBuf.readableBytes() > 0) {
-              throw new RuntimeException("Readable byte is larger than 0: " + byteBuf.readableBytes());
-            }
-            bis.close();
-            byteBuf.release();
-            hasNext = true;
-            return true;
-          } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
-          //LOG.info("First End decode at thread {}", Thread.currentThread().getId());
-        } catch (InterruptedException e) {
-          //LOG.info("Exception {}", Thread.currentThread().getId());
-          e.printStackTrace();
-        }
+      //LOG.info("First Start decode at thread {}", Thread.currentThread().getId());
+      try {
+        this.decoder = serializer.getDecoderFactory().create(inputStream);
+        next = decoder.decode();
+        hasNext = true;
+        return true;
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     }
 
