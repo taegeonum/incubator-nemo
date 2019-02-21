@@ -66,7 +66,7 @@ import java.util.List;
  *
  * @see ByteTransportChannelInitializer
  */
-final class FrameDecoder extends MessageToMessageDecoder<ByteBuf> {
+final class FrameDecoder extends ByteToMessageDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
 
   private static final int HEADER_LENGTH = 9;
@@ -131,6 +131,7 @@ final class FrameDecoder extends MessageToMessageDecoder<ByteBuf> {
       // cannot read a frame header frame now
       return false;
     }
+
     final byte flags = in.readByte();
     final int transferIndex = in.readInt();
     final int length = in.readInt();
@@ -181,6 +182,7 @@ final class FrameDecoder extends MessageToMessageDecoder<ByteBuf> {
 
     if (in.readableBytes() < controlBodyBytesToRead) {
       // cannot read body now
+      LOG.info("Control frame body ready insuffient!!! {} / {}", controlBodyBytesToRead, in.readableBytes());
       return false;
     }
 
