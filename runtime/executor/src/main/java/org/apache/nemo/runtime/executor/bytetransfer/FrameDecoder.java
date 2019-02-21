@@ -182,7 +182,7 @@ final class FrameDecoder extends ByteToMessageDecoder {
 
     if (in.readableBytes() < controlBodyBytesToRead) {
       // cannot read body now
-      LOG.info("Control frame body ready insuffient!!! {} / {}", controlBodyBytesToRead, in.readableBytes());
+      //LOG.info("Control frame body ready insuffient!!! {} / {}", controlBodyBytesToRead, in.readableBytes());
       return false;
     }
 
@@ -218,7 +218,7 @@ final class FrameDecoder extends ByteToMessageDecoder {
 
     // length should not exceed Integer.MAX_VALUE (since in.readableBytes() returns an int)
 
-    LOG.info("Data body bytes to read: {} / {}", dataBodyBytesToRead, in.readableBytes());
+    //LOG.info("Data body bytes to read: {} / {}", dataBodyBytesToRead, in.readableBytes());
 
     if (in.readableBytes() < dataBodyBytesToRead) {
       return false;
