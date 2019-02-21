@@ -173,6 +173,11 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     queueInsertionThreads.shutdown();
   }
 
+  @Override
+  public String toString() {
+    return "MTPFetcher[Src vertex: " + getDataSource().getId() + "]";
+  }
+
   /**
    * Just adds the emitted watermark to the element queue.
    * It receives the watermark from InputWatermarkManager.

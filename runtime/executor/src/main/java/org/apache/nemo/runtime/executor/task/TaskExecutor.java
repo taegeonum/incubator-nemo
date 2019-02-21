@@ -496,13 +496,13 @@ public final class TaskExecutor {
       // We first fetch data from available data fetchers
       final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
 
+      if (System.currentTimeMillis() - prevLogTime >= pd) {
+        LOG.info("Task {} Available: {}, Pending: {}, AV: {}, PD: {}", taskId, availableFetchers.size(),
+          pendingFetchers.size(), availableFetchers, pendingFetchers);
+        prevLogTime = System.currentTimeMillis();
+      }
+
       while (availableIterator.hasNext()) {
-
-        if (System.currentTimeMillis() - prevLogTime >= pd) {
-          //LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
-          prevLogTime = System.currentTimeMillis();
-        }
-
         final DataFetcher dataFetcher = availableIterator.next();
         try {
           final long a = System.currentTimeMillis();
