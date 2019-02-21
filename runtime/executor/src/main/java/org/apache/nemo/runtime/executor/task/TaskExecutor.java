@@ -498,11 +498,7 @@ public final class TaskExecutor {
 
             queue.add(Pair.of(dataFetcher, element));
           } catch (final NoSuchElementException e) {
-            try {
-              Thread.sleep(300);
-            } catch (InterruptedException e1) {
-              e1.printStackTrace();
-            }
+            throw new RuntimeException("No!!");
           } catch (final IOException e) {
             // IOException means that this task should be retried.
             taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
