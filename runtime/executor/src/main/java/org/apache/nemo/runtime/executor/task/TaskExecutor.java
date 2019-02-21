@@ -489,6 +489,9 @@ public final class TaskExecutor {
     long fetchTime = 0;
     final long pd = 3000;
 
+    long processed1 = 0;
+    long processed2 = 0;
+
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
 
@@ -496,10 +499,14 @@ public final class TaskExecutor {
       // We first fetch data from available data fetchers
       final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
 
-      if (System.currentTimeMillis() - prevLogTime >= pd) {
-        LOG.info("Task {} Available: {}, Pending: {}, AV: {}, PD: {}", taskId, availableFetchers.size(),
-          pendingFetchers.size(), availableFetchers, pendingFetchers);
-        prevLogTime = System.currentTimeMillis();
+      if (fetchers.size() >= 2) {
+        if (System.currentTimeMillis() - prevLogTime >= pd) {
+          LOG.info("Task {} Available: {}, Pending: {}, AV: {}, PD: {}, Processed Main: {}, Processed Side: {}",
+            taskId, availableFetchers.size(),
+            pendingFetchers.size(), availableFetchers, pendingFetchers,
+            processed1, processed2);
+          prevLogTime = System.currentTimeMillis();
+        }
       }
 
       while (availableIterator.hasNext()) {
@@ -512,6 +519,12 @@ public final class TaskExecutor {
           final long b = System.currentTimeMillis();
           onEventFromDataFetcher(element, dataFetcher);
           processingTime += (System.currentTimeMillis() - b);
+
+          if (dataFetcher.getDataSource().getId().equals("vertex15")) {
+            processed2 += 1;
+          } else if (dataFetcher.getDataSource().getId().equals("vertex6")) {
+            processed1 += 1;
+          }
 
           if (element instanceof Finishmark) {
             availableIterator.remove();
@@ -554,6 +567,12 @@ public final class TaskExecutor {
             final long b = System.currentTimeMillis();
             onEventFromDataFetcher(element, dataFetcher);
             processingTime += (System.currentTimeMillis() - b);
+
+            if (dataFetcher.getDataSource().getId().equals("vertex15")) {
+              processed2 += 1;
+            } else if (dataFetcher.getDataSource().getId().equals("vertex6")) {
+              processed1 += 1;
+            }
 
             // We processed data. This means the data fetcher is now available.
             // Add current data fetcher to available
