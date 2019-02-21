@@ -252,7 +252,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * which work on accepted connections.
    */
   @NamedParameter(doc = "The number of working threads of PartitionTransport server",
-      short_name = "block_threads_working", default_value = "10")
+      short_name = "block_threads_working", default_value = "20")
   public final class PartitionTransportServerNumWorkingThreads implements Name<Integer> {
   }
 
@@ -260,7 +260,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * The number of threads of block transfer client.
    */
   @NamedParameter(doc = "The number of threads of PartitionTransport client",
-      short_name = "block_threads_client", default_value = "10")
+      short_name = "block_threads_client", default_value = "20")
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
   }
 
