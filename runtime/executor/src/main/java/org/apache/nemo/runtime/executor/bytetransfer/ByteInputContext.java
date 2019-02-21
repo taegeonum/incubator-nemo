@@ -153,7 +153,6 @@ public final class ByteInputContext extends ByteTransferContext {
 
     @Override
     public int read() throws IOException {
-
       getCurBuf();
       final int b = curBuf.readUnsignedByte();
       if (curBuf.readableBytes() == 0) {
