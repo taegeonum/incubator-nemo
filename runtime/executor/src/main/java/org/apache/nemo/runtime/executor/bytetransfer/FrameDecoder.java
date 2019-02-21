@@ -105,8 +105,7 @@ final class FrameDecoder extends MessageToMessageDecoder<ByteBuf> {
       if (controlBodyBytesToRead > 0) {
         toContinue = onControlBodyAdded(in, out);
       } else if (dataBodyBytesToRead > 0) {
-        onDataBodyAdded(in);
-        toContinue = in.readableBytes() > 0;
+        toContinue = onDataBodyAdded(in);
       } else {
         toContinue = onFrameStarted(ctx, in);
       }
