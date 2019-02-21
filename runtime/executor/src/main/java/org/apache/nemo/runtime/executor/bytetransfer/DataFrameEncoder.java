@@ -72,7 +72,6 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
 
     // in.length should not exceed the range of unsigned int
     assert (in.length <= LENGTH_MAX);
-    LOG.info("ByteBuf write length: {}", in.length);
     header.writeInt((int) in.length);
 
     out.add(header);
