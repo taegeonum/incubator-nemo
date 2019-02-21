@@ -233,7 +233,12 @@ public final class DataUtil {
                         final Serializer<?, T> serializer) {
       this.inputStream = inputStream;
       this.serializer = serializer;
-
+      try {
+        this.decoder = serializer.getDecoderFactory().create(inputStream);
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
     }
 
     @Override
@@ -245,7 +250,6 @@ public final class DataUtil {
 
       //LOG.info("First Start decode at thread {}", Thread.currentThread().getId());
       try {
-        this.decoder = serializer.getDecoderFactory().create(inputStream);
         next = decoder.decode();
         hasNext = true;
         return true;

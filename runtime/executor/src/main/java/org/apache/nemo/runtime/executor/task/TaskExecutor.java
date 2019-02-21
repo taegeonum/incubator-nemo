@@ -499,6 +499,7 @@ public final class TaskExecutor {
       // We first fetch data from available data fetchers
       final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
 
+      /*
       if (fetchers.size() >= 2) {
         if (System.currentTimeMillis() - prevLogTime >= pd) {
           LOG.info("Task {} Available: {}, Pending: {}, AV: {}, PD: {}, Processed Main: {}, Processed Side: {}",
@@ -508,6 +509,7 @@ public final class TaskExecutor {
           prevLogTime = System.currentTimeMillis();
         }
       }
+      */
 
       while (availableIterator.hasNext()) {
         final DataFetcher dataFetcher = availableIterator.next();
