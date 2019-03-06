@@ -491,7 +491,10 @@ public final class TaskExecutor {
       serializer.getEncoderFactory().create(bos).encode(event);
       serializedCnt += 1;
 
-      if (inputBuffer.readableBytes() > evalConf.flushBytes || serializedCnt > evalConf.flushCount) {
+      final long curTime = System.currentTimeMillis();
+      if (inputBuffer.readableBytes() > evalConf.flushBytes
+        || serializedCnt > evalConf.flushCount
+        || System.currentTimeMillis() - prevFlushTime > evalConf.flushPeriod) {
       //if (serializedCnt > 10) {
 
         // flush
