@@ -181,7 +181,9 @@ public final class TaskExecutor {
         for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
 
           for (final IRVertex dstVertex : p.left().dstVertices) {
-            dstVertex.isOffloading = true;
+            if (!dstVertex.isSink) {
+              dstVertex.isOffloading = true;
+            }
           }
 
         }
@@ -217,7 +219,9 @@ public final class TaskExecutor {
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : ocs) {
 
         for (final IRVertex dstVertex : pair.left().dstVertices) {
-          dstVertex.isOffloading = true;
+          if (!dstVertex.isSink) {
+            dstVertex.isOffloading = true;
+          }
         }
       }
 
