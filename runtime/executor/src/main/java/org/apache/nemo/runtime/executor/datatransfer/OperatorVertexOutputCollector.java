@@ -142,7 +142,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     checkOffloadingStatus();
 
     if (offloading) {
-      operatorMetricCollector.sendToServerless(output);
+      operatorMetricCollector.sendToServerless(new TimestampAndValue<>(inputTimestamp, output));
     } else {
       for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
         final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
