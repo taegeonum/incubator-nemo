@@ -122,6 +122,7 @@ public final class OperatorMetricCollector {
 
     //LOG.info("Send from {}/{} to serverless, cnt: {}", id, dataFetcher.edge.getId(),
     // serializedCnt);
+    LOG.info("Offload from {} to {}", irVertex.getId(), nextOperatorIds);
 
     try {
       bos.writeInt(nextOperatorIds.size());
@@ -135,12 +136,12 @@ public final class OperatorMetricCollector {
       final long curTime = System.currentTimeMillis();
       if (inputBuffer.readableBytes() > evalConf.flushBytes
         || serializedCnt > evalConf.flushCount
-        || System.currentTimeMillis() - prevFlushTime > evalConf.flushPeriod) {
+        || curTime - prevFlushTime > evalConf.flushPeriod) {
         //if (serializedCnt > 10) {
 
         // flush
         flushToServerless();
-        prevFlushTime = System.currentTimeMillis();
+        prevFlushTime = curTime;
 
         // reset
         inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
