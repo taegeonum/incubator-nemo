@@ -136,6 +136,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       final OperatorVertex nextOperator = internalVertex.getNextOperator();
 
+      LOG.info("NexOp: {}, isOffloading: {}, isOffloaded: {}",
+        nextOperator.getId(), nextOperator.isOffloading, isOffloaded.get());
+
       if (nextOperator.isOffloading && isOffloaded.get()) {
         if (offloadingIds == null) {
           offloadingIds = new LinkedList<>();
