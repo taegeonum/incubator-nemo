@@ -150,7 +150,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       //LOG.info("NexOp: {}, isOffloading: {}, isOffloaded: {}",
       //  nextOperator.getId(), nextOperator.isOffloading, isOffloaded.get());
 
-      if (nextOperator.isOffloading && isOffloaded.get()) {
+      if (offloading) {
         if (offloadingIds == null) {
           offloadingIds = new LinkedList<>();
         }
@@ -188,7 +188,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        if (internalVertex.getNextOperator().isOffloading && isOffloaded.get()) {
+        if (offloading) {
           if (offloadingIds == null) {
             offloadingIds = new LinkedList<>();
           }
@@ -224,7 +224,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // Emit watermarks to internal vertices
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
-      if (internalVertex.getNextOperator().isOffloading && isOffloaded.get()) {
+      if (offloading) {
         if (offloadingIds == null) {
           offloadingIds = new LinkedList<>();
         }
@@ -236,7 +236,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
-        if (internalVertex.getNextOperator().isOffloading && isOffloaded.get()) {
+        if (offloading) {
           if (offloadingIds == null) {
             offloadingIds = new LinkedList<>();
           }

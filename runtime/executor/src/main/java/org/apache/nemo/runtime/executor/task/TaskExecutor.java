@@ -247,7 +247,6 @@ public final class TaskExecutor {
           new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
 
 
-
       final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(ocs);
 
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : header) {
