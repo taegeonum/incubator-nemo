@@ -163,7 +163,7 @@ public final class OperatorMetricCollector {
     adjustTime = adjTime;
   }
 
-  public void processDone(final long startTimestamp) {
+  private void avgLatencies(final long startTimestamp) {
     final long currTime = System.currentTimeMillis();
     final long latency = (currTime - startTimestamp) - adjustTime;
     latencies.add(latency);
@@ -187,6 +187,12 @@ public final class OperatorMetricCollector {
 
       prevWindowTime = currTime;
     }
+  }
+
+  public void processDone(final long startTimestamp) {
+   final long currTime = System.currentTimeMillis();
+    final long latency = (currTime - startTimestamp) - adjustTime;
+    LOG.info("Event Latency {}", latency);
   }
 
   class LatencyAndCnt {
