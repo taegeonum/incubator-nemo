@@ -80,6 +80,7 @@ public final class OperatorMetricCollector {
   }
 
   public void startOffloading() {
+    LOG.info("OPeratorMetricCollector startOffloading");
     checkSink();
 
     prevFlushTime = System.currentTimeMillis();
