@@ -44,10 +44,6 @@ public final class OperatorMetricCollector {
   // processed events - key: timestamp, value: processed events
   public final List<Pair<Long, Long>> processedEvents;
 
-  private final ExecutorService shutdownExecutor;
-
-  private volatile boolean offloading = false;
-
   public OperatorMetricCollector(final IRVertex srcVertex,
                                  final List<IRVertex> dstVertices,
                                  final Serializer serializer,
@@ -61,7 +57,6 @@ public final class OperatorMetricCollector {
     this.serializer = serializer;
     this.edge = edge;
     this.processedEvents = new LinkedList<>();
-    this.shutdownExecutor = shutdownExecutor;
     this.inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
     this.bos = new ByteBufOutputStream(inputBuffer);
 
@@ -87,17 +82,12 @@ public final class OperatorMetricCollector {
     LOG.info("OPeratorMetricCollector startOffloading");
     checkSink();
 
-
     prevFlushTime = System.currentTimeMillis();
     serializedCnt = 0;
-
-    offloading = true;
   }
 
   public void endOffloading() {
     checkSink();
-
-    offloading = false;
 
     if (inputBuffer.readableBytes() > 0) {
       // TODO: send remaining data to serverless
@@ -160,13 +150,6 @@ public final class OperatorMetricCollector {
         bos = new ByteBufOutputStream(inputBuffer);
         serializedCnt = 0;
       }
-
-      if (!offloading) {
-        if (inputBuffer.readableBytes() > 0) {
-          flushToServerless();
-        }
-      }
-
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

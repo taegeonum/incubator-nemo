@@ -126,6 +126,8 @@ public final class TaskExecutor {
 
   private final AtomicBoolean isOffloaded = new AtomicBoolean(false);
 
+  private List<Pair<OperatorMetricCollector, OutputCollector>> prevHeader;
+
   /**
    * Constructor.
    *
@@ -180,6 +182,7 @@ public final class TaskExecutor {
 
     if (evalConf.offloadingdebug) {
       se.scheduleAtFixedRate(() -> {
+        LOG.info("Start offloading!");
         triggerOffloading(metricCollectors);
       }, 10, 50, TimeUnit.SECONDS);
 
@@ -187,6 +190,40 @@ public final class TaskExecutor {
         endOffloading();
       }, 30, 50, TimeUnit.SECONDS);
     }
+  }
+
+  private List<Pair<OperatorMetricCollector, OutputCollector>> findHeader(
+    final List<Pair<OperatorMetricCollector, OutputCollector>> ocs) {
+
+    final List<Boolean> headers = new ArrayList<>(ocs.size());
+    for (int i = 0; i < ocs.size(); i++) {
+      headers.add(true);
+    }
+
+    final List<IRVertex> irVertices = ocs.stream()
+      .map(oc -> oc.left().irVertex)
+      .collect(Collectors.toList());
+
+    for (final Pair<OperatorMetricCollector, OutputCollector> oc : ocs) {
+      final IRVertex irVertex = oc.left().irVertex;
+      final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(irVertex);
+      edges.stream().forEach((edge) -> {
+        final int index = irVertices.indexOf(edge.getDst());
+        if (index >= 0) {
+          // dst is not a header
+          headers.set(index, false);
+        }
+      });
+    }
+
+    final List<Pair<OperatorMetricCollector, OutputCollector>> l = new ArrayList<>(ocs.size());
+    for (int i = 0; i < ocs.size(); i++) {
+      if (headers.get(i)) {
+        l.add(ocs.get(i));
+      }
+    }
+
+    return l;
   }
 
   private void triggerOffloading(final List<Pair<OperatorMetricCollector, OutputCollector>> ocs) {
@@ -210,7 +247,11 @@ public final class TaskExecutor {
           new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
 
 
-      for (final Pair<OperatorMetricCollector, OutputCollector> pair : ocs) {
+
+      final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(ocs);
+
+      for (final Pair<OperatorMetricCollector, OutputCollector> pair : header) {
+        LOG.info("Header operator: {}", pair.left().irVertex.getId());
         final OperatorMetricCollector omc = pair.left();
         if (!omc.irVertex.isSink) {
           final OutputCollector oc = pair.right();
@@ -220,6 +261,7 @@ public final class TaskExecutor {
       }
 
       isOffloaded.set(true);
+      prevHeader = header;
     }
   }
 
@@ -243,8 +285,10 @@ public final class TaskExecutor {
       }
     }
 
-    for (final Pair<OperatorMetricCollector, OutputCollector> pair : metricCollectors) {
-      pair.right().disableOffloading();
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : prevHeader) {
+      if (!pair.left().irVertex.isSink) {
+        pair.right().disableOffloading();
+      }
     }
 
     shutdownExecutor.execute(() -> {
