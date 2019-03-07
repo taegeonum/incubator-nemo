@@ -181,6 +181,7 @@ public final class TaskExecutor {
       se.schedule(() -> {
 
 
+        // 1. enable offloading
         for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
           final OperatorMetricCollector omc = p.left();
           final OutputCollector oc = p.right();
@@ -189,6 +190,7 @@ public final class TaskExecutor {
         }
 
         // This must be executed after calling .enableOffloading()!
+        // 2. change dag for offloading
         for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
 
           for (final IRVertex dstVertex : p.left().dstVertices) {
@@ -198,10 +200,17 @@ public final class TaskExecutor {
           }
         }
 
+        // 3. initialize serverless executor
         serverlessExecutorService = serverlessExecutorProvider.
           newCachedPool(new StatelessOffloadingTransform(irVertexDag),
             new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
             new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
+
+        // set serverless executor
+        for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
+          final OperatorMetricCollector omc = p.left();
+          omc.setServerlessExecutorService(serverlessExecutorService);
+        }
 
         isOffloaded = true;
         //offloadingRequestQueue.add(true);
