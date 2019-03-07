@@ -179,6 +179,20 @@ public final class TaskExecutor {
 
     if (evalConf.offloadingdebug) {
       se.schedule(() -> {
+
+        serverlessExecutorService = serverlessExecutorProvider.
+          newCachedPool(new StatelessOffloadingTransform(irVertexDag),
+            new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
+            new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
+
+        for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
+          final OperatorMetricCollector omc = p.left();
+          final OutputCollector oc = p.right();
+          omc.setServerlessExecutorService(serverlessExecutorService);
+          oc.enableOffloading();
+        }
+
+        // This must be executed after calling .enableOffloading()!
         for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
 
           for (final IRVertex dstVertex : p.left().dstVertices) {
@@ -187,19 +201,6 @@ public final class TaskExecutor {
             }
           }
 
-        }
-
-        serverlessExecutorService = serverlessExecutorProvider.
-          newCachedPool(new StatelessOffloadingTransform(irVertexDag),
-            new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-            new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
-
-
-        for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
-          final OperatorMetricCollector omc = p.left();
-          final OutputCollector oc = p.right();
-          omc.setServerlessExecutorService(serverlessExecutorService);
-          oc.enableOffloading();
         }
 
         isOffloaded = true;
