@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * OffloadingOutputCollector implementation.
@@ -68,6 +69,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   }
 
   private volatile OffloadingStatus offloadingStatus = OffloadingStatus.NORMAL;
+  private final AtomicBoolean isOffloaded;
 
   /**
    * Constructor of the output collector.
@@ -84,7 +86,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs,
-    final OperatorMetricCollector operatorMetricCollector) {
+    final OperatorMetricCollector operatorMetricCollector,
+    final AtomicBoolean isOffloaded) {
     this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
@@ -92,6 +95,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
     this.operatorMetricCollector = operatorMetricCollector;
+    this.isOffloaded = isOffloaded;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -146,15 +150,15 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       final OperatorVertex nextOperator = internalVertex.getNextOperator();
 
-      if (!nextOperator.isOffloading) {
-        final OperatorVertexOutputCollector oc = outputCollectorMap.get(nextOperator.getId());
-        oc.inputTimestamp = inputTimestamp;
-        emit(nextOperator, output);
-      } else {
+      if (nextOperator.isOffloading && isOffloaded.get()) {
         if (offloadingIds == null) {
           offloadingIds = new LinkedList<>();
         }
         offloadingIds.add(nextOperator.getId());
+      } else {
+        final OperatorVertexOutputCollector oc = outputCollectorMap.get(nextOperator.getId());
+        oc.inputTimestamp = inputTimestamp;
+        emit(nextOperator, output);
       }
     }
 
@@ -197,15 +201,15 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        if (!internalVertex.getNextOperator().isOffloading) {
-          final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
-          oc.inputTimestamp = inputTimestamp;
-          emit(internalVertex.getNextOperator(), (O) output);
-        } else {
+        if (internalVertex.getNextOperator().isOffloading && isOffloaded.get()) {
           if (offloadingIds == null) {
             offloadingIds = new LinkedList<>();
           }
           offloadingIds.add(internalVertex.getNextOperator().getId());
+        } else {
+          final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
+          oc.inputTimestamp = inputTimestamp;
+          emit(internalVertex.getNextOperator(), (O) output);
         }
       }
     }
@@ -235,25 +239,25 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // Emit watermarks to internal vertices
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
-      if (!internalVertex.getNextOperator().isOffloading) {
-        internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
-      } else {
+      if (internalVertex.getNextOperator().isOffloading && isOffloaded.get()) {
         if (offloadingIds == null) {
           offloadingIds = new LinkedList<>();
         }
         offloadingIds.add(internalVertex.getNextOperator().getId());
+      } else {
+        internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
 
     for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
-        if (!internalVertex.getNextOperator().isOffloading) {
-          internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
-        } else {
+        if (internalVertex.getNextOperator().isOffloading && isOffloaded.get()) {
           if (offloadingIds == null) {
             offloadingIds = new LinkedList<>();
           }
           offloadingIds.add(internalVertex.getNextOperator().getId());
+        } else {
+          internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
         }
       }
     }

@@ -108,7 +108,7 @@ public final class OperatorMetricCollector {
 
   private boolean isFlusheable(final long curTime) {
     if (serverlessExecutorService == null || serverlessExecutorService.isShutdown()) {
-      return false;
+      throw new RuntimeException("Serverless executor is null or shutdowned: " + serverlessExecutorService);
     }
 
     return  (inputBuffer.readableBytes() > evalConf.flushBytes

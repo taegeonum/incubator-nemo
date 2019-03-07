@@ -53,6 +53,7 @@ import org.apache.nemo.runtime.executor.datatransfer.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
@@ -123,7 +124,7 @@ public final class TaskExecutor {
 
   private final List<Pair<OperatorMetricCollector, OutputCollector>> metricCollectors = new ArrayList<>();
 
-  private boolean isOffloaded = false;
+  private final AtomicBoolean isOffloaded = new AtomicBoolean(false);
 
   /**
    * Constructor.
@@ -180,15 +181,6 @@ public final class TaskExecutor {
     if (evalConf.offloadingdebug) {
       se.schedule(() -> {
 
-
-        // 1. enable offloading
-        for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
-          final OperatorMetricCollector omc = p.left();
-          final OutputCollector oc = p.right();
-          omc.setServerlessExecutorService(serverlessExecutorService);
-          oc.enableOffloading();
-        }
-
         // This must be executed after calling .enableOffloading()!
         // 2. change dag for offloading
         for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
@@ -198,6 +190,14 @@ public final class TaskExecutor {
               dstVertex.isOffloading = true;
             }
           }
+        }
+
+        // 1. enable offloading
+        for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
+          final OperatorMetricCollector omc = p.left();
+          final OutputCollector oc = p.right();
+          omc.setServerlessExecutorService(serverlessExecutorService);
+          oc.enableOffloading();
         }
 
         // 3. initialize serverless executor
@@ -212,7 +212,7 @@ public final class TaskExecutor {
           omc.setServerlessExecutorService(serverlessExecutorService);
         }
 
-        isOffloaded = true;
+        isOffloaded.set(true);;
         //offloadingRequestQueue.add(true);
       }, 10, TimeUnit.SECONDS);
     }
@@ -249,14 +249,14 @@ public final class TaskExecutor {
         oc.enableOffloading();
       }
 
-      isOffloaded = true;
+      isOffloaded.set(true);
     }
   }
 
   public void endOffloading() {
     LOG.info("End offloading!");
     // Do sth for offloading end
-    isOffloaded = false;
+    isOffloaded.set(false);
 
     for (final Pair<OperatorMetricCollector, OutputCollector> pair : metricCollectors) {
       final OperatorMetricCollector omc = pair.left();
