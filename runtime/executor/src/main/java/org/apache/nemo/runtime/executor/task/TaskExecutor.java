@@ -181,8 +181,7 @@ public final class TaskExecutor {
     if (evalConf.offloadingdebug) {
       se.schedule(() -> {
 
-        // This must be executed after calling .enableOffloading()!
-        // 2. change dag for offloading
+        // 1. change dag for offloading
         for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
 
           for (final IRVertex dstVertex : p.left().dstVertices) {
@@ -192,24 +191,18 @@ public final class TaskExecutor {
           }
         }
 
-        // 1. enable offloading
-        for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
-          final OperatorMetricCollector omc = p.left();
-          final OutputCollector oc = p.right();
-          omc.setServerlessExecutorService(serverlessExecutorService);
-          oc.enableOffloading();
-        }
-
-        // 3. initialize serverless executor
+        // 2. initialize serverless executor
         serverlessExecutorService = serverlessExecutorProvider.
           newCachedPool(new StatelessOffloadingTransform(irVertexDag),
             new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
             new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
 
-        // set serverless executor
+        // 3. enable offloading
         for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
           final OperatorMetricCollector omc = p.left();
+          final OutputCollector oc = p.right();
           omc.setServerlessExecutorService(serverlessExecutorService);
+          oc.enableOffloading();
         }
 
         isOffloaded.set(true);;
@@ -408,7 +401,7 @@ public final class TaskExecutor {
         outputCollector = new OperatorVertexOutputCollector(
           vertexIdAndOutputCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
-          externalMainOutputs, externalAdditionalOutputMap, omc);
+          externalMainOutputs, externalAdditionalOutputMap, omc, isOffloaded);
 
         metricCollectors.add(Pair.of(omc, outputCollector));
 
@@ -462,11 +455,11 @@ public final class TaskExecutor {
                 outputCollector, edgeIndex, watermarkManager);
 
 
-            final OperatorMetricCollector omc = new OperatorMetricCollector(edge.getSrcIRVertex(),
-              Arrays.asList(edge.getDstIRVertex()),
-              serializerManager.getSerializer(edge.getId()), edge, evalConf, shutdownExecutor);
+            //final OperatorMetricCollector omc = new OperatorMetricCollector(edge.getSrcIRVertex(),
+            //  Arrays.asList(edge.getDstIRVertex()),
+            //  serializerManager.getSerializer(edge.getId()), edge, evalConf, shutdownExecutor);
 
-            metricCollectors.add(Pair.of(omc, outputCollector));
+            //metricCollectors.add(Pair.of(omc, outputCollector));
 
             if (parentTaskReader instanceof PipeInputReader) {
               dataFetcherList.add(

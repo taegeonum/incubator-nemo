@@ -18,6 +18,7 @@ public final class InputFluctuationDetector {
   // key: timestamp, value: processed event
   //private final List<Pair<Long, Long>> processedEvents;
   private final List<Pair<OperatorMetricCollector, OutputCollector>> metricCollectors;
+  private int length = 20;
 
   // timescale: sec
   public InputFluctuationDetector(
@@ -30,6 +31,9 @@ public final class InputFluctuationDetector {
                       final long timestamp,
                       final long currProcessedEvent) {
     final List<Pair<Long, Long>> processedEvents = oc.processedEvents;
+    if (processedEvents.size() >= length) {
+      processedEvents.remove(0);
+    }
     processedEvents.add(Pair.of(timestamp, currProcessedEvent));
     //processedEvents.add(Pair.of(timestamp, currProcessedEvent));
   }
