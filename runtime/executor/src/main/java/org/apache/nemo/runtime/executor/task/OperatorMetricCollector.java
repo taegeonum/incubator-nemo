@@ -61,7 +61,7 @@ public final class OperatorMetricCollector {
     this.processedEvents = new LinkedList<>();
     this.shutdownExecutor = shutdownExecutor;
 
-    LOG.info("SrcVertex: {}, DstVertices: {}, Edge: {}", srcVertex, dstVertices, edge);
+    //LOG.info("SrcVertex: {}, DstVertices: {}, Edge: {}", srcVertex, dstVertices, edge);
   }
 
   public void setServerlessExecutorService(final ServerlessExecutorService sls) {
@@ -115,17 +115,19 @@ public final class OperatorMetricCollector {
     serverlessExecutorService.execute(compositeByteBuf);
   }
 
-  public void sendToServerless(final Object event) {
+  public void sendToServerless(final Object event, final List<String> nextOperatorIds) {
     checkSink();
 
-    final String id = irVertex.getId();
     //final Serializer serializer = serializerManager.getSerializer(dataFetcher.edge.getId());
 
     //LOG.info("Send from {}/{} to serverless, cnt: {}", id, dataFetcher.edge.getId(),
     // serializedCnt);
 
     try {
-      bos.writeUTF(id);
+      bos.writeInt(nextOperatorIds.size());
+      for (int i = 0; i < nextOperatorIds.size(); i++) {
+        bos.writeUTF(nextOperatorIds.get(i));
+      }
       bos.writeUTF(edge.getId());
       serializer.getEncoderFactory().create(bos).encode(event);
       serializedCnt += 1;

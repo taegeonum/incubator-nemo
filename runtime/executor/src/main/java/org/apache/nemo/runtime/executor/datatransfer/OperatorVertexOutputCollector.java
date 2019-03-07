@@ -138,21 +138,34 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   @Override
   public void emit(final O output) {
     operatorMetricCollector.emittedCnt += 1;
-
     checkOffloadingStatus();
 
-    if (offloading) {
-      operatorMetricCollector.sendToServerless(new TimestampAndValue<>(inputTimestamp, output));
-    } else {
-      for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
-        final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
-        oc.inputTimestamp = inputTimestamp;
-        emit(internalVertex.getNextOperator(), output);
-      }
+    // For offloading
+    List<String> offloadingIds = null;
 
-      for (final OutputWriter externalWriter : externalMainOutputs) {
-        emit(externalWriter, new TimestampAndValue<>(inputTimestamp, output));
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      final OperatorVertex nextOperator = internalVertex.getNextOperator();
+
+      if (!nextOperator.isOffloading) {
+        final OperatorVertexOutputCollector oc = outputCollectorMap.get(nextOperator.getId());
+        oc.inputTimestamp = inputTimestamp;
+        emit(nextOperator, output);
+      } else {
+        if (offloadingIds == null) {
+          offloadingIds = new LinkedList<>();
+        }
+        offloadingIds.add(nextOperator.getId());
       }
+    }
+
+    // For offloading
+    if (offloadingIds != null) {
+      operatorMetricCollector.sendToServerless(
+        new TimestampAndValue<>(inputTimestamp, output), offloadingIds);
+    }
+
+    for (final OutputWriter externalWriter : externalMainOutputs) {
+      emit(externalWriter, new TimestampAndValue<>(inputTimestamp, output));
     }
   }
 
@@ -180,24 +193,32 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     checkOffloadingStatus();
 
-    if (offloading) {
-      throw new RuntimeException("Not support multi tag output from "
-        + irVertex.getId() +" to " + dstVertexId);
+    List<String> offloadingIds = null;
 
-    } else {
-      if (internalAdditionalOutputs.containsKey(dstVertexId)) {
-        for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
+    if (internalAdditionalOutputs.containsKey(dstVertexId)) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
+        if (!internalVertex.getNextOperator().isOffloading) {
           final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
           oc.inputTimestamp = inputTimestamp;
           emit(internalVertex.getNextOperator(), (O) output);
+        } else {
+          if (offloadingIds == null) {
+            offloadingIds = new LinkedList<>();
+          }
+          offloadingIds.add(internalVertex.getNextOperator().getId());
         }
       }
+    }
 
+    // For offloading
+    if (offloadingIds != null) {
+      operatorMetricCollector.sendToServerless(
+        new TimestampAndValue<>(inputTimestamp, output), offloadingIds);
+    }
 
-      if (externalAdditionalOutputs.containsKey(dstVertexId)) {
-        for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
-          emit(externalWriter, new TimestampAndValue<>(inputTimestamp, (O) output));
-        }
+    if (externalAdditionalOutputs.containsKey(dstVertexId)) {
+      for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
+        emit(externalWriter, new TimestampAndValue<>(inputTimestamp, (O) output));
       }
     }
   }
@@ -210,41 +231,39 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     checkOffloadingStatus();
 
-    if (offloading) {
-      operatorMetricCollector.sendToServerless(watermark);
-    } else {
+    List<String> offloadingIds = null;
 
-      // Emit watermarks to internal vertices
-      for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+    // Emit watermarks to internal vertices
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      if (!internalVertex.getNextOperator().isOffloading) {
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
+      } else {
+        if (offloadingIds == null) {
+          offloadingIds = new LinkedList<>();
+        }
+        offloadingIds.add(internalVertex.getNextOperator().getId());
       }
+    }
 
-      for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
-        for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
+    for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
+        if (!internalVertex.getNextOperator().isOffloading) {
           internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
+        } else {
+          if (offloadingIds == null) {
+            offloadingIds = new LinkedList<>();
+          }
+          offloadingIds.add(internalVertex.getNextOperator().getId());
         }
       }
     }
 
-    // QUERY7
-    /*
-    if (irVertex.getId().equals("vertex15")) {
-      sideInputOutputCollector.emitWatermark(watermark);
-    } else if (irVertex.getId().equals("vertex6")) {
-      mainInputLambdaCollector.emitWatermark(watermark);
-    } else {
-      // Emit watermarks to output writer
-      for (final OutputWriter outputWriter : externalMainOutputs) {
-        outputWriter.writeWatermark(watermark);
-      }
-
-      for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
-        for (final OutputWriter externalVertex : externalVertices) {
-          externalVertex.writeWatermark(watermark);
-        }
-      }
+    // For offloading
+    if (offloadingIds != null) {
+      operatorMetricCollector.sendToServerless(
+        new TimestampAndValue<>(inputTimestamp, watermark), offloadingIds);
     }
-    */
+
 
     // Emit watermarks to output writer
     for (final OutputWriter outputWriter : externalMainOutputs) {

@@ -108,6 +108,7 @@ public final class TaskExecutor {
   private int serializedCnt = 0;
   private ByteBufOutputStream bos;
   private final Map<String, OutputCollector> vertexIdAndOutputCollectorMap;
+  private final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap = new HashMap<>();
   private long prevFlushTime = System.currentTimeMillis();
   private final EvalConf evalConf;
   // Variables for offloading - end
@@ -191,7 +192,7 @@ public final class TaskExecutor {
         serverlessExecutorService = serverlessExecutorProvider.
           newCachedPool(new StatelessOffloadingTransform(irVertexDag),
             new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-            new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap));
+            new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
 
 
         for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
@@ -228,7 +229,7 @@ public final class TaskExecutor {
       serverlessExecutorService = serverlessExecutorProvider.
         newCachedPool(new StatelessOffloadingTransform(irVertexDag),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-          new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap));
+          new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
 
 
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : ocs) {
@@ -346,9 +347,20 @@ public final class TaskExecutor {
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         TaskExecutorUtil.getExternalAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId);
 
+      for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
+        for (final NextIntraTaskOperatorInfo interOp : interOps) {
+          operatorInfoMap.put(interOp.getNextOperator().getId(), interOp);
+        }
+      }
+
       // Main outputs
       final List<NextIntraTaskOperatorInfo> internalMainOutputs =
         TaskExecutorUtil. getInternalMainOutputs(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
+
+      for (final NextIntraTaskOperatorInfo interOp : internalMainOutputs) {
+        operatorInfoMap.put(interOp.getNextOperator().getId(), interOp);
+      }
+
       final List<OutputWriter> externalMainOutputs =
         TaskExecutorUtil.getExternalMainOutputs(irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId);
 

@@ -23,6 +23,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
 
   // key: data fetcher id, value: head operator
   private final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
+  private final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
 
   private transient OffloadingResultCollector resultCollector;
 
@@ -30,6 +31,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
     this.irDag = irDag;
     this.outputCollectorMap = new HashMap<>();
+    this.operatorVertexMap = new HashMap<>();
   }
 
   @Override
@@ -82,6 +84,16 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
       final List<NextIntraTaskOperatorInfo> internalMainOutputs =
         getInternalMainOutputs(irVertex, irDag, edgeIndexMap, operatorWatermarkManagerMap);
 
+      for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
+        for (final NextIntraTaskOperatorInfo interOp : interOps) {
+          operatorVertexMap.put(interOp.getNextOperator().getId(), interOp);
+        }
+      }
+
+      for (final NextIntraTaskOperatorInfo interOp : internalMainOutputs) {
+        operatorVertexMap.put(interOp.getNextOperator().getId(), interOp);
+      }
+
       final boolean isSink = irVertex.isSink;
       // skip sink
       if (!isSink) {
@@ -106,16 +118,18 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   @Override
   public void onData(final OffloadingDataEvent element) {
     System.out.println("Received data size: " + element.data.size());
-    for (final Pair<String, Object> input : element.data) {
-      final String srcId = input.left();
+    for (final Pair<List<String>, Object> input : element.data) {
+      final List<String> nextOps = input.left();
       final Object d = input.right();
-      final OffloadingOperatorVertexOutputCollector outputCollector = outputCollectorMap.get(srcId);
-      if (d instanceof Watermark) {
-        outputCollector.emitWatermark((Watermark) d);
-      } else {
-        final TimestampAndValue tsv = (TimestampAndValue) d;
-        outputCollector.setInputTimestamp(tsv.timestamp);
-        outputCollector.emit(tsv.value);
+      for (final String nextOpId : nextOps) {
+        final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
+        if (d instanceof Watermark) {
+          nextOp.getWatermarkManager().trackAndEmitWatermarks(nextOp.getEdgeIndex(), (Watermark) d);
+        } else {
+          final TimestampAndValue tsv = (TimestampAndValue) d;
+          outputCollectorMap.get(nextOpId).setInputTimestamp(tsv.timestamp);
+          nextOp.getNextOperator().getTransform().onData(tsv.value);
+        }
       }
     }
 
