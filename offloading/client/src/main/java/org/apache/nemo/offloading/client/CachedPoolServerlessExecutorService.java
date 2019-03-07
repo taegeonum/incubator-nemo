@@ -505,7 +505,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     shutdown = true;
     // shutdown all workers
     long prevTime = System.currentTimeMillis();
-    LOG.info("Shutting down workers {}/{}..., init: {}, running: {}", finishedWorkers, createdWorkers);
+    LOG.info("Shutting down workers {}/{}..., init: {}, running: {}", finishedWorkers, createdWorkers,
+      initializingWorkers, runningWorkers);
 
     while (finishedWorkers < createdWorkers) {
       // logging
@@ -549,8 +550,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
     // TODO: release worker init buffer
     workerInitBuffer.release();
-
-
   }
 
   @Override
@@ -568,6 +567,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       this.output = output;
       this.dataId = dataId;
       this.startTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public String toString() {
+      return "Output: " + output + ", dataId: " + dataId + ", starTTime: " + startTime;
     }
   }
 }

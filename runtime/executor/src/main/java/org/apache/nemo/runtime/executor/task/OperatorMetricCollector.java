@@ -156,7 +156,8 @@ public final class OperatorMetricCollector {
     }
   }
 
-  private final LatencyAndCnt latencyAndCnt = new LatencyAndCnt();
+  //private final LatencyAndCnt latencyAndCnt = new LatencyAndCnt();
+  private final List<Long> latencies = new LinkedList<>();
 
   public void setAdjustTime(final long adjTime) {
     adjustTime = adjTime;
@@ -165,16 +166,26 @@ public final class OperatorMetricCollector {
   public void processDone(final long startTimestamp) {
     final long currTime = System.currentTimeMillis();
     final long latency = (currTime - startTimestamp) - adjustTime;
-    latencyAndCnt.latencySum += latency;
-    latencyAndCnt.count += 1;
+    latencies.add(latency);
+
+    //latencyAndCnt.latencySum += latency;
+    //latencyAndCnt.count += 1;
 
     if (currTime - prevWindowTime >= windowsize) {
-        // logging!
-        LOG.info("Avg Latency {}, from vertex {}, processCnt {}",
-          latencyAndCnt.latencySum / latencyAndCnt.count, irVertex.getId(), latencyAndCnt.count);
-        latencyAndCnt.latencySum = 0;
-        latencyAndCnt.count = 0;
-        prevWindowTime = currTime;
+      // logging!
+      final int p95Index = Math.min(latencies.size() - 1, (int) (latencies.size() * 0.95));
+      final int p99Index = Math.min(latencies.size() - 1, (int) (latencies.size() * 0.99));
+
+      final long avg =  latencies.stream().reduce(0L, (x, y) -> x + y) / latencies.size();
+
+      latencies.sort(Long::compareTo);
+      final long p95 = latencies.get(p95Index);
+      final long p99 = latencies.get(p99Index);
+      LOG.info("Avg Latency {} P95: {}, P99: {}, Max: {} from vertex {}, processCnt {}",
+        avg, p95, p99, latencies.get(latencies.size() - 1), irVertex.getId(), latencies.size());
+      latencies.clear();
+
+      prevWindowTime = currTime;
     }
   }
 
