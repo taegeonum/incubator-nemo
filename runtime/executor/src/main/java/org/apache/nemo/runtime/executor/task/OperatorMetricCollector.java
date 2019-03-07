@@ -60,6 +60,8 @@ public final class OperatorMetricCollector {
     this.edge = edge;
     this.processedEvents = new LinkedList<>();
     this.shutdownExecutor = shutdownExecutor;
+
+    LOG.info("SrcVertex: {}, DstVertices: {}, Edge: {}", srcVertex, dstVertices, edge);
   }
 
   public void setServerlessExecutorService(final ServerlessExecutorService sls) {
