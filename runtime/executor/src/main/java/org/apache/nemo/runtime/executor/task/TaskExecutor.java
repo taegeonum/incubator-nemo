@@ -241,24 +241,22 @@ public final class TaskExecutor {
   public void endOffloading() {
     LOG.info("End offloading!");
     // Do sth for offloading end
+    isOffloaded = false;
 
-      isOffloaded = false;
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : metricCollectors) {
+      final OperatorMetricCollector omc = pair.left();
+      final OutputCollector oc = pair.right();
 
-      for (final Pair<OperatorMetricCollector, OutputCollector> pair : metricCollectors) {
-        final OperatorMetricCollector omc = pair.left();
-        final OutputCollector oc = pair.right();
-
-        for (final IRVertex dstVertex : omc.dstVertices) {
-          dstVertex.isOffloading = false;
-        }
-
-        oc.disableOffloading();
+      for (final IRVertex dstVertex : omc.dstVertices) {
+        dstVertex.isOffloading = false;
       }
 
-      shutdownExecutor.execute(() -> {
-        serverlessExecutorService.shutdown();
-      });
+      oc.disableOffloading();
     }
+
+    shutdownExecutor.execute(() -> {
+      serverlessExecutorService.shutdown();
+    });
   }
 
   /**
