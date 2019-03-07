@@ -87,7 +87,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
     LOG.info("Operator " + irVertex.getId() + " emit " + output + " to ");
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       LOG.info(internalVertex.getNextOperator().getId());
-      if (internalVertex.getNextOperator().isSink) {
+      if (internalVertex.getNextOperator().isSink || !internalVertex.getNextOperator().isOffloading) {
         //System.out.println("Emit to resultCollector in " + irVertex.getId());
         resultCollector.result.add(new Triple<>(
           irVertex.getId(),
@@ -109,7 +109,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        if (internalVertex.getNextOperator().isSink) {
+        if (internalVertex.getNextOperator().isSink || !internalVertex.getNextOperator().isOffloading) {
           //System.out.println("Emit to resultCollector in " + irVertex.getId());
           resultCollector.result.add(new Triple<>(
             irVertex.getId(),
@@ -137,7 +137,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
     //System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
     // Emit watermarks to internal vertices
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
-      if (internalVertex.getNextOperator().isSink) {
+      if (internalVertex.getNextOperator().isSink || !internalVertex.getNextOperator().isOffloading) {
         //System.out.println("Sink Emit watermark " + watermark);
         resultCollector.result.add(new Triple<>(
           irVertex.getId(),

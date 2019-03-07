@@ -32,7 +32,7 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Offlo
         collector.emitWatermark((Watermark) elem);
       } else if (elem instanceof TimestampAndValue) {
         final TimestampAndValue tsv = (TimestampAndValue) elem;
-        collector.setTimestamp(tsv.timestamp);
+        collector.setInputTimestamp(tsv.timestamp);
         collector.emit(tsv.value);
       }
     }

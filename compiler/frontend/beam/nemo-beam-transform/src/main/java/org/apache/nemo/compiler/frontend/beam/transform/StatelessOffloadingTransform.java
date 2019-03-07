@@ -5,7 +5,6 @@ import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.eventhandler.OffloadingDataEvent;
-import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -115,7 +114,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         outputCollector.emitWatermark((Watermark) d);
       } else {
         final TimestampAndValue tsv = (TimestampAndValue) d;
-        outputCollector.setTimestamp(tsv.timestamp);
+        outputCollector.setInputTimestamp(tsv.timestamp);
         outputCollector.emit(tsv.value);
       }
     }
