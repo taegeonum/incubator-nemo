@@ -106,6 +106,16 @@ public final class OperatorMetricCollector {
     }
   }
 
+  private boolean isFlusheable(final long curTime) {
+    if (serverlessExecutorService == null || serverlessExecutorService.isShutdown()) {
+      return false;
+    }
+
+    return  (inputBuffer.readableBytes() > evalConf.flushBytes
+      || serializedCnt > evalConf.flushCount
+      || curTime - prevFlushTime > evalConf.flushPeriod);
+  }
+
   private void flushToServerless() {
     LOG.info("Flush to serverless in vertex {}: {}", irVertex.getId(), serializedCnt);
     final CompositeByteBuf compositeByteBuf = PooledByteBufAllocator.DEFAULT.compositeBuffer(2);
@@ -113,6 +123,7 @@ public final class OperatorMetricCollector {
     lengthBuf.writeInt(serializedCnt);
     compositeByteBuf.addComponents(true, lengthBuf, inputBuffer);
     // execute
+
     serverlessExecutorService.execute(compositeByteBuf);
   }
 
@@ -135,9 +146,7 @@ public final class OperatorMetricCollector {
       serializedCnt += 1;
 
       final long curTime = System.currentTimeMillis();
-      if (inputBuffer.readableBytes() > evalConf.flushBytes
-        || serializedCnt > evalConf.flushCount
-        || curTime - prevFlushTime > evalConf.flushPeriod) {
+      if (isFlusheable(curTime)) {
         //if (serializedCnt > 10) {
 
         // flush

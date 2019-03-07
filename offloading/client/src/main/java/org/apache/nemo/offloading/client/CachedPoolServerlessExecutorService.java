@@ -59,6 +59,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   private int bufferedCnt = 0;
   private int addedOutput = 0;
 
+  private volatile boolean shutdown = false;
+
   final AtomicLong st = new AtomicLong(System.currentTimeMillis());
 
   CachedPoolServerlessExecutorService(
@@ -499,6 +501,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   @Override
   public void shutdown() {
+
+    shutdown = true;
     // shutdown all workers
     long prevTime = System.currentTimeMillis();
     LOG.info("Shutting down workers {}/{}..., init: {}, running: {}", finishedWorkers, createdWorkers);
@@ -545,6 +549,13 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
     // TODO: release worker init buffer
     workerInitBuffer.release();
+
+
+  }
+
+  @Override
+  public boolean isShutdown() {
+    return shutdown;
   }
 
   final class PendingOutput<O> {
