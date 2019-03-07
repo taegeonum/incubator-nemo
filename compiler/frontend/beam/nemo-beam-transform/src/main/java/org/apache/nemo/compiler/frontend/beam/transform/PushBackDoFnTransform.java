@@ -360,16 +360,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       }
 
       @Override
-      public void enableOffloading() {
-
-      }
-
-      @Override
-      public void disableOffloading() {
-
-      }
-
-      @Override
       public void emit(String dstVertexId, Object output) {
         oc.emit(dstVertexId, output);
       }

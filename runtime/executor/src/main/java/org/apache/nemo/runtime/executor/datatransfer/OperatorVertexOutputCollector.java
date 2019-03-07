@@ -130,14 +130,18 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   public void emit(final O output) {
     operatorMetricCollector.emittedCnt += 1;
 
+    if (irVertex.isSink) {
+      operatorMetricCollector.processDone(inputTimestamp);
+    }
+
     // For offloading
     List<String> offloadingIds = null;
 
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       final OperatorVertex nextOperator = internalVertex.getNextOperator();
 
-      LOG.info("NexOp: {}, isOffloading: {}, isOffloaded: {}",
-        nextOperator.getId(), nextOperator.isOffloading, isOffloaded.get());
+      //LOG.info("NexOp: {}, isOffloading: {}, isOffloaded: {}",
+      //  nextOperator.getId(), nextOperator.isOffloading, isOffloaded.get());
 
       if (nextOperator.isOffloading && isOffloaded.get()) {
         if (offloadingIds == null) {

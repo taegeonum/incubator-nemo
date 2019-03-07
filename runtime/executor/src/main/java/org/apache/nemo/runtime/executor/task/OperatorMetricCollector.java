@@ -134,7 +134,7 @@ public final class OperatorMetricCollector {
 
     //LOG.info("Send from {}/{} to serverless, cnt: {}", id, dataFetcher.edge.getId(),
     // serializedCnt);
-    LOG.info("Offload from {} to {}", irVertex.getId(), nextOperatorIds);
+    //LOG.info("Offload from {} to {}", irVertex.getId(), nextOperatorIds);
 
     try {
       bos.writeInt(nextOperatorIds.size());

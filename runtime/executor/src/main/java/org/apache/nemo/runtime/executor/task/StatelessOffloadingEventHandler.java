@@ -39,7 +39,7 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Offlo
         final NextIntraTaskOperatorInfo interOp = operatorVertexMap.get(nextOpId);
         final OutputCollector collector = vertexAndCollectorMap.get(nextOpId);
 
-        LOG.info("Emit data to {}: {}", nextOpId, elem);
+        //LOG.info("Emit data to {}, {}, {}, {}", nextOpId, interOp, collector, elem);
 
         if (elem instanceof Watermark) {
           interOp.getWatermarkManager().trackAndEmitWatermarks(interOp.getEdgeIndex(), (Watermark) elem);
