@@ -260,8 +260,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // For offloading
     if (offloadingIds != null) {
-      operatorMetricCollector.sendToServerless(
-        new TimestampAndValue<>(inputTimestamp, watermark), offloadingIds);
+      operatorMetricCollector.sendToServerless(watermark, offloadingIds);
     }
 
 
