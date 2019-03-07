@@ -179,49 +179,17 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
 
     if (evalConf.offloadingdebug) {
-      se.schedule(() -> {
+      se.scheduleAtFixedRate(() -> {
+        triggerOffloading(metricCollectors);
+      }, 10, 50, TimeUnit.SECONDS);
 
-        try {
-          // 1. change dag for offloading
-          for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
-
-            for (final IRVertex dstVertex : p.left().dstVertices) {
-              if (!dstVertex.isSink) {
-                dstVertex.isOffloading = true;
-              }
-            }
-          }
-
-          // 2. initialize serverless executor
-          serverlessExecutorService = serverlessExecutorProvider.
-            newCachedPool(new StatelessOffloadingTransform(irVertexDag),
-              new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-              new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
-
-          // 3. enable offloading
-          for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
-            final OperatorMetricCollector omc = p.left();
-            if (!omc.irVertex.isSink) {
-              final OutputCollector oc = p.right();
-              omc.setServerlessExecutorService(serverlessExecutorService);
-              omc.startOffloading();
-            }
-          }
-
-          isOffloaded.set(true);
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-        //offloadingRequestQueue.add(true);
-      }, 10, TimeUnit.SECONDS);
+      se.scheduleAtFixedRate(() -> {
+        endOffloading();
+      }, 30, 50, TimeUnit.SECONDS);
     }
   }
 
-  public void startOffloading(final long baseTime) {
-    LOG.info("Start offloading!");
-    final List<Pair<OperatorMetricCollector, OutputCollector>> ocs = detector.retrieveBurstyOutputCollectors(baseTime);
-
+  private void triggerOffloading(final List<Pair<OperatorMetricCollector, OutputCollector>> ocs) {
     if (!ocs.isEmpty()) {
       // TODO: offloading operators!
       // 1) offload transform
@@ -247,12 +215,18 @@ public final class TaskExecutor {
         if (!omc.irVertex.isSink) {
           final OutputCollector oc = pair.right();
           omc.setServerlessExecutorService(serverlessExecutorService);
-          omc.startOffloading();
+          oc.enableOffloading();
         }
       }
 
       isOffloaded.set(true);
     }
+  }
+
+  public void startOffloading(final long baseTime) {
+    LOG.info("Start offloading!");
+    final List<Pair<OperatorMetricCollector, OutputCollector>> ocs = detector.retrieveBurstyOutputCollectors(baseTime);
+    triggerOffloading(ocs);
   }
 
   public void endOffloading() {
@@ -270,8 +244,7 @@ public final class TaskExecutor {
     }
 
     for (final Pair<OperatorMetricCollector, OutputCollector> pair : metricCollectors) {
-      final OperatorMetricCollector omc = pair.left();
-      omc.endOffloading();
+      pair.right().disableOffloading();
     }
 
     shutdownExecutor.execute(() -> {
