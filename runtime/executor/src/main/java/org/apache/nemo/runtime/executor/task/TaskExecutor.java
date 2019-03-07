@@ -181,31 +181,38 @@ public final class TaskExecutor {
     if (evalConf.offloadingdebug) {
       se.schedule(() -> {
 
-        // 1. change dag for offloading
-        for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
+        try {
+          // 1. change dag for offloading
+          for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
 
-          for (final IRVertex dstVertex : p.left().dstVertices) {
-            if (!dstVertex.isSink) {
-              dstVertex.isOffloading = true;
+            for (final IRVertex dstVertex : p.left().dstVertices) {
+              if (!dstVertex.isSink) {
+                dstVertex.isOffloading = true;
+              }
             }
           }
+
+          // 2. initialize serverless executor
+          serverlessExecutorService = serverlessExecutorProvider.
+            newCachedPool(new StatelessOffloadingTransform(irVertexDag),
+              new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
+              new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
+
+          // 3. enable offloading
+          for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
+            final OperatorMetricCollector omc = p.left();
+            if (!omc.irVertex.isSink) {
+              final OutputCollector oc = p.right();
+              omc.setServerlessExecutorService(serverlessExecutorService);
+              omc.startOffloading();
+            }
+          }
+
+          isOffloaded.set(true);
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
         }
-
-        // 2. initialize serverless executor
-        serverlessExecutorService = serverlessExecutorProvider.
-          newCachedPool(new StatelessOffloadingTransform(irVertexDag),
-            new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-            new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
-
-        // 3. enable offloading
-        for (final Pair<OperatorMetricCollector, OutputCollector> p : metricCollectors) {
-          final OperatorMetricCollector omc = p.left();
-          final OutputCollector oc = p.right();
-          omc.setServerlessExecutorService(serverlessExecutorService);
-          omc.startOffloading();
-        }
-
-        isOffloaded.set(true);;
         //offloadingRequestQueue.add(true);
       }, 10, TimeUnit.SECONDS);
     }
@@ -237,9 +244,11 @@ public final class TaskExecutor {
 
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : ocs) {
         final OperatorMetricCollector omc = pair.left();
-        final OutputCollector oc = pair.right();
-        omc.setServerlessExecutorService(serverlessExecutorService);
-        omc.startOffloading();
+        if (!omc.irVertex.isSink) {
+          final OutputCollector oc = pair.right();
+          omc.setServerlessExecutorService(serverlessExecutorService);
+          omc.startOffloading();
+        }
       }
 
       isOffloaded.set(true);
