@@ -14,14 +14,4 @@ public abstract class AbstractOutputCollector<O> implements OutputCollector<O> {
   public long getInputTimestamp() {
     return inputTimestamp;
   }
-
-  @Override
-  public void enableOffloading() {
-    offloading = true;
-  }
-
-  @Override
-  public void disableOffloading() {
-    offloading = false;
-  }
 }

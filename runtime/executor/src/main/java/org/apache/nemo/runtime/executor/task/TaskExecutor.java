@@ -202,7 +202,7 @@ public final class TaskExecutor {
           final OperatorMetricCollector omc = p.left();
           final OutputCollector oc = p.right();
           omc.setServerlessExecutorService(serverlessExecutorService);
-          oc.enableOffloading();
+          omc.startOffloading();
         }
 
         isOffloaded.set(true);;
@@ -239,7 +239,7 @@ public final class TaskExecutor {
         final OperatorMetricCollector omc = pair.left();
         final OutputCollector oc = pair.right();
         omc.setServerlessExecutorService(serverlessExecutorService);
-        oc.enableOffloading();
+        omc.startOffloading();
       }
 
       isOffloaded.set(true);
@@ -258,8 +258,11 @@ public final class TaskExecutor {
       for (final IRVertex dstVertex : omc.dstVertices) {
         dstVertex.isOffloading = false;
       }
+    }
 
-      oc.disableOffloading();
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : metricCollectors) {
+      final OperatorMetricCollector omc = pair.left();
+      omc.endOffloading();
     }
 
     shutdownExecutor.execute(() -> {

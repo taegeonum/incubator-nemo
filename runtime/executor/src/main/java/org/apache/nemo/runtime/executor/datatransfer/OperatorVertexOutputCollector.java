@@ -127,22 +127,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   }
 
   @Override
-  public void enableOffloading() {
-    offloading = true;
-    offloadingStatus = OffloadingStatus.START;
-    //operatorMetricCollector.startOffloading();
-  }
-
-  @Override
-  public void disableOffloading() {
-    offloading = false;
-    offloadingStatus = OffloadingStatus.END;
-  }
-
-  @Override
   public void emit(final O output) {
     operatorMetricCollector.emittedCnt += 1;
-    checkOffloadingStatus();
 
     // For offloading
     List<String> offloadingIds = null;
@@ -173,29 +159,10 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     }
   }
 
-  private void checkOffloadingStatus() {
-    if (offloadingStatus != OffloadingStatus.NORMAL) {
-      switch (offloadingStatus) {
-        case START:
-          operatorMetricCollector.startOffloading();
-          offloadingStatus = OffloadingStatus.NORMAL;
-          break;
-        case END:
-          operatorMetricCollector.endOffloading();
-          offloadingStatus = OffloadingStatus.NORMAL;
-          break;
-        default:
-          break;
-      }
-    }
-  }
-
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
     operatorMetricCollector.emittedCnt += 1;
-
-    checkOffloadingStatus();
 
     List<String> offloadingIds = null;
 
@@ -232,8 +199,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }
-
-    checkOffloadingStatus();
 
     List<String> offloadingIds = null;
 
