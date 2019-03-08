@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaWorkerProxy.class.getName());
@@ -40,7 +41,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private final ConcurrentMap<Integer, Optional<O>> resultMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Integer, Boolean> pendingData = new ConcurrentHashMap<>();
 
-  private Pair<ByteBuf, Integer> currentProcessingInput = null;
+  private volatile Pair<ByteBuf, Integer> currentProcessingInput = null;
 
   private final String workerId;
 
@@ -238,8 +239,8 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
     if (currentProcessingInput != null) {
       throw new RuntimeException("Current processing input should be null");
     }
-
     currentProcessingInput = Pair.of(input.duplicate(), dataId);
+
 
     if (channel != null) {
       if (Constants.enableLambdaLogging) {
