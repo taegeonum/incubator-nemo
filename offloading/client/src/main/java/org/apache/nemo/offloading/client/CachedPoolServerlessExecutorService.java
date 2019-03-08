@@ -325,7 +325,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       // speculative execution
       //speculativeExecution(worker);
       if (Constants.enableLambdaLogging) {
-        LOG.info("Finish worker {}", worker.getId());
+        LOG.info("Finish worker {}: isReady: {}, isFinished: {}", worker.getId(), worker.isReady(), worker.isFinished());
       }
       worker.finishOffloading();
       finishedWorkers += 1;

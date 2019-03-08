@@ -108,8 +108,8 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                     pendingData.remove(resultId);
 
                     if (Constants.enableLambdaLogging) {
-                      LOG.info("Receive data id {}, processing cnt: {}, pendingData: {}", resultId, dataProcessingCnt,
-                        pendingData);
+                      LOG.info("Receive data id {}, processing cnt: {}, pendingData: {} in worker {}", resultId, dataProcessingCnt,
+                        pendingData, workerId);
                     }
                   } else {
                     final O data = outputDecoder.decode(bis);
@@ -120,8 +120,8 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                     pendingData.remove(resultId);
 
                     if (Constants.enableLambdaLogging) {
-                      LOG.info("Receive data id {}, processing cnt: {}, pendingData: {}", resultId, dataProcessingCnt,
-                        pendingData);
+                      LOG.info("Receive data id {}, processing cnt: {}, pendingData: {} in worker {}", resultId, dataProcessingCnt,
+                        pendingData, workerId);
                     }
                   }
 
