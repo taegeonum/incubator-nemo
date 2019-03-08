@@ -243,7 +243,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
     if (channel != null) {
       if (Constants.enableLambdaLogging) {
-        LOG.info("Write data id: {}", dataId);
+        LOG.info("Write data from worker {}, id: {}", workerId, dataId);
       }
 
       final ChannelFuture channelFuture = channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, input));
