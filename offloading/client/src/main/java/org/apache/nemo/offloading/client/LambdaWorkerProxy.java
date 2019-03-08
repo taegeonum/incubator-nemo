@@ -38,8 +38,10 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
   final ExecutorService channelThread = Executors.newSingleThreadExecutor();
 
+  final ExecutorService reExecutionThread = Executors.newSingleThreadExecutor();
+
   private final ConcurrentMap<Integer, Optional<O>> resultMap = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, Boolean> pendingData = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, ByteBuf> pendingData = new ConcurrentHashMap<>();
 
   private volatile Pair<ByteBuf, Integer> currentProcessingInput = null;
 
@@ -98,13 +100,48 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                 try {
                   final int hasInstance = bis.readByte();
                   final ByteBuf curInputBuf = currentProcessingInput.left();
-                    currentProcessingInput = null;
-                    curInputBuf.release();
+                  currentProcessingInput = null;
+                  curInputBuf.release();
 
-                  if (hasInstance == 0) {
-                    final int resultId = bis.readInt();
-                    dataProcessingCnt = bis.readInt();
-                    //LOG.info("Receive result of data {}, {}", resultId, null);
+                  final Optional<O> optional;
+                  if (hasInstance != 0) {
+                    final O data = outputDecoder.decode(bis);
+                    optional = Optional.of(data);
+                  } else {
+                    optional = Optional.empty();
+                  }
+
+                  final int resultId = bis.readInt();
+                  dataProcessingCnt = bis.readInt();
+
+                  if (pendingData.get(resultId) == null) {
+                    // invalid output
+                    // TODO: re-execute the data
+                    reExecutionThread.execute(() -> {
+                      for (final Integer dataId : pendingData.keySet()) {
+                        LOG.info("Re-execution data {} in worker {}", dataId, workerId);
+
+                        final ByteBuf input = pendingData.get(dataId);
+                        input.retain();
+                        input.retain();
+
+                        pendingData.put(dataId, input);
+
+                        if (currentProcessingInput != null) {
+                          throw new RuntimeException("Current processing input should be null");
+                        }
+                        currentProcessingInput = Pair.of(input.duplicate(), dataId);
+
+                        if (Constants.enableLambdaLogging) {
+                          LOG.info("Write data from worker {}, id: {}", workerId, dataId);
+                        }
+
+                        channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, input));
+
+                        LOG.info("End of Re-execution data {} in worker {}", dataId, workerId);
+                      }
+                    });
+                  } else {
                     resultMap.put(resultId, Optional.empty());
                     pendingData.remove(resultId);
 
@@ -112,20 +149,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                       LOG.info("Receive data id {}, processing cnt: {}, pendingData: {} in worker {}", resultId, dataProcessingCnt,
                         pendingData, workerId);
                     }
-                  } else {
-                    final O data = outputDecoder.decode(bis);
-                    final int resultId = bis.readInt();
-                    dataProcessingCnt = bis.readInt();
-                    //LOG.info("Receive result of data {}, {}", resultId, data);
-                    resultMap.put(resultId, Optional.of(data));
-                    pendingData.remove(resultId);
-
-                    if (Constants.enableLambdaLogging) {
-                      LOG.info("Receive data id {}, processing cnt: {}, pendingData: {} in worker {}", resultId, dataProcessingCnt,
-                        pendingData, workerId);
-                    }
                   }
-
 
                   msg.getByteBuf().release();
                 } catch (IOException e) {
@@ -233,7 +257,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
       input.retain();
     }
 
-    pendingData.put(dataId, true);
+    pendingData.put(dataId, input);
 
 
     if (currentProcessingInput != null) {
