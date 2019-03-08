@@ -65,6 +65,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   private volatile boolean shutdown = false;
 
+  private final Map<OffloadingWorker, Boolean> initWorkerSpeculative = new HashMap<>();
+
   final AtomicLong st = new AtomicLong(System.currentTimeMillis());
   final AtomicLong speculativePrevTime = new AtomicLong(System.currentTimeMillis());
 
@@ -138,6 +140,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
               final long ct = System.currentTimeMillis();
               totalWorkerInitTime += (ct - pair.left());
               workerInitCnt += 1;
+              initWorkerSpeculative.remove(pair.right());
 
               if (Constants.enableLambdaLogging) {
                 LOG.info("Init worker latency: {}", ct - pair.left());
@@ -225,6 +228,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
             synchronized (initializingWorkers) {
               initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+              initWorkerSpeculative.put(worker, false);
+              initWorkerSpeculative.put(pair.right(), true);
             }
           });
 
@@ -261,6 +266,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
                 synchronized (initializingWorkers) {
                   initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+                  initWorkerSpeculative.put(worker, false);
                 }
               }
             }
@@ -515,6 +521,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
     synchronized (initializingWorkers) {
       initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+      initWorkerSpeculative.put(worker, false);
     }
   }
 
@@ -537,6 +544,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
     synchronized (initializingWorkers) {
       initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+      initWorkerSpeculative.put(worker, false);
     }
   }
 
