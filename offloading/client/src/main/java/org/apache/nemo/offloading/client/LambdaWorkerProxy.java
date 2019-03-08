@@ -99,9 +99,6 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                 final ByteBufInputStream bis = new ByteBufInputStream(msg.getByteBuf());
                 try {
                   final int hasInstance = bis.readByte();
-                  final ByteBuf curInputBuf = currentProcessingInput.left();
-                  currentProcessingInput = null;
-                  curInputBuf.release();
 
                   final Optional<O> optional;
                   if (hasInstance != 0) {
@@ -142,7 +139,11 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                       }
                     });
                   } else {
-                    resultMap.put(resultId, Optional.empty());
+                    final ByteBuf curInputBuf = currentProcessingInput.left();
+                    currentProcessingInput = null;
+                    curInputBuf.release();
+
+                    resultMap.put(resultId, optional);
                     pendingData.remove(resultId);
 
                     if (Constants.enableLambdaLogging) {
