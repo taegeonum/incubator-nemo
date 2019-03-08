@@ -92,12 +92,14 @@ public final class OperatorMetricCollector {
   public void endOffloading() {
     checkSink();
 
+    LOG.info("End of offloading vertex {}", irVertex.getId());
     if (inputBuffer.readableBytes() > 0) {
       // TODO: send remaining data to serverless
       flushToServerless();
       inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
       bos = new ByteBufOutputStream(inputBuffer);
     }
+    LOG.info("End of offloading vertex  -- end {}", irVertex.getId());
     serializedCnt = 0;
     isOffloading = false;
   }
