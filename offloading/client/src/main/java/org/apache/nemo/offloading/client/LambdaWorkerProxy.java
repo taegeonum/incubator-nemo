@@ -354,4 +354,9 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
     channelThread.shutdown();
     finished = true;
   }
+
+  @Override
+  public String toString() {
+    return workerId;
+  }
 }
