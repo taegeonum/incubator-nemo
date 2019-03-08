@@ -56,6 +56,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   //private final Map<Integer, OffloadingWorker<I, O>> stateIndexAndWorkerMap;
 
   private long totalProcessingTime = 0;
+  private long totalWorkerInitTime = 0;
+  private long workerInitCnt = 0;
   private int processingCnt = 0;
 
   private int bufferedCnt = 0;
@@ -133,9 +135,14 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           while (iterator.hasNext()) {
             final Pair<Long, OffloadingWorker> pair = iterator.next();
             if (pair.right().isReady()) {
-              //if (Constants.enableLambdaLogging) {
-                LOG.info("Init worker latency: {}", System.currentTimeMillis() - pair.left());
-              //}
+              final long ct = System.currentTimeMillis();
+              totalWorkerInitTime += (ct - pair.left());
+              workerInitCnt += 1;
+
+              if (Constants.enableLambdaLogging) {
+                LOG.info("Init worker latency: {}", ct - pair.left());
+              }
+
               iterator.remove();
               // do not add it to ready workers
               // instead, just execute data
@@ -193,11 +200,12 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           speculativePrevTime.set(curTime);
 
           final long avgTime = totalProcessingTime / processingCnt;
+          final long avgInitTime = totalWorkerInitTime / workerInitCnt;
 
           // Check initializing workers that take long time
           final long cTime = curTime;
           final List<Pair<Long, OffloadingWorker>> longWorkers =
-            initializingWorkers.stream().filter(pair -> cTime - pair.left() > avgTime)
+            initializingWorkers.stream().filter(pair -> cTime - pair.left() > avgInitTime * 1.5)
             .collect(Collectors.toList());
 
           longWorkers.forEach(pair -> {
@@ -212,7 +220,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
             if (Constants.enableLambdaLogging) {
               LOG.info("INIT] Create new worker for speculatve execution of initializing worker, elapsed time: {}, avg time: {}"
-                , (cTime - pair.left()), avgTime);
+                , (cTime - pair.left()), avgInitTime);
             }
 
             synchronized (initializingWorkers) {
