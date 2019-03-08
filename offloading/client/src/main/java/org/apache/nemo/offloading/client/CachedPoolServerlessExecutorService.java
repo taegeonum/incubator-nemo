@@ -175,6 +175,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             final Pair<ByteBuf, Integer> data = pair.right().getCurrentProcessingInput();
 
             if (data == null) {
+              LOG.info("Input data is null but worker {} is ready? {}", pair.right().getId(), pair.right().isReady());
               // this is end
               readyWorkers.add(pair.right());
 
@@ -326,6 +327,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       //speculativeExecution(worker);
       if (Constants.enableLambdaLogging) {
         LOG.info("Finish worker {}: isReady: {}, isFinished: {}", worker.getId(), worker.isReady(), worker.isFinished());
+      }
+
+      if (!worker.isReady()) {
+        throw new RuntimeException("Worker is not ready..." +
+          "Finish worker " + worker.getId());
       }
       worker.finishOffloading();
       finishedWorkers += 1;
