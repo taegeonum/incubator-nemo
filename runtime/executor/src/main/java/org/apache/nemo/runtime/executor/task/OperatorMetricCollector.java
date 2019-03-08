@@ -41,6 +41,8 @@ public final class OperatorMetricCollector {
 
   private ServerlessExecutorService serverlessExecutorService;
 
+  public boolean isOffloading = false;
+
   // processed events - key: timestamp, value: processed events
   public final List<Pair<Long, Long>> processedEvents;
 
@@ -84,6 +86,7 @@ public final class OperatorMetricCollector {
 
     prevFlushTime = System.currentTimeMillis();
     serializedCnt = 0;
+    isOffloading = true;
   }
 
   public void endOffloading() {
@@ -96,6 +99,7 @@ public final class OperatorMetricCollector {
       bos = new ByteBufOutputStream(inputBuffer);
     }
     serializedCnt = 0;
+    isOffloading = false;
   }
 
   private boolean isFlusheable(final long curTime) {

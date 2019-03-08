@@ -290,6 +290,18 @@ public final class TaskExecutor {
       }
     }
 
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : prevHeader) {
+      if (!pair.left().irVertex.isSink) {
+        while (pair.left().isOffloading) {
+          try {
+            Thread.sleep(50);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+    }
+
     shutdownExecutor.execute(() -> {
       serverlessExecutorService.shutdown();
     });
