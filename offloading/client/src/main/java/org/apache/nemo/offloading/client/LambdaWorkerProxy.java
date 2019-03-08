@@ -116,7 +116,9 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                     // TODO: re-execute the data
                     reExecutionThread.execute(() -> {
                       for (final Integer dataId : pendingData.keySet()) {
-                        LOG.info("Re-execution data {} in worker {}", dataId, workerId);
+                        if (Constants.enableLambdaLogging) {
+                          LOG.info("Re-execution data {} in worker {}", dataId, workerId);
+                        }
 
                         final ByteBuf input = pendingData.get(dataId);
                         input.retain();
@@ -134,8 +136,6 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                         }
 
                         channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, input));
-
-                        LOG.info("End of Re-execution data {} in worker {}", dataId, workerId);
                       }
                     });
                   } else {

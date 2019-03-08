@@ -291,6 +291,7 @@ public final class TaskExecutor {
       }
     }
 
+    // waiting for disable offloading
     for (final Pair<OperatorMetricCollector, OutputCollector> pair : prevHeader) {
       if (!pair.left().irVertex.isSink) {
         while (pair.left().isOffloading) {

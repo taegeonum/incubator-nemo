@@ -175,7 +175,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             final Pair<ByteBuf, Integer> data = pair.right().getCurrentProcessingInput();
 
             if (data == null) {
-              LOG.info("Input data is null but worker {} is ready? {}", pair.right().getId(), pair.right().isReady());
+              if (Constants.enableLambdaLogging) {
+                LOG.info("Input data is null but worker {} is ready? {}", pair.right().getId(), pair.right().isReady());
+              }
               // this is end
               readyWorkers.add(pair.right());
 
