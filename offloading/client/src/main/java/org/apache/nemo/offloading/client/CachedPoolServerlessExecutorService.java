@@ -208,7 +208,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           // Check initializing workers that take long time
           final long cTime = curTime;
           final List<Pair<Long, OffloadingWorker>> longWorkers =
-            initializingWorkers.stream().filter(pair -> cTime - pair.left() > avgInitTime * 1.5)
+            initializingWorkers.stream().filter(pair -> cTime - pair.left() > avgInitTime * 1.5 && !initWorkerSpeculative.get(pair.right()))
             .collect(Collectors.toList());
 
           longWorkers.forEach(pair -> {
@@ -222,8 +222,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
 
             if (Constants.enableLambdaLogging) {
-              LOG.info("INIT] Create new worker for speculatve execution of initializing worker, elapsed time: {}, avg time: {}"
-                , (cTime - pair.left()), avgInitTime);
+              LOG.info("INIT] Create new worker for speculative execution of {}, elapsed time: {}, avg time: {}"
+                , worker, (cTime - pair.left()), avgInitTime);
             }
 
             synchronized (initializingWorkers) {
@@ -244,7 +244,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
                 final int dataId = data.right();
 
                 if (Constants.enableLambdaLogging) {
-                  LOG.info("RUNNING] Create new worker for speculatve execution of data {}, elapsed time: {}, avg time: {}"
+                  LOG.info("RUNNING] Create new worker for speculative execution of data {}, elapsed time: {}, avg time: {}"
                     , dataId, (curTime - pair.left()), avgTime);
                 }
 

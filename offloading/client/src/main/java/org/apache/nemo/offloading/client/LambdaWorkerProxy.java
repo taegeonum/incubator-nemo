@@ -42,12 +42,15 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
   private Pair<ByteBuf, Integer> currentProcessingInput = null;
 
+  private final String workerId;
 
-  public LambdaWorkerProxy(final Future<Pair<Channel, OffloadingEvent>> channelFuture,
+  public LambdaWorkerProxy(final int workerId,
+                           final Future<Pair<Channel, OffloadingEvent>> channelFuture,
                            final OffloadingWorkerFactory offloadingWorkerFactory,
                            final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap,
                            final OffloadingEncoder offloadingEncoder,
                            final OffloadingDecoder<O> outputDecoder) {
+    this.workerId = Integer.toString(workerId);
     this.channelFuture = channelFuture;
     this.offloadingWorkerFactory = offloadingWorkerFactory;
 
@@ -210,6 +213,11 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   @Override
   public int getDataProcessingCnt() {
     return dataProcessingCnt;
+  }
+
+  @Override
+  public String getId() {
+    return workerId;
   }
 
   @Override
