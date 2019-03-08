@@ -104,8 +104,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         st.set(System.currentTimeMillis());
 
         if (Constants.enableLambdaLogging) {
-          LOG.info("Init workers: {}, Running workers: {}, Output: {} ",
-            initializingWorkers.size(), runningWorkers.size(), outputQueue.size());
+          LOG.info("Init workers: {}, Running workers: {}, Output: {}, Finished Workers: {}, Created Workers: {}",
+            initializingWorkers.size(), runningWorkers.size(), outputQueue.size(), finishedWorkers, createdWorkers.get());
         }
 
 
@@ -196,82 +196,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           executeData(readyWorker);
         });
 
-        // SPECULATIVE EXECUTION!!
-        curTime = System.currentTimeMillis();
-        if (curTime - speculativePrevTime.get() > 1000 &&
-          (finishedWorkers / (double) createdWorkers.get()) > 0.6) {
-          speculativePrevTime.set(curTime);
-
-          final long avgTime = totalProcessingTime / processingCnt;
-          final long avgInitTime = totalWorkerInitTime / workerInitCnt;
-
-          // Check initializing workers that take long time
-          final long cTime = curTime;
-          final List<Pair<Long, OffloadingWorker>> longWorkers =
-            initializingWorkers.stream().filter(pair -> cTime - pair.left() > avgInitTime * 1.5 && !initWorkerSpeculative.get(pair.right()))
-            .collect(Collectors.toList());
-
-          longWorkers.forEach(pair -> {
-            final ByteBuf copiedBuf;
-            synchronized (workerInitBuffer) {
-              copiedBuf = workerInitBuffer.retainedDuplicate();
-            }
-
-            final OffloadingWorker<I, O> worker =
-              workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
-
-
-            if (Constants.enableLambdaLogging) {
-              LOG.info("INIT] Create new worker for speculative execution of {}, elapsed time: {}, avg time: {}"
-                , worker, (cTime - pair.left()), avgInitTime);
-            }
-
-            synchronized (initializingWorkers) {
-              initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
-              initWorkerSpeculative.put(worker, false);
-              initWorkerSpeculative.put(pair.right(), true);
-            }
-          });
-
-          // Check running workers that take long time
-          for (final Pair<Long, OffloadingWorker> pair : runningWorkers) {
-            if (!hasBeenPerformedSpeculativeExecution(pair.right()) &&
-              curTime - pair.left() > avgTime * 2) {
-              // speculative execution1!
-              final OffloadingWorker runningWorker = pair.right();
-              final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
-              if (data != null) {
-                final int dataId = data.right();
-
-                if (Constants.enableLambdaLogging) {
-                  LOG.info("RUNNING] Create new worker for speculative execution of data {}, elapsed time: {}, avg time: {}"
-                    , dataId, (curTime - pair.left()), avgTime);
-                }
-
-                createdWorkers.getAndIncrement();
-                // create new worker
-                //LOG.info("Create worker");
-                final ByteBuf copiedBuf;
-                synchronized (workerInitBuffer) {
-                  copiedBuf = workerInitBuffer.retainedDuplicate();
-                }
-
-                dataBufferQueue.add(data);
-                bufferedCnt += 1;
-
-                final OffloadingWorker<I, O> worker =
-                  workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
-
-                speculativeDataProcessedMap.put(dataId, false);
-
-                synchronized (initializingWorkers) {
-                  initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
-                  initWorkerSpeculative.put(worker, false);
-                }
-              }
-            }
-          }
-        }
 
 
       } catch (final Exception e) {
@@ -567,6 +491,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     LOG.info("Shutting down workers {}/{}..., init: {}, running: {}", finishedWorkers, createdWorkers,
       initializingWorkers, runningWorkers);
 
+    /*
     while (finishedWorkers < createdWorkers.get()) {
       // logging
       if (System.currentTimeMillis() - prevTime > 2000) {
@@ -584,20 +509,114 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         e.printStackTrace();
       }
     }
+    */
 
     // waiting for all outputs
     LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
     while (!outputQueue.isEmpty()) {
       // logging
-      if (System.currentTimeMillis() - prevTime > 2000) {
-        prevTime = System.currentTimeMillis();
+      final long cTime = System.currentTimeMillis();
+      if (cTime - prevTime > 2000) {
+        prevTime = cTime;
         if (Constants.enableLambdaLogging) {
           LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
           LOG.info("Created worker: {}, Finished worker: {}, added output: {}", createdWorkers, finishedWorkers);
         }
+
+        // SPECULATIVE EXECUTION!!
+        if (finishedWorkers / (double) createdWorkers.get() > 0.6) {
+
+          final long avgTime = totalProcessingTime / processingCnt;
+          final long avgInitTime = totalWorkerInitTime / workerInitCnt;
+
+          // Check initializing workers that take long time
+          final List<Pair<Long, OffloadingWorker>> longWorkers =
+            initializingWorkers.stream().filter(pair -> cTime - pair.left() > avgInitTime * 1.5 && !initWorkerSpeculative.get(pair.right()))
+              .collect(Collectors.toList());
+
+          longWorkers.forEach(pair -> {
+            final ByteBuf copiedBuf;
+            synchronized (workerInitBuffer) {
+              copiedBuf = workerInitBuffer.retainedDuplicate();
+            }
+
+            final OffloadingWorker<I, O> worker =
+              workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
+
+
+            if (Constants.enableLambdaLogging) {
+              LOG.info("INIT] Create new worker for speculative execution of {}, elapsed time: {}, avg time: {}"
+                , worker, (cTime - pair.left()), avgInitTime);
+            }
+
+            synchronized (initializingWorkers) {
+              initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+              initWorkerSpeculative.put(worker, false);
+              initWorkerSpeculative.put(pair.right(), true);
+            }
+          });
+
+          // Check running workers that take long time
+          for (final Pair<Long, OffloadingWorker> pair : runningWorkers) {
+            if (!hasBeenPerformedSpeculativeExecution(pair.right()) &&
+              cTime - pair.left() > avgTime * 1.5) {
+              // speculative execution1!
+              final OffloadingWorker runningWorker = pair.right();
+              final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
+              if (data != null) {
+                final int dataId = data.right();
+
+                if (Constants.enableLambdaLogging) {
+                  LOG.info("RUNNING] Create new worker for speculative execution of data {}, elapsed time: {}, avg time: {}"
+                    , dataId, (cTime - pair.left()), avgTime);
+                }
+
+                createdWorkers.getAndIncrement();
+                // create new worker
+                //LOG.info("Create worker");
+                final ByteBuf copiedBuf;
+                synchronized (workerInitBuffer) {
+                  copiedBuf = workerInitBuffer.retainedDuplicate();
+                }
+
+                dataBufferQueue.add(data);
+                bufferedCnt += 1;
+
+                final OffloadingWorker<I, O> worker =
+                  workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
+
+                speculativeDataProcessedMap.put(dataId, false);
+
+                synchronized (initializingWorkers) {
+                  initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+                  initWorkerSpeculative.put(worker, false);
+                }
+              }
+            }
+          }
+        }
+
       }
       try {
         Thread.sleep(200);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+
+    // Check init and running workers
+    while (!(initWorkerSpeculative.isEmpty() && runningWorkers.isEmpty())) {
+      // logging
+      if (System.currentTimeMillis() - prevTime > 2000) {
+        prevTime = System.currentTimeMillis();
+        if (Constants.enableLambdaLogging) {
+          LOG.info("Waiting for init workers: {}, running workers: {}", initializingWorkers.size(), runningWorkers.size());
+        }
+      }
+
+      try {
+        Thread.sleep(300);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
