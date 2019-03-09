@@ -23,8 +23,9 @@ import org.apache.nemo.common.EncodeStreamChainer;
 import org.apache.nemo.common.Serializer;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.runtime.executor.data.streamchainer.*;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
+import org.apache.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
+import org.apache.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
