@@ -49,12 +49,15 @@ public final class TaskExecutorUtil {
       burstyOperators.stream().filter(burstyOp -> !burstyOp.isStateful && !burstyOp.isSink)
         .collect(Collectors.toSet());
 
+    final Set<IRVertex> verticesToOffload = new HashSet<>(offloadingParent);
     LOG.info("Bursty operators: {}, possible: {}", burstyOperators, offloadingParent);
 
     // build DAG
     offloadingParent.stream().forEach(vertex -> {
       originalDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
         // this edge can be offloaded
+        verticesToOffload.add(edge.getDst());
+
         if (!edge.getDst().isSink && !edge.getDst().isStateful && offloadingParent.contains(edge.getDst())) {
           edge.getDst().isOffloading = true;
         } else {
