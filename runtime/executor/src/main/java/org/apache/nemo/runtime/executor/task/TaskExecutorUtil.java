@@ -54,22 +54,20 @@ public final class TaskExecutorUtil {
     // build DAG
     offloadingParent.stream().forEach(vertex -> {
       originalDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
-        if (offloadingParent.contains(edge.getDst())) {
-          // this edge can be offloaded
-          if (!edge.getDst().isSink && !edge.getDst().isStateful) {
-            edge.getDst().isOffloading = true;
-          } else {
-            edge.getDst().isOffloading = false;
-          }
-
-          final Set<Edge<IRVertex>> outgoing = outgoingEdges.getOrDefault(vertex, new HashSet<>());
-          outgoing.add(edge);
-          outgoingEdges.putIfAbsent(vertex, outgoing);
-
-          final Set<Edge<IRVertex>> incoming = incomingEdges.getOrDefault(edge.getDst(), new HashSet<>());
-          incoming.add(edge);
-          incomingEdges.putIfAbsent(edge.getDst(), incoming);
+        // this edge can be offloaded
+        if (!edge.getDst().isSink && !edge.getDst().isStateful && offloadingParent.contains(edge.getDst())) {
+          edge.getDst().isOffloading = true;
+        } else {
+          edge.getDst().isOffloading = false;
         }
+
+        final Set<Edge<IRVertex>> outgoing = outgoingEdges.getOrDefault(vertex, new HashSet<>());
+        outgoing.add(edge);
+        outgoingEdges.putIfAbsent(vertex, outgoing);
+
+        final Set<Edge<IRVertex>> incoming = incomingEdges.getOrDefault(edge.getDst(), new HashSet<>());
+        incoming.add(edge);
+        incomingEdges.putIfAbsent(edge.getDst(), incoming);
       });
     });
 
