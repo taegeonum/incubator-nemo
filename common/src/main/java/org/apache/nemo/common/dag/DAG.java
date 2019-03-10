@@ -67,10 +67,16 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
     this.incomingEdges = new HashMap<>();
     this.outgoingEdges = new HashMap<>();
     vertices.stream().sorted(Comparator.comparingInt(Vertex::getNumericId)).forEachOrdered(this.vertices::add);
-    incomingEdges.forEach((v, es) -> this.incomingEdges.put(v.getId(),
-        es.stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList())));
-    outgoingEdges.forEach((v, es) -> this.outgoingEdges.put(v.getId(),
-        es.stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList())));
+    incomingEdges.forEach((v, es) -> {
+      LOG.info("Incoming edge for vertex {}: {}", v.getId(), es);
+      this.incomingEdges.put(v.getId(),
+        es.stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList()));
+    });
+    outgoingEdges.forEach((v, es) -> {
+      LOG.info("Outgoing edge for vertex {}: {}", v.getId(), es);
+      this.outgoingEdges.put(v.getId(),
+        es.stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList()));
+    });
 
     this.rootVertices = new ArrayList<>();
     vertices.forEach(v -> {
