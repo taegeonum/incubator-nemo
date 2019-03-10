@@ -75,7 +75,8 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
     this.rootVertices = new ArrayList<>();
     vertices.forEach(v -> {
       // this list is empty if there is no incoming edge, and is therefore a root vertex.
-      final List<E> incomingEdgesForThisVertex = this.incomingEdges.get(v.getId());
+      final List<E> incomingEdgesForThisVertex =
+        this.incomingEdges.getOrDefault(v.getId(), Collections.emptyList());
       LOG.info("root find {}, incoming: {}", v, incomingEdgesForThisVertex);
       if (incomingEdgesForThisVertex.isEmpty()) {
         this.rootVertices.add(v);
