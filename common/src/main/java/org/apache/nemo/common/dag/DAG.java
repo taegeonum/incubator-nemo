@@ -67,23 +67,19 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
     this.incomingEdges = new HashMap<>();
     this.outgoingEdges = new HashMap<>();
     vertices.stream().sorted(Comparator.comparingInt(Vertex::getNumericId)).forEachOrdered(this.vertices::add);
-    incomingEdges.forEach((v, es) -> {
-      LOG.info("Incoming edge for vertex {}: {}", v.getId(), es);
-      this.incomingEdges.put(v.getId(),
-        es.stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList()));
-    });
-    outgoingEdges.forEach((v, es) -> {
-      LOG.info("Outgoing edge for vertex {}: {}", v.getId(), es);
-      this.outgoingEdges.put(v.getId(),
-        es.stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList()));
+
+    vertices.stream().forEach(vertex -> {
+      this.incomingEdges.put(vertex.getId(), incomingEdges.getOrDefault(vertex, Collections.emptySet()).
+        stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList()));
+
+      this.outgoingEdges.put(vertex.getId(), outgoingEdges.getOrDefault(vertex, Collections.emptySet()).
+        stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList()));
     });
 
     this.rootVertices = new ArrayList<>();
     vertices.forEach(v -> {
       // this list is empty if there is no incoming edge, and is therefore a root vertex.
-      final List<E> incomingEdgesForThisVertex =
-        this.incomingEdges.getOrDefault(v.getId(), Collections.emptyList());
-      LOG.info("root find {}, incoming: {}", v, incomingEdgesForThisVertex);
+      final List<E> incomingEdgesForThisVertex = this.incomingEdges.get(v.getId());
       if (incomingEdgesForThisVertex.isEmpty()) {
         this.rootVertices.add(v);
       }
