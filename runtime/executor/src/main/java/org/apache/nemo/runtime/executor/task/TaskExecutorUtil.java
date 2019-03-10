@@ -45,16 +45,16 @@ public final class TaskExecutorUtil {
     final Map<IRVertex, Set<Edge<IRVertex>>> outgoingEdges = new HashMap<>();
 
     // 1) remove stateful
-    final Set<IRVertex> offloadingVertices =
+    final Set<IRVertex> offloadingParent =
       burstyOperators.stream().filter(burstyOp -> !burstyOp.isStateful && !burstyOp.isSink)
         .collect(Collectors.toSet());
 
-    LOG.info("Bursty operators: {}, possible: {}", burstyOperators, offloadingVertices);
+    LOG.info("Bursty operators: {}, possible: {}", burstyOperators, offloadingParent);
 
     // build DAG
-    offloadingVertices.stream().forEach(vertex -> {
+    offloadingParent.stream().forEach(vertex -> {
       originalDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
-        if (offloadingVertices.contains(edge.getDst())) {
+        if (offloadingParent.contains(edge.getDst())) {
           // this edge can be offloaded
           if (!edge.getDst().isSink && !edge.getDst().isStateful) {
             edge.getDst().isOffloading = true;
@@ -75,8 +75,8 @@ public final class TaskExecutorUtil {
 
     // output writer
     taskOutgoingEdges.stream().forEach(stageEdge -> {
-      if (offloadingVertices.contains(stageEdge.getSrcIRVertex())) {
-        offloadingVertices.add(stageEdge.getDstIRVertex());
+      if (offloadingParent.contains(stageEdge.getSrcIRVertex())) {
+        offloadingParent.add(stageEdge.getDstIRVertex());
         stageEdge.getDstIRVertex().isOffloading = false;
 
         LOG.info("Add stage edge {} -> {}", stageEdge.getSrcIRVertex().getId(),
@@ -94,10 +94,10 @@ public final class TaskExecutorUtil {
       }
     });
 
-    LOG.info("Offloading dag: {} // {} // {}", offloadingVertices,
+    LOG.info("Offloading dag: {} // {} // {}", offloadingParent,
       incomingEdges, outgoingEdges);
 
-    return new DAG<>(offloadingVertices, incomingEdges, outgoingEdges, new HashMap<>(), new HashMap<>());
+    return new DAG<>(offloadingParent, incomingEdges, outgoingEdges, new HashMap<>(), new HashMap<>());
   }
 
 
