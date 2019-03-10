@@ -79,6 +79,9 @@ public final class TaskExecutorUtil {
         offloadingVertices.add(stageEdge.getDstIRVertex());
         stageEdge.getDstIRVertex().isOffloading = false;
 
+        LOG.info("Add stage edge {} -> {}", stageEdge.getSrcIRVertex().getId(),
+          stageEdge.getDstIRVertex().getId());
+
         final Edge<IRVertex> edge =
           new Edge<>(stageEdge.getId(), stageEdge.getSrcIRVertex(), stageEdge.getDstIRVertex());
         final Set<Edge<IRVertex>> outgoing = outgoingEdges.getOrDefault(edge.getSrc(), new HashSet<>());
@@ -90,6 +93,9 @@ public final class TaskExecutorUtil {
         incomingEdges.putIfAbsent(edge.getDst(), incoming);
       }
     });
+
+    LOG.info("Offloading dag: {} // {} // {}", offloadingVertices,
+      incomingEdges, outgoingEdges);
 
     return new DAG<>(offloadingVertices, incomingEdges, outgoingEdges, new HashMap<>(), new HashMap<>());
   }
