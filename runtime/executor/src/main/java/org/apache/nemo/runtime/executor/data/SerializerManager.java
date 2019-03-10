@@ -85,12 +85,12 @@ public final class SerializerManager implements Serializable {
     final List<DecodeStreamChainer> decodeStreamChainers = new ArrayList<>();
 
     // Compression chain
-    if (compressionProperty != null) {
+    if (compressionProperty != null && compressionProperty != CompressionProperty.Value.None) {
       LOG.debug("Adding {} compression chain for {}",
           compressionProperty, runtimeEdgeId);
       encodeStreamChainers.add(new CompressionStreamChainer(compressionProperty));
     }
-    if (decompressionProperty != null) {
+    if (decompressionProperty != null && decompressionProperty != CompressionProperty.Value.None) {
       LOG.debug("Adding {} decompression chain for {}",
           decompressionProperty, runtimeEdgeId);
       decodeStreamChainers.add(new DecompressionStreamChainer(decompressionProperty));
