@@ -253,7 +253,7 @@ public final class TaskExecutor {
 
       serverlessExecutorService = serverlessExecutorProvider.
         //newCachedPool(new StatelessOffloadingTransform(irVertexDag, taskOutgoingEdges),
-        newCachedPool(new EmptyOffloadingTransform(),
+        newCachedPool(new EmptyOffloadingTransform(irVertexDag),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
           new StatelessOffloadingEventHandler(vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
 
