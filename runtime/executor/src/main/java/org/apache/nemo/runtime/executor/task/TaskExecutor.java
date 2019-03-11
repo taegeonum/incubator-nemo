@@ -814,7 +814,7 @@ public final class TaskExecutor {
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
 
-      if (evalConf.enableOffloading) {
+      if (evalConf.enableOffloading || evalConf.offloadingdebug) {
         // check offloading queue to process events
         while (!offloadingEventQueue.isEmpty()) {
           // fetch events
