@@ -32,7 +32,8 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
 
   public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                                       final Map<String, List<String>> taskOutgoingEdges) {
-    this.irDag = irDag;
+    //this.irDag = irDag;
+    this.irDag = new DAG<>(new HashSet<>(), new HashMap<>(), new HashMap<>(),  new HashMap<>(),  new HashMap<>());
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.outputCollectorMap = new HashMap<>();
     this.operatorVertexMap = new HashMap<>();
