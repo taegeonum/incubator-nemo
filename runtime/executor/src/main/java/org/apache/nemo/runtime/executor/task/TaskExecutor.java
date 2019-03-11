@@ -271,7 +271,7 @@ public final class TaskExecutor {
       }
     }
 
-    LOG.info("Header] before adjusting the header: ",
+    LOG.info("Header] before adjusting the header: {}",
       l.stream().map(pair -> pair.left()).collect(Collectors.toList()));
 
     // Check incoming vertices
@@ -289,7 +289,7 @@ public final class TaskExecutor {
 
     l.addAll(head);
 
-    LOG.info("Header] after adjusting the header: ",
+    LOG.info("Header] after adjusting the header: {}",
       l.stream().map(pair -> pair.left()).collect(Collectors.toList()));
 
     return l;
