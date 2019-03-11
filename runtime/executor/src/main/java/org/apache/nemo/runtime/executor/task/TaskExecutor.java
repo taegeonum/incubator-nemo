@@ -230,15 +230,46 @@ public final class TaskExecutor {
     return l;
   }
 
+  private static DAG<IRVertex, Edge<IRVertex>> copyOriginalDag(
+    final List<IRVertex> burstyOperators,
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> originalDag) {
+    final Map<IRVertex, Set<Edge<IRVertex>>> incomingEdges = new HashMap<>();
+    final Map<IRVertex, Set<Edge<IRVertex>>> outgoingEdges = new HashMap<>();
+
+    // 1) remove stateful
+    final Set<IRVertex> offloadingVertices =
+      burstyOperators.stream().filter(burstyOp -> !burstyOp.isStateful && !burstyOp.isSink)
+        .collect(Collectors.toSet());
+
+    // build DAG
+    offloadingVertices.stream().forEach(vertex -> {
+      originalDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
+
+        final Set<Edge<IRVertex>> outgoing = outgoingEdges.getOrDefault(vertex, new HashSet<>());
+        outgoing.add(new Edge<>(edge.getId(), edge.getSrc(), edge.getDst()));
+        outgoingEdges.putIfAbsent(vertex, outgoing);
+
+        final Set<Edge<IRVertex>> incoming = incomingEdges.getOrDefault(edge.getDst(), new HashSet<>());
+        incoming.add(new Edge<>(edge.getId(), edge.getSrc(), edge.getDst()));
+        incomingEdges.putIfAbsent(edge.getDst(), incoming);
+      });
+    });
+
+    return new DAG<>(offloadingVertices, incomingEdges, outgoingEdges, new HashMap<>(), new HashMap<>());
+  }
+
   private void triggerOffloading(
     final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators) {
     if (!burstyOperators.isEmpty()) {
       // 1) remove stateful
 
       // build DAG
+      final DAG<IRVertex, Edge<IRVertex>> copyDag = copyOriginalDag(
+        burstyOperators.stream().map(pair -> pair.left().irVertex).collect(Collectors.toList()), irVertexDag);
+
       burstyOperators.stream().forEach(pair -> {
         final IRVertex vertex = pair.left().irVertex;
-        irVertexDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
+        copyDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
           // this edge can be offloaded
           if (!edge.getDst().isSink && !edge.getDst().isStateful) {
             edge.getDst().isOffloading = true;
@@ -252,8 +283,7 @@ public final class TaskExecutor {
 
 
       serverlessExecutorService = serverlessExecutorProvider.
-        //newCachedPool(new StatelessOffloadingTransform(irVertexDag, taskOutgoingEdges),
-        newCachedPool(new EmptyOffloadingTransform(irVertexDag),
+        newCachedPool(new StatelessOffloadingTransform(copyDag, taskOutgoingEdges),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
           new StatelessOffloadingEventHandler(vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
 
