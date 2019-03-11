@@ -230,28 +230,29 @@ public final class TaskExecutor {
   }
 
   private List<Pair<OperatorMetricCollector, OutputCollector>> findHeader(
-    final List<Pair<OperatorMetricCollector, OutputCollector>> ocs) {
+    final DAG<IRVertex, Edge<IRVertex>> dag) {
 
-    final List<Pair<OperatorMetricCollector, OutputCollector>> possibleHeaders =
-      ocs.stream().filter(pair -> pair.left().isOffloading).collect(Collectors.toList());
+    final List<IRVertex> possibleHeaders = dag.getVertices().stream()
+      .filter(vertex -> vertex.isOffloading)
+      .collect(Collectors.toList());
+
+    final List<String> possibleHeaderStrs = dag.getVertices().stream()
+      .filter(vertex -> vertex.isOffloading)
+      .map(vertex -> vertex.getId())
+      .collect(Collectors.toList());
 
     final List<Boolean> headers = new ArrayList<>(possibleHeaders.size());
-    for (int i = 0; i < ocs.size(); i++) {
+    for (int i = 0; i < possibleHeaders.size(); i++) {
       headers.add(true);
     }
 
-    final List<String> irVertices = possibleHeaders.stream()
-      .map(oc -> oc.left().irVertex.getId())
-      .collect(Collectors.toList());
+    LOG.info("Possible headers: {}", possibleHeaders);
 
-    LOG.info("Possible headers: {}", irVertices);
-
-    for (final Pair<OperatorMetricCollector, OutputCollector> oc : possibleHeaders) {
-      final IRVertex irVertex = oc.left().irVertex;
-      final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(irVertex);
+    for (final IRVertex possibleHeader : possibleHeaders) {
+      final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(possibleHeader);
       edges.stream().forEach((edge) -> {
         LOG.info("Header] Edge {} -> {}", edge.getSrc().getId(), edge.getDst().getId());
-        final int index = irVertices.indexOf(edge.getDst().getId());
+        final int index = possibleHeaderStrs.indexOf(edge.getDst().getId());
         if (index >= 0) {
           // dst is not a header
           headers.set(index, false);
@@ -262,7 +263,7 @@ public final class TaskExecutor {
     final List<Pair<OperatorMetricCollector, OutputCollector>> l = new ArrayList<>(possibleHeaders.size());
     for (int i = 0; i < possibleHeaders.size(); i++) {
       if (headers.get(i)) {
-        l.add(possibleHeaders.get(i));
+        l.add(vertexIdAndCollectorMap.get(possibleHeaderStrs.get(i)));
       }
     }
 
@@ -314,10 +315,10 @@ public final class TaskExecutor {
 
       LOG.info(sb.toString());
 
-      final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(ops);
+      final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(copyDag);
 
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : header) {
-        LOG.info("Header operator: {}", pair.left().irVertex.getId());
+        LOG.info("Header operator: {}", pair.left().irVertex);
         final OperatorMetricCollector omc = pair.left();
         if (!omc.irVertex.isSink) {
           final OutputCollector oc = pair.right();
