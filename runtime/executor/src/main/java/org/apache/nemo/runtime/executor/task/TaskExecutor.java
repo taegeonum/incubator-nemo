@@ -256,10 +256,10 @@ public final class TaskExecutor {
       });
     }
 
-    final List<Pair<OperatorMetricCollector, OutputCollector>> l = new ArrayList<>(ocs.size());
-    for (int i = 0; i < ocs.size(); i++) {
+    final List<Pair<OperatorMetricCollector, OutputCollector>> l = new ArrayList<>(possibleHeaders.size());
+    for (int i = 0; i < possibleHeaders.size(); i++) {
       if (headers.get(i)) {
-        l.add(ocs.get(i));
+        l.add(possibleHeaders.get(i));
       }
     }
 
