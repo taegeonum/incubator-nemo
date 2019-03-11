@@ -240,7 +240,6 @@ public final class TaskExecutor {
     final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators) {
     if (!burstyOperators.isEmpty()) {
       // 1) remove stateful
-      LOG.info("Bursty operators: {}", burstyOperators);
 
       // build DAG
       burstyOperators.stream().forEach(pair -> {
@@ -264,6 +263,13 @@ public final class TaskExecutor {
       final List<Pair<OperatorMetricCollector, OutputCollector>> ops = new ArrayList<>(burstyOperators.size());
       for (final Pair<OperatorMetricCollector, OutputCollector> op : burstyOperators) {
         ops.add(op);
+      }
+
+
+      LOG.info("Offloading dag: ");
+      for (final IRVertex vertex : irVertexDag.getVertices()) {
+        LOG.info("{} is offloading {}, stateful {}, isSink {}",
+          vertex.getId(), vertex.isOffloading, vertex.isStateful, vertex.isSink);
       }
 
       final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(ops);
