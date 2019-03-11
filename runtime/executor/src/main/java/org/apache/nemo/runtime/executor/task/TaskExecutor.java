@@ -24,6 +24,8 @@ import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.offloading.common.OffloadingOutputCollector;
+import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -249,7 +251,23 @@ public final class TaskExecutor {
 
 
       serverlessExecutorService = serverlessExecutorProvider.
-        newCachedPool(new StatelessOffloadingTransform(irVertexDag, taskOutgoingEdges),
+        //newCachedPool(new StatelessOffloadingTransform(irVertexDag, taskOutgoingEdges),
+        newCachedPool(new OffloadingTransform() {
+                        @Override
+                        public void prepare(OffloadingContext context, OffloadingOutputCollector outputCollector) {
+
+                        }
+
+                        @Override
+                        public void onData(Object element) {
+
+                        }
+
+                        @Override
+                        public void close() {
+
+                        }
+                      },
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
           new StatelessOffloadingEventHandler(vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
 
