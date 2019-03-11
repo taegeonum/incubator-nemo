@@ -244,10 +244,13 @@ public final class TaskExecutor {
       .map(oc -> oc.left().irVertex.getId())
       .collect(Collectors.toList());
 
+    LOG.info("Possible headers: {}", irVertices);
+
     for (final Pair<OperatorMetricCollector, OutputCollector> oc : possibleHeaders) {
       final IRVertex irVertex = oc.left().irVertex;
       final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(irVertex);
       edges.stream().forEach((edge) -> {
+        LOG.info("Header] Edge {} -> {}", edge.getSrc().getId(), edge.getDst().getId());
         final int index = irVertices.indexOf(edge.getDst().getId());
         if (index >= 0) {
           // dst is not a header
