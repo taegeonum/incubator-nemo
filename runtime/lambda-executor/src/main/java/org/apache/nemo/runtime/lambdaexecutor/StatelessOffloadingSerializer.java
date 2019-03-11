@@ -22,6 +22,9 @@ public class StatelessOffloadingSerializer implements OffloadingSerializer {
 
   public StatelessOffloadingSerializer(final Map<String, Serializer> serializerMap) {
     this.serializerMap = serializerMap;
+    for (final String edgeId : serializerMap.keySet()) {
+      LOG.info("Edge id: {}, serializer: {}", edgeId, serializerMap.get(edgeId));
+    }
   }
 
   @Override
