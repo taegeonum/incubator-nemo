@@ -14,17 +14,22 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public final class StatelessOffloadingEventHandler implements EventHandler<OffloadingResultEvent> {
   private static final Logger LOG = LoggerFactory.getLogger(StatelessOffloadingEventHandler.class.getName());
+
+  private final ConcurrentLinkedQueue<Triple<List<String>, String, Object>> offloadingQueue;
   private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexAndCollectorMap;
   private final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
   private final Map<String, OutputWriter> outputWriterMap;
 
   public StatelessOffloadingEventHandler(
+    final ConcurrentLinkedQueue<Triple<List<String>, String, Object>> offloadingQueue,
     final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexAndCollectorMap,
     final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap,
     final Map<String, OutputWriter> outputWriterMap) {
+    this.offloadingQueue = offloadingQueue;
     this.vertexAndCollectorMap = vertexAndCollectorMap;
     this.operatorVertexMap = operatorVertexMap;
     this.outputWriterMap = outputWriterMap;
@@ -37,6 +42,7 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Offlo
     // TODO: Handle OutputWriter
 
     for (final Triple<List<String>, String, Object> triple : msg.data) {
+      offloadingQueue.add(triple);
       final Object elem = triple.third;
 
       for (final String nextOpId : triple.first) {
