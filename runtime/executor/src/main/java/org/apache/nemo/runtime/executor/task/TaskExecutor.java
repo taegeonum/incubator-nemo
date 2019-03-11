@@ -231,7 +231,7 @@ public final class TaskExecutor {
 
   private List<Pair<OperatorMetricCollector, OutputCollector>> findHeader(
     final DAG<IRVertex, Edge<IRVertex>> dag,
-    final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators) {
+    final List<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators) {
 
     final List<String> burstyOps = burstyOperators.stream()
       .map(pair -> pair.left().irVertex.getId()).collect(Collectors.toList());
@@ -340,7 +340,7 @@ public final class TaskExecutor {
 
       LOG.info(sb.toString());
 
-      final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(copyDag, burstyOperators);
+      final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(copyDag, ops);
 
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : header) {
         LOG.info("Header operator: {}", pair.left().irVertex);
