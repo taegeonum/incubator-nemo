@@ -232,16 +232,19 @@ public final class TaskExecutor {
   private List<Pair<OperatorMetricCollector, OutputCollector>> findHeader(
     final List<Pair<OperatorMetricCollector, OutputCollector>> ocs) {
 
-    final List<Boolean> headers = new ArrayList<>(ocs.size());
+    final List<Pair<OperatorMetricCollector, OutputCollector>> possibleHeaders =
+      ocs.stream().filter(pair -> pair.left().isOffloading).collect(Collectors.toList());
+
+    final List<Boolean> headers = new ArrayList<>(possibleHeaders.size());
     for (int i = 0; i < ocs.size(); i++) {
       headers.add(true);
     }
 
-    final List<IRVertex> irVertices = ocs.stream()
+    final List<IRVertex> irVertices = possibleHeaders.stream()
       .map(oc -> oc.left().irVertex)
       .collect(Collectors.toList());
 
-    for (final Pair<OperatorMetricCollector, OutputCollector> oc : ocs) {
+    for (final Pair<OperatorMetricCollector, OutputCollector> oc : possibleHeaders) {
       final IRVertex irVertex = oc.left().irVertex;
       final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(irVertex);
       edges.stream().forEach((edge) -> {
