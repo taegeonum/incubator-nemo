@@ -240,15 +240,15 @@ public final class TaskExecutor {
       headers.add(true);
     }
 
-    final List<IRVertex> irVertices = possibleHeaders.stream()
-      .map(oc -> oc.left().irVertex)
+    final List<String> irVertices = possibleHeaders.stream()
+      .map(oc -> oc.left().irVertex.getId())
       .collect(Collectors.toList());
 
     for (final Pair<OperatorMetricCollector, OutputCollector> oc : possibleHeaders) {
       final IRVertex irVertex = oc.left().irVertex;
       final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(irVertex);
       edges.stream().forEach((edge) -> {
-        final int index = irVertices.indexOf(edge.getDst());
+        final int index = irVertices.indexOf(edge.getDst().getId());
         if (index >= 0) {
           // dst is not a header
           headers.set(index, false);
