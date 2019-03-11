@@ -450,19 +450,26 @@ public final class TaskExecutor {
         throw new IllegalStateException(irVertex.toString());
       }
 
+      SerializationUtils.serialize(irVertexDag);
+
       // Additional outputs
       final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputMap =
         getInternalOutputMap(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
 
+      SerializationUtils.serialize(irVertexDag);
+
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         TaskExecutorUtil.getExternalAdditionalOutputMap(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap);
+
+      SerializationUtils.serialize(irVertexDag);
 
       for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
         for (final NextIntraTaskOperatorInfo interOp : interOps) {
           operatorInfoMap.put(interOp.getNextOperator().getId(), interOp);
         }
       }
+      SerializationUtils.serialize(irVertexDag);
 
       // Main outputs
       final List<NextIntraTaskOperatorInfo> internalMainOutputs;
@@ -471,10 +478,12 @@ public final class TaskExecutor {
       } else {
         internalMainOutputs = new ArrayList<>();
       }
+      SerializationUtils.serialize(irVertexDag);
 
       final List<OutputWriter> externalMainOutputs =
         TaskExecutorUtil.getExternalMainOutputs(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap);
+      SerializationUtils.serialize(irVertexDag);
 
       OutputCollector outputCollector;
 
@@ -487,6 +496,8 @@ public final class TaskExecutor {
         final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(irVertex);
         final List<IRVertex> dstVertices = irVertexDag.getOutgoingEdgesOf(irVertex).
           stream().map(edge -> edge.getDst()).collect(Collectors.toList());
+
+        SerializationUtils.serialize(irVertexDag);
 
         OperatorMetricCollector omc;
 
@@ -506,11 +517,15 @@ public final class TaskExecutor {
             shutdownExecutor);
         }
 
+        SerializationUtils.serialize(irVertexDag);
+
 
         outputCollector = new OperatorVertexOutputCollector(
           vertexIdAndCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap, omc);
+
+        SerializationUtils.serialize(irVertexDag);
 
         LOG.info("Put {} to map", irVertex.getId());
         vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(omc, outputCollector));
@@ -522,8 +537,12 @@ public final class TaskExecutor {
           broadcastManagerWorker, irVertex, serverlessExecutorProvider),
         externalMainOutputs, externalAdditionalOutputMap);
 
+      SerializationUtils.serialize(irVertexDag);
+
       TaskExecutorUtil.prepareTransform(vertexHarness);
       vertexIdToHarness.put(irVertex.getId(), vertexHarness);
+
+      SerializationUtils.serialize(irVertexDag);
 
       // Prepare data READ
       // Source read
