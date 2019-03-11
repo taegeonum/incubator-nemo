@@ -241,17 +241,22 @@ public final class TaskExecutor {
         });
       });
 
+      LOG.info("Burstyops at {}", taskId);
+
 
       serverlessExecutorService = serverlessExecutorProvider.
         newCachedPool(new StatelessOffloadingTransform(irVertexDag, taskOutgoingEdges),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
           new StatelessOffloadingEventHandler(vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
 
+      LOG.info("ServerlesEexecutorService at {}", taskId);
+
       final List<Pair<OperatorMetricCollector, OutputCollector>> ops = new ArrayList<>(burstyOperators.size());
       for (final Pair<OperatorMetricCollector, OutputCollector> op : burstyOperators) {
         ops.add(op);
       }
 
+      LOG.info("Collecting burstyOps at {}", taskId);
 
       final StringBuilder sb = new StringBuilder();
       sb.append(String.format("Offloading dag at task %s\n: ", taskId));
