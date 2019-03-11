@@ -24,9 +24,8 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   private final Map<String, List<String>> taskOutgoingEdges;
 
   // key: data fetcher id, value: head operator
-  private final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
-  private final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
-
+  private transient Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
+  private transient Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
   private transient OffloadingResultCollector resultCollector;
 
 
@@ -34,13 +33,13 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
                                       final Map<String, List<String>> taskOutgoingEdges) {
     this.irDag = irDag;
     this.taskOutgoingEdges = taskOutgoingEdges;
-    this.outputCollectorMap = new HashMap<>();
-    this.operatorVertexMap = new HashMap<>();
   }
 
   @Override
   public void prepare(final OffloadingContext context,
                       final OffloadingOutputCollector oc) {
+    this.outputCollectorMap = new HashMap<>();
+    this.operatorVertexMap = new HashMap<>();
     System.out.println("Stateless offloading transform prepare");
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irDag.getTopologicalSort());
