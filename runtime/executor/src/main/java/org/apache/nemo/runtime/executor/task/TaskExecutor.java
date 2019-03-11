@@ -187,26 +187,6 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
-    if (evalConf.offloadingdebug) {
-      se.scheduleAtFixedRate(() -> {
-        try {
-          LOG.info("Start offloading at task {}!", taskId);
-          triggerOffloading(vertexIdAndCollectorMap.values());
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }, 10, 50, TimeUnit.SECONDS);
-
-      se.scheduleAtFixedRate(() -> {
-        try {
-          endOffloading();
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }, 30, 50, TimeUnit.SECONDS);
-    }
   }
 
   private List<Pair<OperatorMetricCollector, OutputCollector>> findHeader(
@@ -249,7 +229,6 @@ public final class TaskExecutor {
       // 1) remove stateful
 
       // build DAG
-      LOG.info("Build dag at task {}: ", taskId);
       burstyOperators.stream().forEach(pair -> {
         final IRVertex vertex = pair.left().irVertex;
         irVertexDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
@@ -262,14 +241,11 @@ public final class TaskExecutor {
         });
       });
 
-      LOG.info("End of Build dag at task {}: ", taskId);
 
       serverlessExecutorService = serverlessExecutorProvider.
         newCachedPool(new StatelessOffloadingTransform(irVertexDag, taskOutgoingEdges),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
           new StatelessOffloadingEventHandler(vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
-
-        LOG.info("End of serverless execution service {}: ", taskId);
 
       final List<Pair<OperatorMetricCollector, OutputCollector>> ops = new ArrayList<>(burstyOperators.size());
       for (final Pair<OperatorMetricCollector, OutputCollector> op : burstyOperators) {
@@ -277,11 +253,14 @@ public final class TaskExecutor {
       }
 
 
-      LOG.info("Offloading dag at task {}: ", taskId);
+      final StringBuilder sb = new StringBuilder();
+      sb.append(String.format("Offloading dag at task %s\n: ", taskId));
       for (final IRVertex vertex : irVertexDag.getVertices()) {
-        LOG.info("{} is offloading {}, stateful {}, isSink {}",
-          vertex.getId(), vertex.isOffloading, vertex.isStateful, vertex.isSink);
+        sb.append(String.format("%s is offloading %s, stateful %s, isSink %s\n",
+          vertex.getId(), vertex.isOffloading, vertex.isStateful, vertex.isSink));
       }
+
+      LOG.info(sb.toString());
 
       final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(ops);
 
@@ -571,6 +550,30 @@ public final class TaskExecutor {
       .stream()
       .map(vertex -> vertexIdToHarness.get(vertex.getId()))
       .collect(Collectors.toList());
+
+   // for offloading debugging
+    if (evalConf.offloadingdebug) {
+      se.scheduleAtFixedRate(() -> {
+        try {
+          LOG.info("Start offloading at task {}!", taskId);
+          triggerOffloading(vertexIdAndCollectorMap.values());
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }, 10, 50, TimeUnit.SECONDS);
+
+      se.scheduleAtFixedRate(() -> {
+        try {
+          endOffloading();
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }, 30, 50, TimeUnit.SECONDS);
+    }
+
+
 
     return Pair.of(dataFetcherList, sortedHarnessList);
   }
