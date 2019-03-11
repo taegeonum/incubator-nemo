@@ -167,9 +167,6 @@ public final class TaskExecutor {
     this.processedEventCollector = Executors.newSingleThreadScheduledExecutor();
     this.detector = new InputFluctuationDetector(vertexIdAndCollectorMap);
 
-
-
-
     this.evalConf = evalConf;
 
     this.serverlessExecutorProvider = serverlessExecutorProvider;
@@ -192,7 +189,7 @@ public final class TaskExecutor {
 
     if (evalConf.offloadingdebug) {
       se.scheduleAtFixedRate(() -> {
-        LOG.info("Start offloading!");
+        LOG.info("Start offloading at task {}!", taskId);
         triggerOffloading(vertexIdAndCollectorMap.values());
       }, 10, 50, TimeUnit.SECONDS);
 
