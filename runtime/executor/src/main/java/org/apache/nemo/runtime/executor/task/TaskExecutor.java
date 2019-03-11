@@ -237,9 +237,7 @@ public final class TaskExecutor {
     final Map<IRVertex, Set<Edge<IRVertex>>> outgoingEdges = new HashMap<>();
 
     // 1) remove stateful
-    final Set<IRVertex> offloadingVertices =
-      burstyOperators.stream().filter(burstyOp -> !burstyOp.isStateful && !burstyOp.isSink)
-        .collect(Collectors.toSet());
+    final Set<IRVertex> offloadingVertices = new HashSet<>(burstyOperators);
 
     // build DAG
     offloadingVertices.stream().forEach(vertex -> {
