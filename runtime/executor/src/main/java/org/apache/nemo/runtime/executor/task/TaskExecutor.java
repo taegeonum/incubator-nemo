@@ -61,12 +61,9 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.nemo.runtime.lambdaexecutor.EmptyOffloadingTransform;
-import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingSerializer;
-import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingTransform;
+import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.executor.datatransfer.RunTimeMessageOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
-import org.apache.nemo.runtime.lambdaexecutor.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,8 +129,7 @@ public final class TaskExecutor {
 
   private byte[] serializedDag;
 
-  private final ConcurrentLinkedQueue<Triple<List<String>, String, Object>>
-    offloadingEventQueue = new ConcurrentLinkedQueue<>();
+  private final ConcurrentLinkedQueue<OffloadingResultEvent> offloadingEventQueue = new ConcurrentLinkedQueue<>();
 
   /**
    * Constructor.
@@ -755,6 +751,7 @@ public final class TaskExecutor {
 
   // For offloading!
   private void handleOffloadingEvent(final Triple<List<String>, String, Object> triple) {
+    LOG.info("Result handle {} / {} / {}", triple.first, triple.second, triple.third);
     final Object elem = triple.third;
 
     for (final String nextOpId : triple.first) {
@@ -821,8 +818,11 @@ public final class TaskExecutor {
         // check offloading queue to process events
         while (!offloadingEventQueue.isEmpty()) {
           // fetch events
-          final Triple<List<String>, String, Object> triple = offloadingEventQueue.poll();
-          handleOffloadingEvent(triple);
+          final OffloadingResultEvent msg = offloadingEventQueue.poll();
+          LOG.info("Result processed in executor: cnt {}", msg.data.size());
+          for (final Triple<List<String>, String, Object> triple : msg.data) {
+            handleOffloadingEvent(triple);
+          }
         }
       }
 
