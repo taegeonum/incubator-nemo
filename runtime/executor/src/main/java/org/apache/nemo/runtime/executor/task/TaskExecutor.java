@@ -189,12 +189,22 @@ public final class TaskExecutor {
 
     if (evalConf.offloadingdebug) {
       se.scheduleAtFixedRate(() -> {
-        LOG.info("Start offloading at task {}!", taskId);
-        triggerOffloading(vertexIdAndCollectorMap.values());
+        try {
+          LOG.info("Start offloading at task {}!", taskId);
+          triggerOffloading(vertexIdAndCollectorMap.values());
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       }, 10, 50, TimeUnit.SECONDS);
 
       se.scheduleAtFixedRate(() -> {
-        endOffloading();
+        try {
+          endOffloading();
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       }, 30, 50, TimeUnit.SECONDS);
     }
   }
@@ -239,6 +249,7 @@ public final class TaskExecutor {
       // 1) remove stateful
 
       // build DAG
+      LOG.info("Build dag at task {}: ", taskId);
       burstyOperators.stream().forEach(pair -> {
         final IRVertex vertex = pair.left().irVertex;
         irVertexDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
@@ -251,11 +262,14 @@ public final class TaskExecutor {
         });
       });
 
+      LOG.info("End of Build dag at task {}: ", taskId);
+
       serverlessExecutorService = serverlessExecutorProvider.
         newCachedPool(new StatelessOffloadingTransform(irVertexDag, taskOutgoingEdges),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
           new StatelessOffloadingEventHandler(vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
 
+        LOG.info("End of serverless execution service {}: ", taskId);
 
       final List<Pair<OperatorMetricCollector, OutputCollector>> ops = new ArrayList<>(burstyOperators.size());
       for (final Pair<OperatorMetricCollector, OutputCollector> op : burstyOperators) {
@@ -263,7 +277,7 @@ public final class TaskExecutor {
       }
 
 
-      LOG.info("Offloading dag: ");
+      LOG.info("Offloading dag at task {}: ", taskId);
       for (final IRVertex vertex : irVertexDag.getVertices()) {
         LOG.info("{} is offloading {}, stateful {}, isSink {}",
           vertex.getId(), vertex.isOffloading, vertex.isStateful, vertex.isSink);
