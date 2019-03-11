@@ -462,6 +462,7 @@ public final class TaskExecutor {
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap, omc);
 
+        LOG.info("Put {} to map", irVertex.getId());
         vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(omc, outputCollector));
       }
 
@@ -555,7 +556,7 @@ public final class TaskExecutor {
     if (evalConf.offloadingdebug) {
       se.scheduleAtFixedRate(() -> {
         try {
-          LOG.info("Start offloading at task {}!", taskId);
+          LOG.info("Start offloading at task {}, {}!", taskId, vertexIdAndCollectorMap.values());
           triggerOffloading(vertexIdAndCollectorMap.values());
         } catch (final Exception e) {
           e.printStackTrace();
