@@ -19,15 +19,15 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Offlo
   private static final Logger LOG = LoggerFactory.getLogger(StatelessOffloadingEventHandler.class.getName());
   private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexAndCollectorMap;
   private final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
-  private final Map<String, OutputWriter> outputWriterMap;
+  //private final Map<String, OutputWriter> outputWriterMap;
 
   public StatelessOffloadingEventHandler(
     final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexAndCollectorMap,
-    final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap,
-    final Map<String, OutputWriter> outputWriterMap) {
+    final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap) {
+   // final Map<String, OutputWriter> outputWriterMap) {
     this.vertexAndCollectorMap = vertexAndCollectorMap;
     this.operatorVertexMap = operatorVertexMap;
-    this.outputWriterMap = outputWriterMap;
+    //this.outputWriterMap = outputWriterMap;
   }
 
   @Override
@@ -58,6 +58,7 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Offlo
         } else {
           LOG.info("Emit to output writer {}", nextOpId);
           // this is for output writer
+          /*
           final OutputWriter outputWriter = outputWriterMap.get(nextOpId);
           if (elem instanceof Watermark) {
             outputWriter.writeWatermark((Watermark) elem);
@@ -66,6 +67,7 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Offlo
           } else {
             throw new RuntimeException("Unknown type: " + elem);
           }
+          */
         }
       }
     }
