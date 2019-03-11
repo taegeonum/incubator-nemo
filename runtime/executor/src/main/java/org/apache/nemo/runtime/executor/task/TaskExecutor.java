@@ -164,6 +164,10 @@ public final class TaskExecutor {
       taskOutgoingEdges.get(src.getId()).add(dst.getId());
     });
 
+    irVertexDag.getVertices().forEach(vertex -> {
+      LOG.info("Vertex: {}", vertex.getId());
+    });
+
     this.processedEventCollector = Executors.newSingleThreadScheduledExecutor();
     this.detector = new InputFluctuationDetector(vertexIdAndCollectorMap);
 
