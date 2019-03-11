@@ -61,6 +61,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.nemo.runtime.lambdaexecutor.EmptyOffloadingTransform;
 import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingTransform;
 import org.apache.nemo.runtime.executor.datatransfer.RunTimeMessageOutputCollector;
@@ -252,22 +253,7 @@ public final class TaskExecutor {
 
       serverlessExecutorService = serverlessExecutorProvider.
         //newCachedPool(new StatelessOffloadingTransform(irVertexDag, taskOutgoingEdges),
-        newCachedPool(new OffloadingTransform() {
-                        @Override
-                        public void prepare(OffloadingContext context, OffloadingOutputCollector outputCollector) {
-
-                        }
-
-                        @Override
-                        public void onData(Object element) {
-
-                        }
-
-                        @Override
-                        public void close() {
-
-                        }
-                      },
+        newCachedPool(new EmptyOffloadingTransform(),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
           new StatelessOffloadingEventHandler(vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
 
