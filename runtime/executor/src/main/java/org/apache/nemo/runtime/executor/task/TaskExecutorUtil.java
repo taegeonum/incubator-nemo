@@ -3,7 +3,6 @@ package org.apache.nemo.runtime.executor.task;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
-import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
@@ -17,8 +16,6 @@ import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingSerializer;
-import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,71 +33,6 @@ public final class TaskExecutorUtil {
       transform.prepare(vertexHarness.getContext(), vertexHarness.getOutputCollector());
     }
   }
-
-  public static DAG<IRVertex, Edge<IRVertex>> extractOffloadingDag(
-    final List<IRVertex> burstyOperators,
-    final DAG<IRVertex, RuntimeEdge<IRVertex>> originalDag,
-    final List<StageEdge> taskOutgoingEdges) {
-    final Map<IRVertex, Set<Edge<IRVertex>>> incomingEdges = new HashMap<>();
-    final Map<IRVertex, Set<Edge<IRVertex>>> outgoingEdges = new HashMap<>();
-
-    // 1) remove stateful
-    final Set<IRVertex> offloadingParent =
-      burstyOperators.stream().filter(burstyOp -> !burstyOp.isStateful && !burstyOp.isSink)
-        .collect(Collectors.toSet());
-
-    final Set<IRVertex> verticesToOffload = new HashSet<>(offloadingParent);
-    LOG.info("Bursty operators: {}, possible: {}", burstyOperators, offloadingParent);
-
-    // build DAG
-    offloadingParent.stream().forEach(vertex -> {
-      originalDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
-        // this edge can be offloaded
-        verticesToOffload.add(edge.getDst());
-
-        if (!edge.getDst().isSink && !edge.getDst().isStateful && offloadingParent.contains(edge.getDst())) {
-          edge.getDst().isOffloading = true;
-        } else {
-          edge.getDst().isOffloading = false;
-        }
-
-        final Set<Edge<IRVertex>> outgoing = outgoingEdges.getOrDefault(vertex, new HashSet<>());
-        outgoing.add(edge);
-        outgoingEdges.putIfAbsent(vertex, outgoing);
-
-        final Set<Edge<IRVertex>> incoming = incomingEdges.getOrDefault(edge.getDst(), new HashSet<>());
-        incoming.add(edge);
-        incomingEdges.putIfAbsent(edge.getDst(), incoming);
-      });
-    });
-
-    // output writer
-    taskOutgoingEdges.stream().forEach(stageEdge -> {
-      if (offloadingParent.contains(stageEdge.getSrcIRVertex())) {
-        offloadingParent.add(stageEdge.getDstIRVertex());
-        stageEdge.getDstIRVertex().isOffloading = false;
-
-        LOG.info("Add stage edge {} -> {}", stageEdge.getSrcIRVertex().getId(),
-          stageEdge.getDstIRVertex().getId());
-
-        final Edge<IRVertex> edge =
-          new Edge<>(stageEdge.getId(), stageEdge.getSrcIRVertex(), stageEdge.getDstIRVertex());
-        final Set<Edge<IRVertex>> outgoing = outgoingEdges.getOrDefault(edge.getSrc(), new HashSet<>());
-        outgoing.add(edge);
-        outgoingEdges.putIfAbsent(edge.getSrc(), outgoing);
-
-        final Set<Edge<IRVertex>> incoming = incomingEdges.getOrDefault(edge.getDst(), new HashSet<>());
-        incoming.add(edge);
-        incomingEdges.putIfAbsent(edge.getDst(), incoming);
-      }
-    });
-
-    LOG.info("Offloading dag: {} // {} // {}", offloadingParent,
-      incomingEdges, outgoingEdges);
-
-    return new DAG<>(offloadingParent, incomingEdges, outgoingEdges, new HashMap<>(), new HashMap<>());
-  }
-
 
   // Get all of the intra-task edges + inter-task edges
   public static List<Edge> getAllIncomingEdges(

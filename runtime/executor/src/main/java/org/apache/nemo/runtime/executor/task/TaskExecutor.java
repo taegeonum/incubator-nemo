@@ -107,6 +107,7 @@ public final class TaskExecutor {
   private transient ServerlessExecutorService serverlessExecutorService;
   private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
   private final Map<String, OutputWriter> outputWriterMap;
+  private final Map<String, List<String>> taskOutgoingEdges;
   private final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap = new HashMap<>();
   private final EvalConf evalConf;
   // Variables for offloading - end
@@ -123,7 +124,7 @@ public final class TaskExecutor {
 
   //private List<Pair<OperatorMetricCollector, OutputCollector>> prevHeader;
 
-  private List<IRVertex> prevOffloadingHead;
+  private List<Pair<OperatorMetricCollector, OutputCollector>> prevOffloadingHead;
 
   /**
    * Constructor.
@@ -155,8 +156,18 @@ public final class TaskExecutor {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.outputWriterMap = new HashMap<>();
+    this.taskOutgoingEdges = new HashMap<>();
+    task.getTaskOutgoingEdges().forEach(edge -> {
+      final IRVertex src = edge.getSrcIRVertex();
+      final IRVertex dst = edge.getDstIRVertex();
+      taskOutgoingEdges.putIfAbsent(src.getId(), new LinkedList<>());
+      taskOutgoingEdges.get(src.getId()).add(dst.getId());
+    });
+
     this.processedEventCollector = Executors.newSingleThreadScheduledExecutor();
     this.detector = new InputFluctuationDetector(vertexIdAndCollectorMap);
+
+
 
 
     this.evalConf = evalConf;
@@ -228,30 +239,46 @@ public final class TaskExecutor {
   private void triggerOffloading(
     final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators) {
     if (!burstyOperators.isEmpty()) {
+      // 1) remove stateful
+      LOG.info("Bursty operators: {}", burstyOperators);
 
-      final DAG<IRVertex, Edge<IRVertex>> offloadingDag = TaskExecutorUtil
-        .extractOffloadingDag(
-          burstyOperators.stream()
-            .map(pair -> pair.left().irVertex)
-            .collect(Collectors.toList()), irVertexDag, task.getTaskOutgoingEdges());
-
+      // build DAG
+      burstyOperators.stream().forEach(pair -> {
+        final IRVertex vertex = pair.left().irVertex;
+        irVertexDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
+          // this edge can be offloaded
+          if (!edge.getDst().isSink && !edge.getDst().isStateful) {
+            edge.getDst().isOffloading = true;
+          } else {
+            edge.getDst().isOffloading = false;
+          }
+        });
+      });
 
       serverlessExecutorService = serverlessExecutorProvider.
-        newCachedPool(new StatelessOffloadingTransform(offloadingDag),
+        newCachedPool(new StatelessOffloadingTransform(irVertexDag, taskOutgoingEdges),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
           new StatelessOffloadingEventHandler(vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
 
-      final List<IRVertex> rootVertices = offloadingDag.getRootVertices();
 
-      for (final IRVertex root : rootVertices) {
-        LOG.info("Header operator: {}", root.getId());
-        final OperatorMetricCollector omc = vertexIdAndCollectorMap.get(root.getId()).left();
-        final OutputCollector oc = vertexIdAndCollectorMap.get(root.getId()).right();
-        omc.setServerlessExecutorService(serverlessExecutorService);
-        oc.enableOffloading();
+      final List<Pair<OperatorMetricCollector, OutputCollector>> ops = new ArrayList<>(burstyOperators.size());
+      for (final Pair<OperatorMetricCollector, OutputCollector> op : burstyOperators) {
+        ops.add(op);
       }
 
-      prevOffloadingHead = rootVertices;
+      final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(ops);
+
+      for (final Pair<OperatorMetricCollector, OutputCollector> pair : header) {
+        LOG.info("Header operator: {}", pair.left().irVertex.getId());
+        final OperatorMetricCollector omc = pair.left();
+        if (!omc.irVertex.isSink) {
+          final OutputCollector oc = pair.right();
+          omc.setServerlessExecutorService(serverlessExecutorService);
+          oc.enableOffloading();
+        }
+      }
+
+      prevOffloadingHead = header;
     }
   }
 
@@ -274,8 +301,7 @@ public final class TaskExecutor {
       }
     }
 
-    for (final IRVertex root : prevOffloadingHead) {
-    final Pair<OperatorMetricCollector, OutputCollector> pair = vertexIdAndCollectorMap.get(root.getId());
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : prevOffloadingHead) {
       if (!pair.left().irVertex.isSink) {
         LOG.info("Disable offloading {}", pair.left().irVertex.getId());
         pair.right().disableOffloading();
@@ -283,8 +309,7 @@ public final class TaskExecutor {
     }
 
     // waiting for disable offloading
-    for (final IRVertex root : prevOffloadingHead) {
-      final Pair<OperatorMetricCollector, OutputCollector> pair = vertexIdAndCollectorMap.get(root.getId());
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : prevOffloadingHead) {
       if (!pair.left().irVertex.isSink) {
         while (pair.left().isOffloading) {
           try {

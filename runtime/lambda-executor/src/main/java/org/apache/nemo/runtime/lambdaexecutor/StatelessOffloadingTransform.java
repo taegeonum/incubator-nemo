@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 public final class StatelessOffloadingTransform<O> implements OffloadingTransform<OffloadingDataEvent, O> {
 
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
+  private final Map<String, List<String>> taskOutgoingEdges;
 
   // key: data fetcher id, value: head operator
   private final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
@@ -29,8 +30,10 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   private transient OffloadingResultCollector resultCollector;
 
 
-  public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
+  public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
+                                      final Map<String, List<String>> taskOutgoingEdges) {
     this.irDag = irDag;
+    this.taskOutgoingEdges = taskOutgoingEdges;
     this.outputCollectorMap = new HashMap<>();
     this.operatorVertexMap = new HashMap<>();
   }
@@ -102,7 +105,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
           + ", isSink: " + isSink);
         OffloadingOperatorVertexOutputCollector outputCollector = new OffloadingOperatorVertexOutputCollector(
           irVertex, irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
-          internalMainOutputs, internalAdditionalOutputMap, resultCollector, outputCollectorMap);
+          internalMainOutputs, internalAdditionalOutputMap, resultCollector, outputCollectorMap, taskOutgoingEdges);
 
         outputCollectorMap.put(irVertex.getId(), outputCollector);
 
