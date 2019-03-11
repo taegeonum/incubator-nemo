@@ -230,7 +230,11 @@ public final class TaskExecutor {
   }
 
   private List<Pair<OperatorMetricCollector, OutputCollector>> findHeader(
-    final DAG<IRVertex, Edge<IRVertex>> dag) {
+    final DAG<IRVertex, Edge<IRVertex>> dag,
+    final List<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators) {
+
+    final List<String> burstyOps = burstyOperators.stream()
+      .map(pair -> pair.left().irVertex.getId()).collect(Collectors.toList());
 
     final List<IRVertex> possibleHeaders = dag.getVertices().stream()
       .filter(vertex -> vertex.isOffloading)
@@ -266,6 +270,27 @@ public final class TaskExecutor {
         l.add(vertexIdAndCollectorMap.get(possibleHeaderStrs.get(i)));
       }
     }
+
+    LOG.info("Header] before adjusting the header: ",
+      l.stream().map(pair -> pair.left()).collect(Collectors.toList()));
+
+    // Check incoming vertices
+    final Iterator<Pair<OperatorMetricCollector, OutputCollector>> iterator = l.iterator();
+    final List<Pair<OperatorMetricCollector, OutputCollector>> head = new LinkedList<>();
+    while (iterator.hasNext()) {
+      final Pair<OperatorMetricCollector, OutputCollector> h = iterator.next();
+      for (final Edge<IRVertex> edge : dag.getIncomingEdgesOf(h.left().irVertex)) {
+        if (burstyOps.contains(edge.getSrc().getId())) {
+          iterator.remove();
+          head.add(burstyOperators.get(burstyOps.indexOf(edge.getSrc().getId())));
+        }
+      }
+    }
+
+    l.addAll(head);
+
+    LOG.info("Header] after adjusting the header: ",
+      l.stream().map(pair -> pair.left()).collect(Collectors.toList()));
 
     return l;
   }
