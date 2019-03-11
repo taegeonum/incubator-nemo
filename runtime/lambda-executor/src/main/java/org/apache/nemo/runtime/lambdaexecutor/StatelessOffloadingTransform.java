@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor;
 
 import avro.shaded.com.google.common.collect.Lists;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
