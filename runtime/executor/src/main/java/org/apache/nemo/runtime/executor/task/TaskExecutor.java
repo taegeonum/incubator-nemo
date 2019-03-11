@@ -129,6 +129,8 @@ public final class TaskExecutor {
 
   private List<Pair<OperatorMetricCollector, OutputCollector>> prevOffloadingHead;
 
+  private byte[] serializedDag;
+
   /**
    * Constructor.
    *
@@ -194,6 +196,37 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
+    // For offloading
+    processedEventCollector.scheduleAtFixedRate(() -> {
+      for (final Pair<OperatorMetricCollector, OutputCollector> ocPair : vertexIdAndCollectorMap.values()) {
+        final OperatorMetricCollector oc = ocPair.left();
+        final int cnt = oc.emittedCnt;
+        oc.emittedCnt -= cnt;
+        detector.collect(oc, System.currentTimeMillis(), cnt);
+      }
+    }, 1, 1, TimeUnit.SECONDS);
+
+    // for offloading debugging
+    if (evalConf.offloadingdebug) {
+      se.scheduleAtFixedRate(() -> {
+        try {
+          LOG.info("Start offloading at task {}, {}!", taskId, vertexIdAndCollectorMap.values());
+          triggerOffloading(vertexIdAndCollectorMap.values());
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }, 10, 50, TimeUnit.SECONDS);
+
+      se.scheduleAtFixedRate(() -> {
+        try {
+          endOffloading();
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }, 30, 50, TimeUnit.SECONDS);
+    }
   }
 
   private List<Pair<OperatorMetricCollector, OutputCollector>> findHeader(
@@ -236,7 +269,7 @@ public final class TaskExecutor {
       // 1) remove stateful
 
       // build DAG
-      final DAG<IRVertex, Edge<IRVertex>> copyDag = SerializationUtils.deserialize(task.getSerializedIRDag());
+      final DAG<IRVertex, Edge<IRVertex>> copyDag = SerializationUtils.deserialize(serializedDag);
 
       burstyOperators.stream().forEach(pair -> {
         final IRVertex vertex = pair.left().irVertex;
@@ -373,6 +406,8 @@ public final class TaskExecutor {
         edgeIndexMap.putIfAbsent(edge, edgeIndex);
       }
     });
+
+    serializedDag = SerializationUtils.serialize(irVertexDag);
 
     // Build a map for InputWatermarkManager for each operator vertex
     // This variable is used for creating NextIntraTaskOperatorInfo
@@ -542,41 +577,11 @@ public final class TaskExecutor {
         });
     });
 
-    processedEventCollector.scheduleAtFixedRate(() -> {
-      for (final Pair<OperatorMetricCollector, OutputCollector> ocPair : vertexIdAndCollectorMap.values()) {
-        final OperatorMetricCollector oc = ocPair.left();
-        final int cnt = oc.emittedCnt;
-        oc.emittedCnt -= cnt;
-        detector.collect(oc, System.currentTimeMillis(), cnt);
-      }
-    }, 1, 1, TimeUnit.SECONDS);
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
       .stream()
       .map(vertex -> vertexIdToHarness.get(vertex.getId()))
       .collect(Collectors.toList());
-
-   // for offloading debugging
-    if (evalConf.offloadingdebug) {
-      se.scheduleAtFixedRate(() -> {
-        try {
-          LOG.info("Start offloading at task {}, {}!", taskId, vertexIdAndCollectorMap.values());
-          triggerOffloading(vertexIdAndCollectorMap.values());
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }, 10, 50, TimeUnit.SECONDS);
-
-      se.scheduleAtFixedRate(() -> {
-        try {
-          endOffloading();
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }, 30, 50, TimeUnit.SECONDS);
-    }
 
 
 
