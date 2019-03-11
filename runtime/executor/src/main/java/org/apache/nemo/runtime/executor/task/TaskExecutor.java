@@ -187,8 +187,6 @@ public final class TaskExecutor {
     // Assigning null is very bad, but we are keeping this for now
     this.idOfVertexPutOnHold = null;
 
-    SerializationUtils.serialize(irVertexDag);
-
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
     // Prepare data structures
@@ -232,42 +230,13 @@ public final class TaskExecutor {
     return l;
   }
 
-  private static DAG<IRVertex, Edge<IRVertex>> copyOriginalDag(
-    final List<IRVertex> burstyOperators,
-    final DAG<IRVertex, RuntimeEdge<IRVertex>> originalDag) {
-    final Map<IRVertex, Set<Edge<IRVertex>>> incomingEdges = new HashMap<>();
-    final Map<IRVertex, Set<Edge<IRVertex>>> outgoingEdges = new HashMap<>();
-
-    // 1) remove stateful
-    final Set<IRVertex> offloadingVertices = new HashSet<>(burstyOperators);
-
-    // build DAG
-    offloadingVertices.stream().forEach(vertex -> {
-      originalDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
-
-        final Set<Edge<IRVertex>> outgoing = outgoingEdges.getOrDefault(vertex, new HashSet<>());
-        outgoing.add(new Edge<>(edge.getId(), edge.getSrc(), edge.getDst()));
-        outgoingEdges.putIfAbsent(vertex, outgoing);
-
-        final Set<Edge<IRVertex>> incoming = incomingEdges.getOrDefault(edge.getDst(), new HashSet<>());
-        incoming.add(new Edge<>(edge.getId(), edge.getSrc(), edge.getDst()));
-        incomingEdges.putIfAbsent(edge.getDst(), incoming);
-      });
-    });
-
-    return new DAG<>(offloadingVertices, incomingEdges, outgoingEdges, new HashMap<>(), new HashMap<>());
-  }
-
   private void triggerOffloading(
     final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators) {
     if (!burstyOperators.isEmpty()) {
       // 1) remove stateful
 
-      SerializationUtils.serialize(irVertexDag);
-
       // build DAG
-      final DAG<IRVertex, Edge<IRVertex>> copyDag = copyOriginalDag(
-        burstyOperators.stream().map(pair -> pair.left().irVertex).collect(Collectors.toList()), irVertexDag);
+      final DAG<IRVertex, Edge<IRVertex>> copyDag = SerializationUtils.deserialize(task.getSerializedIRDag());
 
       burstyOperators.stream().forEach(pair -> {
         final IRVertex vertex = pair.left().irVertex;
@@ -282,8 +251,6 @@ public final class TaskExecutor {
       });
 
       LOG.info("Burstyops at {}", taskId);
-
-      SerializationUtils.serialize(irVertexDag);
 
       serverlessExecutorService = serverlessExecutorProvider.
         newCachedPool(new StatelessOffloadingTransform(copyDag, taskOutgoingEdges),
@@ -301,7 +268,7 @@ public final class TaskExecutor {
 
       final StringBuilder sb = new StringBuilder();
       sb.append(String.format("Offloading dag at task %s\n: ", taskId));
-      for (final IRVertex vertex : irVertexDag.getVertices()) {
+      for (final IRVertex vertex : copyDag.getVertices()) {
         sb.append(String.format("%s is offloading %s, stateful %s, isSink %s\n",
           vertex.getId(), vertex.isOffloading, vertex.isStateful, vertex.isSink));
       }
@@ -333,15 +300,6 @@ public final class TaskExecutor {
   public void endOffloading() {
     LOG.info("End offloading!");
     // Do sth for offloading end
-
-    for (final Pair<OperatorMetricCollector, OutputCollector> pair : vertexIdAndCollectorMap.values()) {
-      final OperatorMetricCollector omc = pair.left();
-      final OutputCollector oc = pair.right();
-
-      for (final IRVertex dstVertex : omc.dstVertices) {
-        dstVertex.isOffloading = false;
-      }
-    }
 
     for (final Pair<OperatorMetricCollector, OutputCollector> pair : prevOffloadingHead) {
       if (!pair.left().irVertex.isSink) {
@@ -416,8 +374,6 @@ public final class TaskExecutor {
       }
     });
 
-    SerializationUtils.serialize(irVertexDag);
-
     // Build a map for InputWatermarkManager for each operator vertex
     // This variable is used for creating NextIntraTaskOperatorInfo
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
@@ -438,8 +394,6 @@ public final class TaskExecutor {
       }
     });
 
-    SerializationUtils.serialize(irVertexDag);
-
     // Create a harness for each vertex
     final List<DataFetcher> dataFetcherList = new ArrayList<>();
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
@@ -450,26 +404,19 @@ public final class TaskExecutor {
         throw new IllegalStateException(irVertex.toString());
       }
 
-      SerializationUtils.serialize(irVertexDag);
-
       // Additional outputs
       final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputMap =
         getInternalOutputMap(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
 
-      SerializationUtils.serialize(irVertexDag);
-
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         TaskExecutorUtil.getExternalAdditionalOutputMap(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap);
-
-      SerializationUtils.serialize(irVertexDag);
 
       for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
         for (final NextIntraTaskOperatorInfo interOp : interOps) {
           operatorInfoMap.put(interOp.getNextOperator().getId(), interOp);
         }
       }
-      SerializationUtils.serialize(irVertexDag);
 
       // Main outputs
       final List<NextIntraTaskOperatorInfo> internalMainOutputs;
@@ -478,12 +425,10 @@ public final class TaskExecutor {
       } else {
         internalMainOutputs = new ArrayList<>();
       }
-      SerializationUtils.serialize(irVertexDag);
 
       final List<OutputWriter> externalMainOutputs =
         TaskExecutorUtil.getExternalMainOutputs(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap);
-      SerializationUtils.serialize(irVertexDag);
 
       OutputCollector outputCollector;
 
@@ -496,8 +441,6 @@ public final class TaskExecutor {
         final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(irVertex);
         final List<IRVertex> dstVertices = irVertexDag.getOutgoingEdgesOf(irVertex).
           stream().map(edge -> edge.getDst()).collect(Collectors.toList());
-
-        SerializationUtils.serialize(irVertexDag);
 
         OperatorMetricCollector omc;
 
@@ -517,15 +460,11 @@ public final class TaskExecutor {
             shutdownExecutor);
         }
 
-        SerializationUtils.serialize(irVertexDag);
-
 
         outputCollector = new OperatorVertexOutputCollector(
           vertexIdAndCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap, omc);
-
-        SerializationUtils.serialize(irVertexDag);
 
         LOG.info("Put {} to map", irVertex.getId());
         vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(omc, outputCollector));
@@ -537,12 +476,8 @@ public final class TaskExecutor {
           broadcastManagerWorker, irVertex, serverlessExecutorProvider),
         externalMainOutputs, externalAdditionalOutputMap);
 
-      SerializationUtils.serialize(irVertexDag);
-
       TaskExecutorUtil.prepareTransform(vertexHarness);
       vertexIdToHarness.put(irVertex.getId(), vertexHarness);
-
-      SerializationUtils.serialize(irVertexDag);
 
       // Prepare data READ
       // Source read
@@ -607,8 +542,6 @@ public final class TaskExecutor {
         });
     });
 
-    SerializationUtils.serialize(irVertexDag);
-
     processedEventCollector.scheduleAtFixedRate(() -> {
       for (final Pair<OperatorMetricCollector, OutputCollector> ocPair : vertexIdAndCollectorMap.values()) {
         final OperatorMetricCollector oc = ocPair.left();
@@ -617,8 +550,6 @@ public final class TaskExecutor {
         detector.collect(oc, System.currentTimeMillis(), cnt);
       }
     }, 1, 1, TimeUnit.SECONDS);
-
-    SerializationUtils.serialize(irVertexDag);
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
       .stream()
@@ -647,7 +578,6 @@ public final class TaskExecutor {
       }, 30, 50, TimeUnit.SECONDS);
     }
 
-    SerializationUtils.serialize(irVertexDag);
 
 
     return Pair.of(dataFetcherList, sortedHarnessList);
