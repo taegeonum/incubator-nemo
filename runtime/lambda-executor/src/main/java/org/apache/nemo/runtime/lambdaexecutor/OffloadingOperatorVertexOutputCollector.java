@@ -49,7 +49,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
   private final Map<String, NextIntraTaskOperatorInfo> internalMainOutputs;
   private final List<NextIntraTaskOperatorInfo> nextOperators;
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
-  private final Map<String, List<String>> taskOutgoingEdges;
+  //private final Map<String, List<String>> taskOutgoingEdges;
 
   private final OffloadingResultCollector resultCollector;
   private final Edge edge;
@@ -66,8 +66,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
     final List<NextIntraTaskOperatorInfo> nextOperators,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final OffloadingResultCollector resultCollector,
-    final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap,
-    final Map<String, List<String>> taskOutgoingEdges) {
+    final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap) {
     this.irVertex = irVertex;
     this.edge = edge;
     this.internalMainOutputs = new HashMap<>();
@@ -79,7 +78,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.resultCollector = resultCollector;
     this.outputCollectorMap = outputCollectorMap;
-    this.taskOutgoingEdges = taskOutgoingEdges;
+    //this.taskOutgoingEdges = taskOutgoingEdges;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -109,6 +108,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
 
     // for output writer
+    /*
     for (final String nextOutputWriterId :
       taskOutgoingEdges.getOrDefault(irVertex.getId(), Collections.emptyList())) {
       if (nextOpIds == null) {
@@ -116,6 +116,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
       }
       nextOpIds.add(nextOutputWriterId);
     }
+    */
 
     if (nextOpIds != null) {
       //System.out.println("Emit to resultCollector in " + irVertex.getId());
@@ -194,6 +195,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
     }
 
     // for output writer
+    /*
     for (final String nextOutputWriterId :
       taskOutgoingEdges.getOrDefault(irVertex.getId(), Collections.emptyList())) {
       if (nextOpIds == null) {
@@ -201,6 +203,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
       }
       nextOpIds.add(nextOutputWriterId);
     }
+    */
 
 
     if (nextOpIds != null) {
