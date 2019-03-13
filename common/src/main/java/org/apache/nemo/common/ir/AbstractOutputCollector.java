@@ -1,6 +1,10 @@
 package org.apache.nemo.common.ir;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public abstract class AbstractOutputCollector<O> implements OutputCollector<O> {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractOutputCollector.class.getName());
 
   protected long inputTimestamp;
   protected String sourceId;
@@ -21,6 +25,7 @@ public abstract class AbstractOutputCollector<O> implements OutputCollector<O> {
 
   @Override
   public void setWatermarkSourceId(final String srcId) {
+    LOG.info("Set watermarks source {}", srcId);
     sourceId = srcId;
   }
 
