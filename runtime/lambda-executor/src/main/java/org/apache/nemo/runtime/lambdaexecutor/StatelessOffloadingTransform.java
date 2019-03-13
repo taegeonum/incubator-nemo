@@ -127,8 +127,13 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
       final Object d = input.right();
       for (final String nextOpId : nextOps) {
         final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
-        if (d instanceof Watermark) {
-          nextOp.getWatermarkManager().trackAndEmitWatermarks(nextOp.getEdgeIndex(), (Watermark) d);
+        if (d instanceof WatermarkAndSource) {
+          final Watermark wm = ((WatermarkAndSource) d).getWatermark();
+          final String srcId = ((WatermarkAndSource) d).getSrcId();
+
+          outputCollectorMap.get(nextOpId).setWatermarkSourceId(srcId);
+          nextOp.getWatermarkManager()
+            .trackAndEmitWatermarks(nextOp.getEdgeIndex(), wm);
         } else {
           final TimestampAndValue tsv = (TimestampAndValue) d;
           outputCollectorMap.get(nextOpId).setInputTimestamp(tsv.timestamp);
@@ -144,7 +149,6 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   public void close() {
 
   }
-
 
 
   // Get all of the intra-task edges

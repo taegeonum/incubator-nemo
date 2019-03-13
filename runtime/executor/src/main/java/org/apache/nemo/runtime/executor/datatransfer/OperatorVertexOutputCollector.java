@@ -56,6 +56,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   // for logging
   private long inputTimestamp;
   private final OperatorMetricCollector operatorMetricCollector;
+  private final Map<String, List<String>> sourceMap;
+  private final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> sourceWatermarkMap;
 
   /**
    * Constructor of the output collector.
@@ -72,7 +74,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs,
-    final OperatorMetricCollector operatorMetricCollector) {
+    final OperatorMetricCollector operatorMetricCollector,
+    final Map<String, List<String>> sourceMap,
+    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> sourceWatermarkMap) {
     this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
@@ -80,6 +84,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
     this.operatorMetricCollector = operatorMetricCollector;
+    this.sourceMap = sourceMap;
+    this.sourceWatermarkMap = sourceWatermarkMap;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -202,6 +208,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }
 
+    LOG.info("{} emits watermark {} at source {}", irVertex.getId(), watermark, sourceId);
+
     List<String> offloadingIds = null;
 
     // Emit watermarks to internal vertices
@@ -212,6 +220,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         }
         offloadingIds.add(internalVertex.getNextOperator().getId());
       } else {
+        internalVertex.getWatermarkManager().setWatermarkSourceId(sourceId);
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
@@ -224,6 +233,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
           }
           offloadingIds.add(internalVertex.getNextOperator().getId());
         } else {
+          internalVertex.getWatermarkManager().setWatermarkSourceId(sourceId);
           internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
         }
       }
@@ -231,6 +241,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // For offloading
     if (offloadingIds != null) {
+      sourceWatermarkMap.get(irVertex.getId()).left().add(watermark);
       operatorMetricCollector.sendToServerless(watermark, offloadingIds);
     }
 

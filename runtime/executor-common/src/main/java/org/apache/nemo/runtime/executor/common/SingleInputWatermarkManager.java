@@ -30,6 +30,7 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
   private static final Logger LOG = LoggerFactory.getLogger(SingleInputWatermarkManager.class.getName());
 
   private final OutputCollector watermarkCollector;
+  private String sourceId;
 
   public SingleInputWatermarkManager(final OutputCollector watermarkCollector) {
     this.watermarkCollector = watermarkCollector;
@@ -43,6 +44,17 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
   @Override
   public void trackAndEmitWatermarks(final int edgeIndex,
                                      final Watermark watermark) {
+    watermarkCollector.setWatermarkSourceId(sourceId);
     watermarkCollector.emitWatermark(watermark);
+  }
+
+  @Override
+  public void setWatermarkSourceId(String sid) {
+    sourceId = sid;
+  }
+
+  @Override
+  public String getWatermarkSourceId() {
+    return sourceId;
   }
 }

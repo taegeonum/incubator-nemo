@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.common.WatermarkAndSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,8 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
   private final OffloadingResultCollector resultCollector;
   private final Edge edge;
   private final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
+
+  public String watermarkSourceId;
 
   /**
    * Constructor of the output collector.
@@ -175,6 +178,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
         //System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
         //System.out.println("Sink Emit watermark " + watermark);
       } else {
+        internalVertex.getWatermarkManager().setWatermarkSourceId(sourceId);
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
@@ -187,6 +191,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
           }
           nextOpIds.add(internalVertex.getNextOperator().getId());
         } else {
+          internalVertex.getWatermarkManager().setWatermarkSourceId(sourceId);
           internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
         }
       }
@@ -206,7 +211,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
       resultCollector.result.add(new Triple<>(
         nextOpIds,
         edge.getId(),
-        watermark));
+        new WatermarkAndSource(watermark, sourceId)));
     }
   }
 }

@@ -87,6 +87,9 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
         dis.writeLong(tsv.timestamp);
         //LOG.info("Encode {}", tsv.value);
         valueEncoder.encode((T) tsv.value);
+      } else if (element instanceof WatermarkAndSource) {
+        outputStream.write(0x03);
+        outputStream.write(SerializationUtils.serialize((Serializable) element));
       } else {
         throw new RuntimeException("Unknown event type: " + element);
       }

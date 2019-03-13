@@ -3,6 +3,8 @@ package org.apache.nemo.common.ir;
 public abstract class AbstractOutputCollector<O> implements OutputCollector<O> {
 
   protected long inputTimestamp;
+  protected String sourceId;
+
   protected volatile boolean startOffloading;
   protected volatile boolean endOffloading;
   protected volatile boolean offloading;
@@ -15,6 +17,16 @@ public abstract class AbstractOutputCollector<O> implements OutputCollector<O> {
   @Override
   public long getInputTimestamp() {
     return inputTimestamp;
+  }
+
+  @Override
+  public void setWatermarkSourceId(final String srcId) {
+    sourceId = srcId;
+  }
+
+  @Override
+  public String getWatermarkSourceId() {
+    return sourceId;
   }
 
   @Override

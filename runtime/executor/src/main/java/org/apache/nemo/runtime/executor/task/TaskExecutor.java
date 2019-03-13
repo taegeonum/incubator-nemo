@@ -102,10 +102,8 @@ public final class TaskExecutor {
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
 
   // Variables for offloading - start
-  private final ExecutorService shutdownExecutor = Executors.newCachedThreadPool();
   private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final InputFluctuationDetector detector;
-  private transient ServerlessExecutorService serverlessExecutorService;
   private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
   private final Map<String, OutputWriter> outputWriterMap;
   private final Map<String, List<String>> taskOutgoingEdges;
@@ -121,15 +119,20 @@ public final class TaskExecutor {
 
   private final ScheduledExecutorService processedEventCollector;
 
-  //private final List<Pair<OperatorMetricCollector, OutputCollector>> metricCollectors = new ArrayList<>();
-
-  //private List<Pair<OperatorMetricCollector, OutputCollector>> prevHeader;
-
-  private List<Pair<OperatorMetricCollector, OutputCollector>> prevOffloadingHead;
-
   private byte[] serializedDag;
 
+  private transient OffloadingContext currOffloadingContext = null;
+
+
   private final ConcurrentLinkedQueue<OffloadingResultEvent> offloadingEventQueue = new ConcurrentLinkedQueue<>();
+
+  // key: offloading header, val:
+  //                            - left: watermarks emitted from the offloading header
+  //                            - right: pending watermarks
+  public final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> sourceAndWatermarkMap = new HashMap<>();
+
+  // key: offlading sink id, val: offloading headers of the sink
+  public final Map<String, List<String>> sinkAndSourceListMap = new HashMap<>();
 
   /**
    * Constructor.
@@ -191,6 +194,14 @@ public final class TaskExecutor {
 
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
+
+    // For offloading
+    // Build watermark map
+    irVertexDag.getRootVertices().forEach(source -> {
+      sourceAndWatermarkMap.putIfAbsent(source.getId(), Pair.of(new PriorityQueue<>(), new PriorityQueue<>()));
+      dfsSearchFromSource(source, source);
+    });
+
     // Prepare data structures
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, intermediateDataIOFactory);
     this.dataFetchers = pair.left();
@@ -209,18 +220,31 @@ public final class TaskExecutor {
     // for offloading debugging
     if (evalConf.offloadingdebug) {
       se.scheduleAtFixedRate(() -> {
-        try {
-          LOG.info("Start offloading at task {}, {}!", taskId, vertexIdAndCollectorMap.values());
-          triggerOffloading(vertexIdAndCollectorMap.values());
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
+
+        LOG.info("Start offloading at task {}, {}!", taskId, vertexIdAndCollectorMap.values());
+
+        final OffloadingContext offloadingContext = new OffloadingContext(
+          taskId,
+          offloadingEventQueue,
+          vertexIdAndCollectorMap.values(),
+          serverlessExecutorProvider,
+          irVertexDag,
+          serializedDag,
+          taskOutgoingEdges,
+          serializerManager,
+          vertexIdAndCollectorMap,
+          outputWriterMap,
+          operatorInfoMap);
+
+        currOffloadingContext = offloadingContext;
+
+        offloadingContext.startOffloading();
+
       }, 10, 50, TimeUnit.SECONDS);
 
       se.scheduleAtFixedRate(() -> {
         try {
-          endOffloading();
+          currOffloadingContext.endOffloading();
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
@@ -229,167 +253,40 @@ public final class TaskExecutor {
     }
   }
 
-  private List<Pair<OperatorMetricCollector, OutputCollector>> findHeader(
-    final DAG<IRVertex, Edge<IRVertex>> dag,
-    final List<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators) {
-
-    final List<String> burstyOps = burstyOperators.stream()
-      .map(pair -> pair.left().irVertex.getId()).collect(Collectors.toList());
-
-    final List<IRVertex> possibleHeaders = dag.getVertices().stream()
-      .filter(vertex -> vertex.isOffloading)
-      .collect(Collectors.toList());
-
-    final List<String> possibleHeaderStrs = dag.getVertices().stream()
-      .filter(vertex -> vertex.isOffloading)
-      .map(vertex -> vertex.getId())
-      .collect(Collectors.toList());
-
-    final List<Boolean> headers = new ArrayList<>(possibleHeaders.size());
-    for (int i = 0; i < possibleHeaders.size(); i++) {
-      headers.add(true);
-    }
-
-    LOG.info("Possible headers: {}", possibleHeaders);
-
-    for (final IRVertex possibleHeader : possibleHeaders) {
-      final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(possibleHeader);
-      edges.stream().forEach((edge) -> {
-        LOG.info("Header] Edge {} -> {}", edge.getSrc().getId(), edge.getDst().getId());
-        final int index = possibleHeaderStrs.indexOf(edge.getDst().getId());
-        if (index >= 0) {
-          // dst is not a header
-          headers.set(index, false);
-        }
-      });
-    }
-
-    final List<Pair<OperatorMetricCollector, OutputCollector>> l = new ArrayList<>(possibleHeaders.size());
-    for (int i = 0; i < possibleHeaders.size(); i++) {
-      if (headers.get(i)) {
-        l.add(vertexIdAndCollectorMap.get(possibleHeaderStrs.get(i)));
-      }
-    }
-
-    LOG.info("Header] before adjusting the header: {}",
-      l.stream().map(pair -> pair.left()).collect(Collectors.toList()));
-
-    // Check incoming vertices
-    final Iterator<Pair<OperatorMetricCollector, OutputCollector>> iterator = l.iterator();
-    final List<Pair<OperatorMetricCollector, OutputCollector>> head = new LinkedList<>();
-    while (iterator.hasNext()) {
-      final Pair<OperatorMetricCollector, OutputCollector> h = iterator.next();
-      for (final Edge<IRVertex> edge : dag.getIncomingEdgesOf(h.left().irVertex)) {
-        if (burstyOps.contains(edge.getSrc().getId())) {
-          iterator.remove();
-          head.add(burstyOperators.get(burstyOps.indexOf(edge.getSrc().getId())));
-        }
-      }
-    }
-
-    l.addAll(head);
-
-    LOG.info("Header] after adjusting the header: {}",
-      l.stream().map(pair -> pair.left()).collect(Collectors.toList()));
-
-    return l;
-  }
-
-  private void triggerOffloading(
-    final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators) {
-    if (!burstyOperators.isEmpty()) {
-      // 1) remove stateful
-
-      // build DAG
-      final DAG<IRVertex, Edge<IRVertex>> copyDag = SerializationUtils.deserialize(serializedDag);
-
-      burstyOperators.stream().forEach(pair -> {
-        final IRVertex vertex = pair.left().irVertex;
-        copyDag.getOutgoingEdgesOf(vertex).stream().forEach(edge -> {
-          // this edge can be offloaded
-          if (!edge.getDst().isSink && !edge.getDst().isStateful) {
-            edge.getDst().isOffloading = true;
-          } else {
-            edge.getDst().isOffloading = false;
-          }
-        });
-      });
-
-      LOG.info("Burstyops at {}", taskId);
-
-      serverlessExecutorService = serverlessExecutorProvider.
-        newCachedPool(new StatelessOffloadingTransform(copyDag, taskOutgoingEdges),
-          new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-          new StatelessOffloadingEventHandler(offloadingEventQueue, vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
-
-      LOG.info("ServerlesEexecutorService at {}", taskId);
-
-      final List<Pair<OperatorMetricCollector, OutputCollector>> ops = new ArrayList<>(burstyOperators.size());
-      for (final Pair<OperatorMetricCollector, OutputCollector> op : burstyOperators) {
-        ops.add(op);
-      }
-
-      LOG.info("Collecting burstyOps at {}", taskId);
-
-      final StringBuilder sb = new StringBuilder();
-      sb.append(String.format("Offloading dag at task %s\n: ", taskId));
-      for (final IRVertex vertex : copyDag.getVertices()) {
-        sb.append(String.format("%s is offloading %s, stateful %s, isSink %s\n",
-          vertex.getId(), vertex.isOffloading, vertex.isStateful, vertex.isSink));
-      }
-
-      LOG.info(sb.toString());
-
-      final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(copyDag, ops);
-
-      for (final Pair<OperatorMetricCollector, OutputCollector> pair : header) {
-        LOG.info("Header operator: {}", pair.left().irVertex);
-        final OperatorMetricCollector omc = pair.left();
-        if (!omc.irVertex.isSink) {
-          final OutputCollector oc = pair.right();
-          omc.setServerlessExecutorService(serverlessExecutorService);
-          oc.enableOffloading();
-        }
-      }
-
-      prevOffloadingHead = header;
-    }
+  private void dfsSearchFromSource(final IRVertex source, final IRVertex parent) {
+    irVertexDag.getOutgoingEdgesOf(parent).forEach(edge -> {
+      final IRVertex dst = edge.getDst();
+      sinkAndSourceListMap.putIfAbsent(dst.getId(), new ArrayList<>());
+      sinkAndSourceListMap.get(dst.getId()).add(source.getId());
+      dfsSearchFromSource(source, dst);
+    });
   }
 
   public void startOffloading(final long baseTime) {
     LOG.info("Start offloading!");
+
     final List<Pair<OperatorMetricCollector, OutputCollector>> ocs = detector.retrieveBurstyOutputCollectors(baseTime);
-    triggerOffloading(ocs);
+    final OffloadingContext offloadingContext = new OffloadingContext(
+      taskId,
+      offloadingEventQueue,
+      vertexIdAndCollectorMap.values(),
+      serverlessExecutorProvider,
+      irVertexDag,
+      serializedDag,
+      taskOutgoingEdges,
+      serializerManager,
+      vertexIdAndCollectorMap,
+      outputWriterMap,
+      operatorInfoMap);
+
+    currOffloadingContext = offloadingContext;
+    offloadingContext.startOffloading();
   }
 
   public void endOffloading() {
-    LOG.info("End offloading!");
-    // Do sth for offloading end
-
-    for (final Pair<OperatorMetricCollector, OutputCollector> pair : prevOffloadingHead) {
-      if (!pair.left().irVertex.isSink) {
-        LOG.info("Disable offloading {}", pair.left().irVertex.getId());
-        pair.right().disableOffloading();
-      }
-    }
-
-    // waiting for disable offloading
-    for (final Pair<OperatorMetricCollector, OutputCollector> pair : prevOffloadingHead) {
-      if (!pair.left().irVertex.isSink) {
-        while (pair.left().isOffloading) {
-          try {
-            Thread.sleep(100);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
-      }
-    }
-
-    shutdownExecutor.execute(() -> {
-      serverlessExecutorService.shutdown();
-    });
+    currOffloadingContext.endOffloading();
   }
+
 
   /**
    * Converts the DAG of vertices into pointer-based DAG of vertex harnesses.
@@ -418,6 +315,7 @@ public final class TaskExecutor {
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
     final IntermediateDataIOFactory intermediateDataIOFactory) {
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
+
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
@@ -516,22 +414,20 @@ public final class TaskExecutor {
             dstVertices,
             serializerManager.getSerializer(edges.get(0).getId()),
             edges.get(0),
-            evalConf,
-            shutdownExecutor);
+            evalConf);
         } else {
           omc = new OperatorMetricCollector(irVertex,
             dstVertices,
             null,
             null,
-            evalConf,
-            shutdownExecutor);
+            evalConf);
         }
-
 
         outputCollector = new OperatorVertexOutputCollector(
           vertexIdAndCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
-          externalMainOutputs, externalAdditionalOutputMap, omc);
+          externalMainOutputs, externalAdditionalOutputMap, omc,
+          sinkAndSourceListMap, sourceAndWatermarkMap);
 
         LOG.info("Put {} to map", irVertex.getId());
         vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(omc, outputCollector));
@@ -715,6 +611,7 @@ public final class TaskExecutor {
       }
     } else if (event instanceof Watermark) {
       // Watermark
+      dataFetcher.getOutputCollector().setWatermarkSourceId(dataFetcher.getDataSource().getId());
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
 
@@ -924,28 +821,6 @@ public final class TaskExecutor {
     return true;
   }
 
-  ////////////////////////////////////////////// Helper methods for setting up initial data structures
-  private Map<String, List<OutputWriter>> getExternalAdditionalOutputMap(
-    final IRVertex irVertex,
-    final List<StageEdge> outEdgesToChildrenTasks,
-    final IntermediateDataIOFactory intermediateDataIOFactory) {
-    // Add all inter-task additional tags to additional output map.
-    final Map<String, List<OutputWriter>> map = new HashMap<>();
-
-    outEdgesToChildrenTasks
-      .stream()
-      .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
-      .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-      .map(edge ->
-        Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(),
-          intermediateDataIOFactory.createWriter(taskId, edge)))
-      .forEach(pair -> {
-        map.putIfAbsent(pair.left(), new ArrayList<>());
-        map.get(pair.left()).add(pair.right());
-      });
-
-    return map;
-  }
 
   /**
    * Return a map of Internal Outputs associated with their output tag.
@@ -986,50 +861,6 @@ public final class TaskExecutor {
       });
 
     return map;
-  }
-
-  /**
-   * Return inter-task OutputWriters, for single output or output associated with main tag.
-   *
-   * @param irVertex                source irVertex
-   * @param outEdgesToChildrenTasks outgoing edges to child tasks
-   * @param intermediateDataIOFactory     intermediateDataIOFactory
-   * @return OutputWriters for main children tasks
-   */
-  private List<OutputWriter> getExternalMainOutputs(final IRVertex irVertex,
-                                                    final List<StageEdge> outEdgesToChildrenTasks,
-                                                    final IntermediateDataIOFactory intermediateDataIOFactory) {
-    return outEdgesToChildrenTasks
-      .stream()
-      .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
-      .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-      .map(outEdgeForThisVertex -> intermediateDataIOFactory
-        .createWriter(taskId, outEdgeForThisVertex))
-      .collect(Collectors.toList());
-  }
-
-
-  private Optional<Readable> getSourceVertexReader(final IRVertex irVertex,
-                                                   final Map<String, Readable> irVertexIdToReadable) {
-    if (irVertex instanceof SourceVertex) {
-      final Readable readable = irVertexIdToReadable.get(irVertex.getId());
-      if (readable == null) {
-        throw new IllegalStateException(irVertex.toString());
-      }
-      return Optional.of(readable);
-    } else {
-      return Optional.empty();
-    }
-  }
-
-  private List<InputReader> getParentTaskReaders(final int taskIndex,
-                                                 final List<StageEdge> inEdgesFromParentTasks,
-                                                 final IntermediateDataIOFactory intermediateDataIOFactory) {
-    return inEdgesFromParentTasks
-      .stream()
-      .map(inEdgeForThisVertex -> intermediateDataIOFactory
-        .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
-      .collect(Collectors.toList());
   }
 
   ////////////////////////////////////////////// Transform-specific helper methods

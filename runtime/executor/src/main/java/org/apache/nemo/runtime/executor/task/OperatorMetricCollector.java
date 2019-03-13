@@ -48,8 +48,7 @@ public final class OperatorMetricCollector {
                                  final List<IRVertex> dstVertices,
                                  final Serializer serializer,
                                  final Edge edge,
-                                 final EvalConf evalConf,
-                                 final ExecutorService shutdownExecutor) {
+                                 final EvalConf evalConf) {
     this.irVertex = srcVertex;
     this.serializedCnt = 0;
     this.dstVertices = dstVertices;
