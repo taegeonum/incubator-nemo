@@ -26,6 +26,7 @@ import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.common.WatermarkAndSource;
 import org.apache.nemo.runtime.executor.task.OperatorMetricCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -220,7 +221,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         }
         offloadingIds.add(internalVertex.getNextOperator().getId());
       } else {
-        internalVertex.getWatermarkManager().setWatermarkSourceId(sourceId);
+        final Pair<OperatorMetricCollector, OutputCollector> pair =
+            outputCollectorMap.get(internalVertex.getNextOperator().getId());
+          ((OperatorVertexOutputCollector) pair.right()).setWatermarkSourceId(sourceId);
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
@@ -233,7 +236,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
           }
           offloadingIds.add(internalVertex.getNextOperator().getId());
         } else {
-          internalVertex.getWatermarkManager().setWatermarkSourceId(sourceId);
+          final Pair<OperatorMetricCollector, OutputCollector> pair =
+            outputCollectorMap.get(internalVertex.getNextOperator().getId());
+          ((OperatorVertexOutputCollector) pair.right()).setWatermarkSourceId(sourceId);
           internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
         }
       }
@@ -241,8 +246,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // For offloading
     if (offloadingIds != null) {
+      final WatermarkAndSource watermarkAndSource = new WatermarkAndSource(watermark, sourceId);
       sourceWatermarkMap.get(irVertex.getId()).left().add(watermark);
-      operatorMetricCollector.sendToServerless(watermark, offloadingIds);
+      operatorMetricCollector.sendToServerless(watermarkAndSource, offloadingIds);
     }
 
 
