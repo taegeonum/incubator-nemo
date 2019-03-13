@@ -347,6 +347,16 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       }
 
       @Override
+      public void setWatermarkSourceId(String srcId) {
+
+      }
+
+      @Override
+      public String getWatermarkSourceId() {
+        return null;
+      }
+
+      @Override
       public void emit(Object output) {
         LOG.info("Result {}", output);
         oc.emit(output);
