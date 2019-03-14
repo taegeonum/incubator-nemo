@@ -56,6 +56,7 @@ public final class PipeOutputWriter implements OutputWriter {
   final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap;
   final Map<Long, Long> prevWatermarkMap;
   final Map<Long, Integer> watermarkCounterMap;
+  private final StageEdge stageEdge;
 
   /**
    * Constructor.
@@ -70,7 +71,7 @@ public final class PipeOutputWriter implements OutputWriter {
                    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
                    final Map<Long, Long> prevWatermarkMap,
                    final Map<Long, Integer> watermarkCounterMap) {
-    final StageEdge stageEdge = (StageEdge) runtimeEdge;
+    this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
     this.srcTaskId = srcTaskId;
     this.pipeManagerWorker = pipeManagerWorker;
@@ -119,15 +120,15 @@ public final class PipeOutputWriter implements OutputWriter {
       doInitialize();
     }
 
-    LOG.info("Watermark in output writer to {}", runtimeEdge.getDst().getId());
+    LOG.info("Watermark in output writer to {}", stageEdge.getDstIRVertex().getId());
     final PriorityQueue<Watermark> expectedWatermarkQueue =
-      expectedWatermarkMap.get(runtimeEdge.getDst().getId()).left();
+      expectedWatermarkMap.get(stageEdge.getDstIRVertex().getId()).left();
 
     if (!expectedWatermarkQueue.isEmpty()) {
       // FOR OFFLOADING
 
       // we should not emit the watermark directly.
-      final PriorityQueue<Watermark> pendingWatermarkQueue = expectedWatermarkMap.get(runtimeEdge.getDst().getId()).right();
+      final PriorityQueue<Watermark> pendingWatermarkQueue = expectedWatermarkMap.get(stageEdge.getDstIRVertex().getId()).right();
       pendingWatermarkQueue.add(watermark);
       while (!expectedWatermarkQueue.isEmpty() && !pendingWatermarkQueue.isEmpty() &&
         expectedWatermarkQueue.peek().getTimestamp() >= pendingWatermarkQueue.peek().getTimestamp()) {
