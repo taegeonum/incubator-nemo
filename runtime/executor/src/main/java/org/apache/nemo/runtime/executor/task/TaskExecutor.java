@@ -659,13 +659,13 @@ public final class TaskExecutor {
 
         if (elem instanceof Watermark) {
           final Watermark watermark = (Watermark) elem;
-          LOG.info("Receive watermark {}", watermark);
+          //LOG.info("Receive watermark {}", watermark);
 
-            interOp.getWatermarkManager().trackAndEmitWatermarks(interOp.getEdgeIndex(), watermark);
+          interOp.getWatermarkManager().trackAndEmitWatermarks(interOp.getEdgeIndex(), watermark);
 
         } else if (elem instanceof TimestampAndValue) {
           final TimestampAndValue tsv = (TimestampAndValue) elem;
-          LOG.info("Receive data {}", tsv);
+          //LOG.info("Receive data {}", tsv);
           collector.setInputTimestamp(tsv.timestamp);
           interOp.getNextOperator().getTransform().onData(tsv.value);
         } else {
