@@ -10,6 +10,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.ServerlessExecutorService;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
@@ -207,6 +208,12 @@ public final class OffloadingContext {
         sinks.add(nextEdge.getDst().getId());
       } else {
         findOffloadingSink(nextEdge.getDst(), dag, sinks);
+      }
+    }
+
+    if (curr.isOffloading) {
+      for (final String nextDst : taskOutgoingEdges.get(curr.getId())) {
+        sinks.add(nextDst);
       }
     }
   }
