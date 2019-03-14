@@ -227,7 +227,7 @@ public final class TaskExecutor {
           currOffloadingContext = offloadingContext;
 
           offloadingContext.startOffloading();
-          LOG.info("Start offloading finish");
+          LOG.info("Start offloading finish at {}", taskId);
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
