@@ -211,6 +211,7 @@ public final class TaskExecutor {
         try {
           LOG.info("Start offloading at task {}, {}!", taskId, vertexIdAndCollectorMap.values());
 
+          /*
           final OffloadingContext offloadingContext = new OffloadingContext(
             taskId,
             offloadingEventQueue,
@@ -227,6 +228,7 @@ public final class TaskExecutor {
           currOffloadingContext = offloadingContext;
 
           offloadingContext.startOffloading();
+          */
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
@@ -236,7 +238,7 @@ public final class TaskExecutor {
 
       se.scheduleAtFixedRate(() -> {
         try {
-          currOffloadingContext.endOffloading();
+          //currOffloadingContext.endOffloading();
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
