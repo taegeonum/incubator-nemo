@@ -107,14 +107,10 @@ public final class OffloadingContext {
         });
       });
 
-      LOG.info("Burstyops at {}", taskId);
-
       serverlessExecutorService = serverlessExecutorProvider.
         newCachedPool(new StatelessOffloadingTransform(copyDag, taskOutgoingEdges),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
           new StatelessOffloadingEventHandler(offloadingEventQueue));
-
-      LOG.info("ServerlesEexecutorService at {}", taskId);
 
       final List<Pair<OperatorMetricCollector, OutputCollector>> ops = new ArrayList<>(burstyOperators.size());
       for (final Pair<OperatorMetricCollector, OutputCollector> op : burstyOperators) {
@@ -134,7 +130,6 @@ public final class OffloadingContext {
 
       // find header
       offloadingHead = findHeader(copyDag, ops);
-      LOG.info("Offloading head: {}", offloadingHead);
 
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
         // find sink that can reach from the headers
@@ -142,7 +137,7 @@ public final class OffloadingContext {
         findOffloadingSink(pair.left().irVertex, copyDag, sinks);
         sourceAndSinkMap.put(pair.left().irVertex.getId(), sinks);
 
-        LOG.info("Header operator: {}", pair.left().irVertex);
+        LOG.info("Header operator: {}, sinks: {}", pair.left().irVertex, sinks);
         final OperatorMetricCollector omc = pair.left();
         if (!omc.irVertex.isSink) {
           final OutputCollector oc = pair.right();
@@ -206,7 +201,6 @@ public final class OffloadingContext {
                                   final List<String> sinks) {
     for (final Edge<IRVertex> nextEdge : dag.getOutgoingEdgesOf(curr)) {
       if (!nextEdge.getDst().isOffloading) {
-        LOG.info("Add {} for sink of {}", nextEdge.getDst().getId(), curr.getId());
         sinks.add(nextEdge.getDst().getId());
       } else {
         findOffloadingSink(nextEdge.getDst(), dag, sinks);
@@ -214,9 +208,10 @@ public final class OffloadingContext {
     }
 
     if (curr.isOffloading) {
-      for (final String nextDst : taskOutgoingEdges.get(curr.getId())) {
-        LOG.info("Add {} for sink of {}", nextDst, curr.getId());
-        sinks.add(nextDst);
+      if (taskOutgoingEdges.containsKey(curr.getId())) {
+        for (final String nextDst : taskOutgoingEdges.get(curr.getId())) {
+          sinks.add(nextDst);
+        }
       }
     }
   }
