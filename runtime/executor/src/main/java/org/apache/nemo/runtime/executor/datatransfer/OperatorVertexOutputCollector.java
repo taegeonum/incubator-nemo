@@ -238,7 +238,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       } else {
         final Pair<OperatorMetricCollector, OutputCollector> pair =
           outputCollectorMap.get(internalVertex.getNextOperator().getId());
-        LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
+        //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
@@ -253,7 +253,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         } else {
           final Pair<OperatorMetricCollector, OutputCollector> pair =
             outputCollectorMap.get(internalVertex.getNextOperator().getId());
-          LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
+          //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
           internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
         }
       }
