@@ -636,13 +636,8 @@ public final class TaskExecutor {
 
 
   // For offloading!
-  private void handleOffloadingEvent(final Triple<List<String>, String, Object> triple,
-                                     final long inputWatermark) {
+  private void handleOffloadingEvent(final Triple<List<String>, String, Object> triple) {
     //LOG.info("Result handle {} / {} / {}", triple.first, triple.second, triple.third);
-
-    // handle input watermark
-    watermarkCounterMap.put(inputWatermark, watermarkCounterMap.get(inputWatermark) - 1);
-    LOG.info("Receive input watermark {}, cnt: {}", inputWatermark, watermarkCounterMap.get(inputWatermark));
 
     final Object elem = triple.third;
 
@@ -715,8 +710,14 @@ public final class TaskExecutor {
           // fetch events
           final OffloadingResultEvent msg = offloadingEventQueue.poll();
           LOG.info("Result processed in executor: cnt {}, watermark: {}", msg.data.size(), msg.watermark);
+
+          final long inputWatermark = msg.watermark;
+          // handle input watermark
+          watermarkCounterMap.put(inputWatermark, watermarkCounterMap.get(inputWatermark) - 1);
+          LOG.info("Receive input watermark {}, cnt: {}", inputWatermark, watermarkCounterMap.get(inputWatermark));
+
           for (final Triple<List<String>, String, Object> triple : msg.data) {
-            handleOffloadingEvent(triple, msg.watermark);
+            handleOffloadingEvent(triple);
           }
         }
       }
