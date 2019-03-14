@@ -206,6 +206,7 @@ public final class OffloadingContext {
                                   final List<String> sinks) {
     for (final Edge<IRVertex> nextEdge : dag.getOutgoingEdgesOf(curr)) {
       if (!nextEdge.getDst().isOffloading) {
+        LOG.info("Add {} for sink of {}", nextEdge.getDst().getId(), curr.getId());
         sinks.add(nextEdge.getDst().getId());
       } else {
         findOffloadingSink(nextEdge.getDst(), dag, sinks);
@@ -214,6 +215,7 @@ public final class OffloadingContext {
 
     if (curr.isOffloading) {
       for (final String nextDst : taskOutgoingEdges.get(curr.getId())) {
+        LOG.info("Add {} for sink of {}", nextDst, curr.getId());
         sinks.add(nextDst);
       }
     }
