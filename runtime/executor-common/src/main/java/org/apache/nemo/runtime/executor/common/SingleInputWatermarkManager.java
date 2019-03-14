@@ -79,7 +79,7 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
 
           // check whether outputs are emitted
           final long prevWatermark = prevWatermarkMap.get(pendingWatermarkQueue.peek().getTimestamp());
-          if (watermarkCounterMap.get(prevWatermark) == 0) {
+          if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
             final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
             pendingWatermarkQueue.poll();
 

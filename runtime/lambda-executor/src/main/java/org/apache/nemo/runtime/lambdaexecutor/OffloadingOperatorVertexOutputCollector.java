@@ -160,9 +160,9 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
-    }
+//    if (LOG.isDebugEnabled()) {
+//      LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
+//    }
 
     List<String> nextOpIds = null;
 
