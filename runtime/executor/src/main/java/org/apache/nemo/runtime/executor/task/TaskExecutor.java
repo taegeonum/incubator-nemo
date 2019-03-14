@@ -642,6 +642,7 @@ public final class TaskExecutor {
 
     // handle input watermark
     watermarkCounterMap.put(inputWatermark, watermarkCounterMap.get(inputWatermark) - 1);
+    LOG.info("Receive input watermark {}, cnt: {}", inputWatermark, watermarkCounterMap.get(inputWatermark));
 
     final Object elem = triple.third;
 
@@ -654,14 +655,6 @@ public final class TaskExecutor {
 
         if (elem instanceof Watermark) {
           final Watermark watermark = (Watermark) elem;
-
-          LOG.info("Receive watermark {} to {}", watermark, nextOpId);
-
-          watermarkCounterMap.put(watermark.getTimestamp(),
-            watermarkCounterMap.get(watermark.getTimestamp()) - 1);
-
-          LOG.info("Emit watermark in offloading event {}, watermarkCnt: {}", watermark,
-            watermarkCounterMap.get(watermark.getTimestamp()));
 
             interOp.getWatermarkManager().trackAndEmitWatermarks(interOp.getEdgeIndex(), watermark);
 
