@@ -654,6 +654,9 @@ public final class TaskExecutor {
 
         if (elem instanceof Watermark) {
           final Watermark watermark = (Watermark) elem;
+
+          LOG.info("Receive watermark {} to {}", watermark, nextOpId);
+
           watermarkCounterMap.put(watermark.getTimestamp(),
             watermarkCounterMap.get(watermark.getTimestamp()) - 1);
 
