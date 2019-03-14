@@ -208,24 +208,29 @@ public final class TaskExecutor {
     if (evalConf.offloadingdebug) {
       se.scheduleAtFixedRate(() -> {
 
-        LOG.info("Start offloading at task {}, {}!", taskId, vertexIdAndCollectorMap.values());
+        try {
+          LOG.info("Start offloading at task {}, {}!", taskId, vertexIdAndCollectorMap.values());
 
-        final OffloadingContext offloadingContext = new OffloadingContext(
-          taskId,
-          offloadingEventQueue,
-          vertexIdAndCollectorMap.values(),
-          serverlessExecutorProvider,
-          irVertexDag,
-          serializedDag,
-          taskOutgoingEdges,
-          serializerManager,
-          vertexIdAndCollectorMap,
-          outputWriterMap,
-          operatorInfoMap);
+          final OffloadingContext offloadingContext = new OffloadingContext(
+            taskId,
+            offloadingEventQueue,
+            vertexIdAndCollectorMap.values(),
+            serverlessExecutorProvider,
+            irVertexDag,
+            serializedDag,
+            taskOutgoingEdges,
+            serializerManager,
+            vertexIdAndCollectorMap,
+            outputWriterMap,
+            operatorInfoMap);
 
-        currOffloadingContext = offloadingContext;
+          currOffloadingContext = offloadingContext;
 
-        offloadingContext.startOffloading();
+          offloadingContext.startOffloading();
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
 
       }, 10, 50, TimeUnit.SECONDS);
 
