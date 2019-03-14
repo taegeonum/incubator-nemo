@@ -134,6 +134,7 @@ public final class OffloadingContext {
 
       // find header
       offloadingHead = findHeader(copyDag, ops);
+      LOG.info("Offloading head: {}", offloadingHead);
 
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
         // find sink that can reach from the headers
