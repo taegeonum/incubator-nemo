@@ -119,6 +119,7 @@ public final class PipeOutputWriter implements OutputWriter {
       doInitialize();
     }
 
+    LOG.info("Watermark in output writer to {}", runtimeEdge.getDst().getId());
     final PriorityQueue<Watermark> expectedWatermarkQueue =
       expectedWatermarkMap.get(runtimeEdge.getDst().getId()).left();
 

@@ -330,9 +330,6 @@ public final class TaskExecutor {
       }
     });
 
-    task.getTaskOutgoingEdges().forEach(edge -> {
-      expectedWatermarkMap.put(edge.getDstIRVertex().getId(), Pair.of(new PriorityQueue<>(), new PriorityQueue<>()));
-    });
 
     serializedDag = SerializationUtils.serialize(irVertexDag);
 
