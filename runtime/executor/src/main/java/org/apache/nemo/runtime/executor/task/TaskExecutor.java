@@ -665,6 +665,7 @@ public final class TaskExecutor {
 
         } else if (elem instanceof TimestampAndValue) {
           final TimestampAndValue tsv = (TimestampAndValue) elem;
+          LOG.info("Receive data {}", tsv);
           collector.setInputTimestamp(tsv.timestamp);
           interOp.getNextOperator().getTransform().onData(tsv.value);
         } else {
