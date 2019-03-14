@@ -214,8 +214,10 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   @Override
   public void emitWatermark(final Watermark watermark) {
 
-    LOG.info("PrevWatermark for {} is {}", watermark, currWatermark);
-    prevWatermarkMap.put(watermark.getTimestamp(), currWatermark);
+    if (offloading) {
+      LOG.info("PrevWatermark for {} is {}", watermark, currWatermark);
+      prevWatermarkMap.put(watermark.getTimestamp(), currWatermark);
+    }
 
     currWatermark = watermark.getTimestamp();
 
