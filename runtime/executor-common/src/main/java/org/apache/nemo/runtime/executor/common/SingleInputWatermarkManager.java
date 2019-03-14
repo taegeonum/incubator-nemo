@@ -82,6 +82,8 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
           if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
             final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
             pendingWatermarkQueue.poll();
+            prevWatermarkMap.remove(prevWatermark);
+            watermarkCounterMap.remove(prevWatermark);
 
             LOG.info("Emit watermark {} at {} by processing offloading watermark",
               watermarkToBeEmitted, irVertex.getId());
