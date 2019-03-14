@@ -12,6 +12,7 @@ import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.ServerlessExecutorService;
 import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingSerializer;
@@ -45,6 +46,8 @@ public final class OffloadingContext {
   final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap;
   final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
 
+  private Map<String, List<String>> sourceAndSinkMap;
+
   private List<Pair<OperatorMetricCollector, OutputCollector>> offloadingHead;
 
   private boolean isStarted = false;
@@ -76,11 +79,14 @@ public final class OffloadingContext {
   }
 
   public void startOffloading() {
+
+
     if (isStarted) {
       throw new RuntimeException("The offloading is already started");
     }
 
     isStarted = true;
+    sourceAndSinkMap = new HashMap<>();
 
     if (!burstyOperators.isEmpty()) {
       // 1) remove stateful
@@ -125,16 +131,21 @@ public final class OffloadingContext {
 
       LOG.info(sb.toString());
 
+      // find header
       offloadingHead = findHeader(copyDag, ops);
-      // set offloading header map e
-
 
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
+        // find sink that can reach from the headers
+        final List<String> sinks = new ArrayList<>();
+        findOffloadingSink(pair.left().irVertex, copyDag, sinks);
+        sourceAndSinkMap.put(pair.left().irVertex.getId(), sinks);
+
         LOG.info("Header operator: {}", pair.left().irVertex);
         final OperatorMetricCollector omc = pair.left();
         if (!omc.irVertex.isSink) {
           final OutputCollector oc = pair.right();
           omc.setServerlessExecutorService(serverlessExecutorService);
+          ((OperatorVertexOutputCollector) oc).setCurrentOffloadingContext(this);
           oc.enableOffloading();
         }
       }
@@ -184,6 +195,21 @@ public final class OffloadingContext {
     return serverlessExecutorService.isFinished();
   }
 
+  public List<String> getOffloadingSinks(final IRVertex src) {
+    return sourceAndSinkMap.get(src.getId());
+  }
+
+  private void findOffloadingSink(final IRVertex curr,
+                                  final DAG<IRVertex, Edge<IRVertex>> dag,
+                                  final List<String> sinks) {
+    for (final Edge<IRVertex> nextEdge : dag.getOutgoingEdgesOf(curr)) {
+      if (!nextEdge.getDst().isOffloading) {
+        sinks.add(nextEdge.getDst().getId());
+      } else {
+        findOffloadingSink(nextEdge.getDst(), dag, sinks);
+      }
+    }
+  }
 
   private List<Pair<OperatorMetricCollector, OutputCollector>> findHeader(
     final DAG<IRVertex, Edge<IRVertex>> dag,

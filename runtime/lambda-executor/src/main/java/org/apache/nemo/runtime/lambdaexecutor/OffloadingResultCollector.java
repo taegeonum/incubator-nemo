@@ -35,7 +35,7 @@ public final class OffloadingResultCollector{
     this.collector = collector;
   }
 
-  public void flush() {
-    collector.emit(new OffloadingResultEvent(result));
+  public void flush(final long watermark) {
+    collector.emit(new OffloadingResultEvent(result, watermark));
   }
 }

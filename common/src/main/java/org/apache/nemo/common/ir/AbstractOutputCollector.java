@@ -7,7 +7,6 @@ public abstract class AbstractOutputCollector<O> implements OutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractOutputCollector.class.getName());
 
   protected long inputTimestamp;
-  protected String sourceId;
 
   protected volatile boolean startOffloading;
   protected volatile boolean endOffloading;
@@ -21,17 +20,6 @@ public abstract class AbstractOutputCollector<O> implements OutputCollector<O> {
   @Override
   public long getInputTimestamp() {
     return inputTimestamp;
-  }
-
-  @Override
-  public void setWatermarkSourceId(final String srcId) {
-    LOG.info("Set watermarks source {}", srcId);
-    sourceId = srcId;
-  }
-
-  @Override
-  public String getWatermarkSourceId() {
-    return sourceId;
   }
 
   @Override

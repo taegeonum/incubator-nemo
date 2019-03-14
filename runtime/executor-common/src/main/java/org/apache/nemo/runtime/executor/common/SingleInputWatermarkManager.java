@@ -18,10 +18,15 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
+import java.util.PriorityQueue;
 
 /**
  * This is a special implementation for single input data stream for optimization.
@@ -31,9 +36,21 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
 
   private final OutputCollector watermarkCollector;
   private String sourceId;
+  final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap;
+  private final IRVertex irVertex;
+  private final Map<Long, Long> prevWatermarkMap;
+  private final Map<Long, Integer> watermarkCounterMap;
 
-  public SingleInputWatermarkManager(final OutputCollector watermarkCollector) {
+  public SingleInputWatermarkManager(final OutputCollector watermarkCollector,
+                                     final IRVertex irVertex,
+                                     final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
+                                     final Map<Long, Long> prevWatermarkMap,
+                                     final Map<Long, Integer> watermarkCounterMap) {
     this.watermarkCollector = watermarkCollector;
+    this.expectedWatermarkMap = expectedWatermarkMap;
+    this.irVertex = irVertex;
+    this.prevWatermarkMap = prevWatermarkMap;
+    this.watermarkCounterMap = watermarkCounterMap;
   }
 
   /**
@@ -44,8 +61,33 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
   @Override
   public void trackAndEmitWatermarks(final int edgeIndex,
                                      final Watermark watermark) {
-    watermarkCollector.setWatermarkSourceId(sourceId);
-    watermarkCollector.emitWatermark(watermark);
+    if (expectedWatermarkMap == null) {
+      watermarkCollector.emitWatermark(watermark);
+    } else {
+      final PriorityQueue<Watermark> expectedWatermarkQueue = expectedWatermarkMap.get(irVertex.getId()).left();
+      if (!expectedWatermarkQueue.isEmpty()) {
+        // FOR OFFLOADING
+
+        // we should not emit the watermark directly.
+        final PriorityQueue<Watermark> pendingWatermarkQueue = expectedWatermarkMap.get(irVertex.getId()).right();
+        pendingWatermarkQueue.add(watermark);
+        while (!expectedWatermarkQueue.isEmpty() && !pendingWatermarkQueue.isEmpty() &&
+          expectedWatermarkQueue.peek().getTimestamp() >= pendingWatermarkQueue.peek().getTimestamp()) {
+
+          // check whether outputs are emitted
+          final long prevWatermark = prevWatermarkMap.get(pendingWatermarkQueue.peek().getTimestamp());
+          if (watermarkCounterMap.get(prevWatermark) == 0) {
+            final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
+            pendingWatermarkQueue.poll();
+            watermarkCollector.emitWatermark(watermarkToBeEmitted);
+          } else {
+            break;
+          }
+        }
+      } else {
+        watermarkCollector.emitWatermark(watermark);
+      }
+    }
   }
 
   @Override

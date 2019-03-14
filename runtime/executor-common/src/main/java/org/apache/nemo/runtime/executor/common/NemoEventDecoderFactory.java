@@ -99,9 +99,6 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
       } else if (isWatermark == 0x02) {
         final Watermark watermark = (Watermark) SerializationUtils.deserialize(inputStream);
         return watermark;
-      } else if (isWatermark == 0x03) {
-        final WatermarkAndSource wmSource = (WatermarkAndSource) SerializationUtils.deserialize(inputStream);
-        return wmSource;
       } else {
         throw new RuntimeException("Watermark decoding failure: " + isWatermark);
       }
