@@ -118,12 +118,13 @@ public final class OperatorMetricCollector {
   }
 
   private void flushToServerless() {
-    LOG.info("Flush to serverless in vertex {}: {}", irVertex.getId(), serializedCnt);
     final CompositeByteBuf compositeByteBuf = PooledByteBufAllocator.DEFAULT.compositeBuffer(2);
     final ByteBuf lengthBuf = PooledByteBufAllocator.DEFAULT.buffer(12);
     lengthBuf.writeInt(serializedCnt);
     lengthBuf.writeLong(watermark);
 
+    LOG.info("Flush to serverless in vertex {}, watermark: {}: {}", irVertex.getId(), serializedCnt,
+      watermark);
     watermarkCounterMap.put(watermark,
       watermarkCounterMap.getOrDefault(watermark, 0) + 1);
 
