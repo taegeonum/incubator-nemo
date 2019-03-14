@@ -124,6 +124,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   public void emit(final O output) {
     operatorMetricCollector.emittedCnt += 1;
 
+    LOG.info("Offloading {}, Start offloading {}, End offloading {}, in {}",
+      offloading, startOffloading, endOffloading, irVertex.getId());
+
     if (irVertex.isSink) {
       operatorMetricCollector.processDone(inputTimestamp);
     }
@@ -134,7 +137,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       startOffloading = false;
       offloading = true;
     }
-
 
     // For offloading
     List<String> offloadingIds = null;
