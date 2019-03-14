@@ -68,6 +68,9 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
       if (!expectedWatermarkQueue.isEmpty()) {
         // FOR OFFLOADING
 
+        LOG.info("Expected min: {}, Curr watermark: {} at {}", expectedWatermarkQueue.peek(),
+          watermark, irVertex.getId());
+
         // we should not emit the watermark directly.
         final PriorityQueue<Watermark> pendingWatermarkQueue = expectedWatermarkMap.get(irVertex.getId()).right();
         pendingWatermarkQueue.add(watermark);
@@ -79,6 +82,9 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
           if (watermarkCounterMap.get(prevWatermark) == 0) {
             final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
             pendingWatermarkQueue.poll();
+
+            LOG.info("Emit watermark {} at {} by processing offloading watermark",
+              watermarkToBeEmitted, irVertex.getId());
             watermarkCollector.emitWatermark(watermarkToBeEmitted);
           } else {
             break;
