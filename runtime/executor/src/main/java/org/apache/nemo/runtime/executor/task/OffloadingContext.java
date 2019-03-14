@@ -111,7 +111,7 @@ public final class OffloadingContext {
       serverlessExecutorService = serverlessExecutorProvider.
         newCachedPool(new StatelessOffloadingTransform(copyDag, taskOutgoingEdges),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-          new StatelessOffloadingEventHandler(offloadingEventQueue, vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
+          new StatelessOffloadingEventHandler(offloadingEventQueue));
 
       LOG.info("ServerlesEexecutorService at {}", taskId);
 

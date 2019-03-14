@@ -205,6 +205,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
 
     if (nextOpIds != null) {
+      LOG.info("Watermark {} emit to {}", watermark, nextOpIds);
       resultCollector.result.add(new Triple<>(
         nextOpIds,
         edge.getId(),

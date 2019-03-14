@@ -217,7 +217,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   public void emitWatermark(final Watermark watermark) {
 
     if (offloading) {
-      LOG.info("PrevWatermark for {} is {}", watermark, currWatermark);
       prevWatermarkMap.put(watermark.getTimestamp(), currWatermark);
     }
 
@@ -264,6 +263,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       // add this watermark to the expected map
       final List<String> sinks = currOffloadingContext.getOffloadingSinks(irVertex);
       for (final String sink : sinks) {
+        LOG.info("Expected watermark for {}: {}", sink, watermark);
         expectedWatermarkMap.get(sink).left().add(watermark);
       }
 
