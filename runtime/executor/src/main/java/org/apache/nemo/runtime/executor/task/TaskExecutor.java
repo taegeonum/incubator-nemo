@@ -714,7 +714,7 @@ public final class TaskExecutor {
         while (!offloadingEventQueue.isEmpty()) {
           // fetch events
           final OffloadingResultEvent msg = offloadingEventQueue.poll();
-          LOG.info("Result processed in executor: cnt {}", msg.data.size());
+          LOG.info("Result processed in executor: cnt {}, watermark: {}", msg.data.size(), msg.watermark);
           for (final Triple<List<String>, String, Object> triple : msg.data) {
             handleOffloadingEvent(triple, msg.watermark);
           }
