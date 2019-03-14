@@ -132,6 +132,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     if (startOffloading) {
       operatorMetricCollector.startOffloading();
       startOffloading = false;
+      offloading = true;
     }
 
 
@@ -169,6 +170,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // this should be called at last!
     if (endOffloading) {
+      offloading = false;
       operatorMetricCollector.endOffloading();
       endOffloading = false;
       currOffloadingContext = null;

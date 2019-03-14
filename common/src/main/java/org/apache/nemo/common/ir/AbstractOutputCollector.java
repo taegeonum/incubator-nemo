@@ -25,12 +25,10 @@ public abstract class AbstractOutputCollector<O> implements OutputCollector<O> {
   @Override
   public void enableOffloading() {
     startOffloading = true;
-    offloading = true;
   }
 
   @Override
   public void disableOffloading() {
     offloading = false;
-    endOffloading = true;
   }
 }

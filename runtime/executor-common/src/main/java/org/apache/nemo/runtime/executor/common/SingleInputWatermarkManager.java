@@ -77,6 +77,9 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
         while (!expectedWatermarkQueue.isEmpty() && !pendingWatermarkQueue.isEmpty() &&
           expectedWatermarkQueue.peek().getTimestamp() >= pendingWatermarkQueue.peek().getTimestamp()) {
 
+           LOG.info("Expected min: {}, Pending  watermark: {} at {}", expectedWatermarkQueue.peek(),
+          pendingWatermarkQueue.peek(), irVertex.getId());
+
           // check whether outputs are emitted
           final long prevWatermark = prevWatermarkMap.get(pendingWatermarkQueue.peek().getTimestamp());
           if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
