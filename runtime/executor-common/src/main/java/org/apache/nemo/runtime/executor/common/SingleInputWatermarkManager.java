@@ -82,18 +82,27 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
 
           // check whether outputs are emitted
           final long ts = pendingWatermarkQueue.peek().getTimestamp();
-          final long prevWatermark = prevWatermarkMap.get(ts);
-          if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
-            final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
-            pendingWatermarkQueue.poll();
-            prevWatermarkMap.remove(prevWatermark);
-            watermarkCounterMap.remove(prevWatermark);
-
+          if (expectedWatermarkQueue.peek().getTimestamp() > ts) {
+            LOG.warn("This may be emitted from the internal vertex: {}", ts);
+            final Watermark watermarkToBeEmitted = pendingWatermarkQueue.poll();
             LOG.info("Emit watermark {} at {} by processing offloading watermark",
               watermarkToBeEmitted, irVertex.getId());
             watermarkCollector.emitWatermark(watermarkToBeEmitted);
           } else {
-            break;
+            final long prevWatermark = prevWatermarkMap.get(ts);
+            if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
+              final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
+              pendingWatermarkQueue.poll();
+              prevWatermarkMap.remove(prevWatermark);
+              watermarkCounterMap.remove(prevWatermark);
+
+              LOG.info("Emit watermark {} at {} by processing offloading watermark",
+                watermarkToBeEmitted, irVertex.getId());
+              watermarkCollector.emitWatermark(watermarkToBeEmitted);
+            } else {
+              // We should wait for other outputs
+              break;
+            }
           }
         }
       } else {

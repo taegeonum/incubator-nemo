@@ -134,17 +134,31 @@ public final class PipeOutputWriter implements OutputWriter {
         expectedWatermarkQueue.peek().getTimestamp() >= pendingWatermarkQueue.peek().getTimestamp()) {
 
         // check whether outputs are emitted
-        final long prevWatermark = prevWatermarkMap.get(pendingWatermarkQueue.peek().getTimestamp());
-        if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
-          final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
-          pendingWatermarkQueue.poll();
-          prevWatermarkMap.remove(prevWatermark);
-          watermarkCounterMap.remove(prevWatermark);
+        final long ts = pendingWatermarkQueue.peek().getTimestamp();
+        if (expectedWatermarkQueue.peek().getTimestamp() > ts) {
+          LOG.warn("This may be emitted from the internal vertex: {}, {} -> {}",
+            ts, stageEdge.getSrcIRVertex().getId(), stageEdge.getDst().getId());
 
+          final Watermark watermarkToBeEmitted = pendingWatermarkQueue.poll();
           final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
           writeData(watermarkWithIndex, pipes, true);
+
         } else {
-          break;
+          final long prevWatermark = prevWatermarkMap.get(pendingWatermarkQueue.peek().getTimestamp());
+          if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
+            final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
+            pendingWatermarkQueue.poll();
+            prevWatermarkMap.remove(prevWatermark);
+            watermarkCounterMap.remove(prevWatermark);
+
+            LOG.info("Emit watermark {} from {} -> {}",
+              watermarkToBeEmitted, stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
+
+            final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
+            writeData(watermarkWithIndex, pipes, true);
+          } else {
+            break;
+          }
         }
       }
     } else {
