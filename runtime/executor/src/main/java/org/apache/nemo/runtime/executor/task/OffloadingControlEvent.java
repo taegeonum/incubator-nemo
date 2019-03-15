@@ -39,7 +39,7 @@ public final class OffloadingControlEvent {
     return controlMessageType;
   }
 
-  public Object getData() {
+  public Optional<Object> getData() {
     return data;
   }
 }

@@ -122,7 +122,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     switch (msg.getControlMessageType()) {
       case START_OFFLOADING: {
         LOG.info("Operator {} start to offload", irVertex.getId());
-        currOffloadingContext = (OffloadingContext) msg.getData();
+        currOffloadingContext = (OffloadingContext) msg.getData().get();
         operatorMetricCollector.startOffloading();
         offloading = true;
         break;
