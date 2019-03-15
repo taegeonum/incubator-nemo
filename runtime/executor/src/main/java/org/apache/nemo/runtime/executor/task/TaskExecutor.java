@@ -739,6 +739,7 @@ public final class TaskExecutor {
             }
           } else if (data instanceof OffloadingControlEvent) {
             final OffloadingControlEvent msg = (OffloadingControlEvent) data;
+            LOG.info("Control event process: {}, for {}", msg.getControlMessageType(), msg.getDstVertexId());
             final OperatorVertexOutputCollector oc = (OperatorVertexOutputCollector)
               vertexIdAndCollectorMap.get(msg.getDstVertexId()).right();
             oc.handleControlMessage(msg);
