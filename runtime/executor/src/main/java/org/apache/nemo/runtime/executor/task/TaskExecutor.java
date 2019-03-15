@@ -353,7 +353,7 @@ public final class TaskExecutor {
               watermarkCounterMap));
         } else {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
-            new MultiInputWatermarkManager(edges.size(),
+            new MultiInputWatermarkManager(childVertex, edges.size(),
               new OperatorWatermarkCollector((OperatorVertex) childVertex)));
         }
       }

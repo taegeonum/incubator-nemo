@@ -153,11 +153,9 @@ public final class OffloadingContext {
 
       flusher.scheduleAtFixedRate(() -> {
         try {
-          LOG.info("Flush trigger start");
           if (!finished) {
             flush();
           }
-          LOG.info("Flush trigger end");
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
@@ -169,7 +167,6 @@ public final class OffloadingContext {
   private void flush() {
     if (!finished) {
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
-        LOG.info("Flush emit to {}", pair.left().irVertex);
         offloadingEventQueue.add(new OffloadingControlEvent(
           OffloadingControlEvent.ControlMessageType.FLUSH, pair.left().irVertex.getId()));
       }
