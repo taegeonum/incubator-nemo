@@ -137,9 +137,14 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       operatorMetricCollector.endOffloading();
       endOffloading = false;
       currOffloadingContext = null;
+
+      if (startOffloading) {
+        // this means that it does not receive any event during offloading
+        // we then disable the start offloading
+        startOffloading = false;
+      }
     }
 
-    // startOffloading should be called first!
     if (startOffloading) {
       LOG.info("Operator {} start to offload", irVertex.getId());
       operatorMetricCollector.startOffloading();
