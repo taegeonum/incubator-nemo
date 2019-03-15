@@ -152,13 +152,18 @@ public final class OffloadingContext {
       }
 
       flusher.schedule(() -> {
-        synchronized (this) {
-          LOG.info("Flush triggered");
-          flush();
-        }
+        try {
+          synchronized (this) {
+            LOG.info("Flush triggered");
+            flush();
+          }
 
-        if (!finished) {
-          flusher.schedule(this::flush, evalConf.flushPeriod, TimeUnit.MILLISECONDS);
+          if (!finished) {
+            flusher.schedule(this::flush, evalConf.flushPeriod, TimeUnit.MILLISECONDS);
+          }
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
         }
       }, evalConf.flushPeriod, TimeUnit.MILLISECONDS);
     }
@@ -167,9 +172,9 @@ public final class OffloadingContext {
   private void flush() {
     if (!finished) {
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
-        LOG.info("Flush add for {}", pair.left().irVertex);
         offloadingEventQueue.add(new OffloadingControlEvent(
           OffloadingControlEvent.ControlMessageType.FLUSH, pair.left().irVertex.getId(), null));
+        LOG.info("Flush add for {}", pair.left().irVertex);
       }
     }
   }
