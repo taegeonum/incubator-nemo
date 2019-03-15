@@ -88,7 +88,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
 
       if (minWatermark.getTimestamp() < prevMinWatermark.getTimestamp()) {
         throw new IllegalStateException(
-          "The current min watermark is ahead of prev min: " + minWatermark + ", " + prevMinWatermark);
+          "The current min watermark is ahead of prev min: " + minWatermark + ", " + prevMinWatermark + " at " + vertex.getId());
       }
 
       if (minWatermark.getTimestamp() > prevMinWatermark.getTimestamp()) {
