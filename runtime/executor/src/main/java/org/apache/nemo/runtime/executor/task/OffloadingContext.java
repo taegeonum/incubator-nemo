@@ -151,18 +151,18 @@ public final class OffloadingContext {
         }
       }
 
-      flusher.schedule(() -> {
+      flusher.scheduleAtFixedRate(() -> {
         try {
-          LOG.info("Flush trigger");
+          LOG.info("Flush trigger start");
           if (!finished) {
             flush();
-            flusher.schedule(this::flush, evalConf.flushPeriod, TimeUnit.MILLISECONDS);
           }
+          LOG.info("Flush trigger end");
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
         }
-      }, evalConf.flushPeriod, TimeUnit.MILLISECONDS);
+      }, evalConf.flushPeriod, evalConf.flushPeriod,TimeUnit.MILLISECONDS);
     }
   }
 
