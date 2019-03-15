@@ -144,20 +144,32 @@ public final class PipeOutputWriter implements OutputWriter {
           writeData(watermarkWithIndex, pipes, true);
 
         } else {
-          final long prevWatermark = prevWatermarkMap.get(pendingWatermarkQueue.peek().getTimestamp());
-          if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
+          if (!prevWatermarkMap.containsKey(ts)) {
             final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
             pendingWatermarkQueue.poll();
-            prevWatermarkMap.remove(prevWatermark);
-            watermarkCounterMap.remove(prevWatermark);
-
             LOG.info("Emit watermark {} from {} -> {}",
               watermarkToBeEmitted, stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
 
             final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
             writeData(watermarkWithIndex, pipes, true);
+
           } else {
-            break;
+            final long prevWatermark = prevWatermarkMap.get(ts);
+            if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
+              LOG.info("Remove {}  prev watermark: {}", ts, prevWatermark);
+              final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
+              pendingWatermarkQueue.poll();
+              prevWatermarkMap.remove(prevWatermark);
+              watermarkCounterMap.remove(prevWatermark);
+
+              LOG.info("Emit watermark {} from {} -> {}",
+                watermarkToBeEmitted, stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
+
+              final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
+              writeData(watermarkWithIndex, pipes, true);
+            } else {
+              break;
+            }
           }
         }
       }

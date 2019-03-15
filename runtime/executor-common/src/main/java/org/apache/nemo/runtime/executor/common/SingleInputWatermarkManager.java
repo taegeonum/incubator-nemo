@@ -89,19 +89,29 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
               watermarkToBeEmitted, irVertex.getId());
             watermarkCollector.emitWatermark(watermarkToBeEmitted);
           } else {
-            final long prevWatermark = prevWatermarkMap.get(ts);
-            if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
+            if (!prevWatermarkMap.containsKey(ts)) {
+              LOG.warn("This may be deleted of prev watermark: {}", ts);
               final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
               pendingWatermarkQueue.poll();
-              prevWatermarkMap.remove(prevWatermark);
-              watermarkCounterMap.remove(prevWatermark);
-
               LOG.info("Emit watermark {} at {} by processing offloading watermark",
                 watermarkToBeEmitted, irVertex.getId());
               watermarkCollector.emitWatermark(watermarkToBeEmitted);
             } else {
-              // We should wait for other outputs
-              break;
+              final long prevWatermark = prevWatermarkMap.get(ts);
+              if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
+                LOG.info("Remove {}  prev watermark: {}", ts, prevWatermark);
+                final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
+                pendingWatermarkQueue.poll();
+                prevWatermarkMap.remove(prevWatermark);
+                watermarkCounterMap.remove(prevWatermark);
+
+                LOG.info("Emit watermark {} at {} by processing offloading watermark",
+                  watermarkToBeEmitted, irVertex.getId());
+                watermarkCollector.emitWatermark(watermarkToBeEmitted);
+              } else {
+                // We should wait for other outputs
+                break;
+              }
             }
           }
         }
