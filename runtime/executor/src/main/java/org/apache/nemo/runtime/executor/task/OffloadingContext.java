@@ -154,11 +154,8 @@ public final class OffloadingContext {
       flusher.schedule(() -> {
         try {
           LOG.info("Flush trigger");
-          synchronized (this) {
-            flush();
-          }
-
           if (!finished) {
+            flush();
             flusher.schedule(this::flush, evalConf.flushPeriod, TimeUnit.MILLISECONDS);
           }
         } catch (final Exception e) {
