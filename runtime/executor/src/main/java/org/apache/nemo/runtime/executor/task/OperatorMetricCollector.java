@@ -113,11 +113,14 @@ public final class OperatorMetricCollector {
     }
 
     return  (inputBuffer.readableBytes() > evalConf.flushBytes
-      || serializedCnt > evalConf.flushCount
-      || curTime - prevFlushTime > evalConf.flushPeriod);
+      || serializedCnt > evalConf.flushCount);
   }
 
-  private void flushToServerless() {
+  public boolean hasFlushableData() {
+    return inputBuffer.readableBytes() > 0;
+  }
+
+  public void flushToServerless() {
     final CompositeByteBuf compositeByteBuf = PooledByteBufAllocator.DEFAULT.compositeBuffer(2);
     final ByteBuf lengthBuf = PooledByteBufAllocator.DEFAULT.buffer(12);
     lengthBuf.writeInt(serializedCnt);

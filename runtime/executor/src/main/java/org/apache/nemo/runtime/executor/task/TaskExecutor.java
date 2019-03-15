@@ -119,7 +119,7 @@ public final class TaskExecutor {
 
   private transient OffloadingContext currOffloadingContext = null;
 
-  private final ConcurrentLinkedQueue<OffloadingResultEvent> offloadingEventQueue = new ConcurrentLinkedQueue<>();
+  private final ConcurrentLinkedQueue<Object> offloadingEventQueue = new ConcurrentLinkedQueue<>();
 
 
   private final Map<Long, Integer> watermarkCounterMap = new HashMap<>();
@@ -222,7 +222,8 @@ public final class TaskExecutor {
             serializerManager,
             vertexIdAndCollectorMap,
             outputWriterMap,
-            operatorInfoMap);
+            operatorInfoMap,
+            evalConf);
 
           currOffloadingContext = offloadingContext;
 
@@ -266,7 +267,8 @@ public final class TaskExecutor {
       serializerManager,
       vertexIdAndCollectorMap,
       outputWriterMap,
-      operatorInfoMap);
+      operatorInfoMap,
+      evalConf);
 
     currOffloadingContext = offloadingContext;
     offloadingContext.startOffloading();
@@ -721,16 +723,28 @@ public final class TaskExecutor {
         // check offloading queue to process events
         while (!offloadingEventQueue.isEmpty()) {
           // fetch events
-          final OffloadingResultEvent msg = offloadingEventQueue.poll();
-          LOG.info("Result processed in executor: cnt {}, watermark: {}", msg.data.size(), msg.watermark);
+          final Object data = offloadingEventQueue.poll();
 
-          final long inputWatermark = msg.watermark;
-          // handle input watermark
-          watermarkCounterMap.put(inputWatermark, watermarkCounterMap.get(inputWatermark) - 1);
-          LOG.info("Receive input watermark {}, cnt: {}", inputWatermark, watermarkCounterMap.get(inputWatermark));
+          if (data instanceof OffloadingResultEvent) {
+            final OffloadingResultEvent msg = (OffloadingResultEvent) data;
+            LOG.info("Result processed in executor: cnt {}, watermark: {}", msg.data.size(), msg.watermark);
 
-          for (final Triple<List<String>, String, Object> triple : msg.data) {
-            handleOffloadingEvent(triple);
+            final long inputWatermark = msg.watermark;
+            // handle input watermark
+            watermarkCounterMap.put(inputWatermark, watermarkCounterMap.get(inputWatermark) - 1);
+            LOG.info("Receive input watermark {}, cnt: {}", inputWatermark, watermarkCounterMap.get(inputWatermark));
+
+            for (final Triple<List<String>, String, Object> triple : msg.data) {
+              handleOffloadingEvent(triple);
+            }
+          } else if (data instanceof OffloadingControlEvent) {
+            final OffloadingControlEvent msg = (OffloadingControlEvent) data;
+            final OperatorVertexOutputCollector oc = (OperatorVertexOutputCollector)
+              vertexIdAndCollectorMap.get(msg.getDstVertexId()).right();
+            oc.handleControlMessage(msg);
+
+          } else {
+            throw new RuntimeException("Unsupported type: " + data);
           }
         }
       }

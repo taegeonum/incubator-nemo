@@ -27,6 +27,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.task.OffloadingContext;
+import org.apache.nemo.runtime.executor.task.OffloadingControlEvent;
 import org.apache.nemo.runtime.executor.task.OperatorMetricCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,10 +107,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     writer.write(output);
   }
 
-  public void setCurrentOffloadingContext(final OffloadingContext offloadingContext) {
-    currOffloadingContext = offloadingContext;
-  }
-
   @Override
   public void setInputTimestamp(long ts) {
     inputTimestamp = ts;
@@ -118,6 +115,35 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   @Override
   public long getInputTimestamp() {
     return inputTimestamp;
+  }
+
+
+  public void handleControlMessage(final OffloadingControlEvent msg) {
+    switch (msg.getControlMessageType()) {
+      case START_OFFLOADING: {
+        LOG.info("Operator {} start to offload", irVertex.getId());
+        currOffloadingContext = (OffloadingContext) msg.getData();
+        operatorMetricCollector.startOffloading();
+        offloading = true;
+        break;
+      }
+      case STOP_OFFLOADING: {
+        LOG.info("Operator {} end to offload", irVertex.getId());
+        offloading = false;
+        operatorMetricCollector.endOffloading();
+        currOffloadingContext = null;
+        break;
+      }
+      case FLUSH: {
+        LOG.info("Operator {} flush data", irVertex.getId());
+        if (operatorMetricCollector.hasFlushableData()) {
+          operatorMetricCollector.flushToServerless();
+        }
+        break;
+      }
+      default:
+        throw new RuntimeException("Unsupported type: " + msg.getControlMessageType());
+    }
   }
 
   @Override
@@ -131,6 +157,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       operatorMetricCollector.processDone(inputTimestamp);
     }
 
+    /*
     if (endOffloading) {
       LOG.info("Operator {} end to offload", irVertex.getId());
       offloading = false;
@@ -151,6 +178,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       startOffloading = false;
       offloading = true;
     }
+    */
 
     // For offloading
     List<String> offloadingIds = null;
