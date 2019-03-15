@@ -74,7 +74,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
     }
 
     if (vertex != null) {
-      LOG.debug("At {} Track watermark {} emitted from edge {}:, {}", vertex.getId(), watermark.getTimestamp(), edgeIndex,
+      LOG.info("At {} Track watermark {} emitted from edge {}:, {}", vertex.getId(), watermark.getTimestamp(), edgeIndex,
         watermarks.toString());
     }
 
