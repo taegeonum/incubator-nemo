@@ -138,6 +138,8 @@ public final class PipeOutputWriter implements OutputWriter {
         if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
           final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
           pendingWatermarkQueue.poll();
+          prevWatermarkMap.remove(prevWatermark);
+          watermarkCounterMap.remove(prevWatermark);
 
           final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
           writeData(watermarkWithIndex, pipes, true);

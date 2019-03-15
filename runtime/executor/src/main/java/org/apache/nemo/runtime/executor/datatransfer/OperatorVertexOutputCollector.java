@@ -131,6 +131,14 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       operatorMetricCollector.processDone(inputTimestamp);
     }
 
+    if (endOffloading) {
+      LOG.info("Operator {} end to offload", irVertex.getId());
+      offloading = false;
+      operatorMetricCollector.endOffloading();
+      endOffloading = false;
+      currOffloadingContext = null;
+    }
+
     // startOffloading should be called first!
     if (startOffloading) {
       LOG.info("Operator {} start to offload", irVertex.getId());
@@ -169,15 +177,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     for (final OutputWriter externalWriter : externalMainOutputs) {
       emit(externalWriter, new TimestampAndValue<>(inputTimestamp, output));
-    }
-
-    // this should be called at last!
-    if (endOffloading) {
-      LOG.info("Operator {} end to offload", irVertex.getId());
-      offloading = false;
-      operatorMetricCollector.endOffloading();
-      endOffloading = false;
-      currOffloadingContext = null;
     }
   }
 

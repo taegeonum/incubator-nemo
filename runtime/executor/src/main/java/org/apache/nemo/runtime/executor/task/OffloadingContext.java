@@ -183,6 +183,9 @@ public final class OffloadingContext {
       }
     }
 
+    LOG.info("Shutting down operator of header {}", offloadingHead.stream().map(pair -> pair.left().irVertex)
+      .collect(Collectors.toList()));
+
     shutdownExecutor.execute(() -> {
       serverlessExecutorService.shutdown();
     });
