@@ -185,42 +185,47 @@ public final class OffloadingContext {
       throw new RuntimeException("The offloading is already finishsed!");
     }
 
-    synchronized (this) {
-      finished = true;
+    finished = true;
+    flusher.shutdown();
+    try {
+      flusher.awaitTermination(3000, TimeUnit.MILLISECONDS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
 
-      LOG.info("End offloading!");
-      // Do sth for offloading end
 
-      for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
-        if (!pair.left().irVertex.isSink) {
-          LOG.info("Disable offloading {}", pair.left().irVertex.getId());
+    LOG.info("End offloading!");
+    // Do sth for offloading end
 
-          // Send stop message
-          offloadingEventQueue.add(new OffloadingControlEvent(
-            OffloadingControlEvent.ControlMessageType.STOP_OFFLOADING, pair.left().irVertex.getId()));
-        }
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
+      if (!pair.left().irVertex.isSink) {
+        LOG.info("Disable offloading {}", pair.left().irVertex.getId());
+
+        // Send stop message
+        offloadingEventQueue.add(new OffloadingControlEvent(
+          OffloadingControlEvent.ControlMessageType.STOP_OFFLOADING, pair.left().irVertex.getId()));
       }
+    }
 
-      // waiting for disable offloading
-      for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
-        if (!pair.left().irVertex.isSink) {
-          while (pair.left().isOffloading) {
-            try {
-              Thread.sleep(100);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
+    // waiting for disable offloading
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
+      if (!pair.left().irVertex.isSink) {
+        while (pair.left().isOffloading) {
+          try {
+            Thread.sleep(100);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
           }
         }
       }
-
-      LOG.info("Shutting down operator of header {}", offloadingHead.stream().map(pair -> pair.left().irVertex)
-        .collect(Collectors.toList()));
-
-      shutdownExecutor.execute(() -> {
-        serverlessExecutorService.shutdown();
-      });
     }
+
+    LOG.info("Shutting down operator of header {}", offloadingHead.stream().map(pair -> pair.left().irVertex)
+      .collect(Collectors.toList()));
+
+    shutdownExecutor.execute(() -> {
+      serverlessExecutorService.shutdown();
+    });
   }
 
   public boolean isFinished() {
