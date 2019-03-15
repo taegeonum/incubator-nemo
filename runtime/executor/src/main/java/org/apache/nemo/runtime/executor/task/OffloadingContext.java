@@ -154,7 +154,6 @@ public final class OffloadingContext {
       flusher.schedule(() -> {
         try {
           synchronized (this) {
-            LOG.info("Flush triggered");
             flush();
           }
 
@@ -173,8 +172,7 @@ public final class OffloadingContext {
     if (!finished) {
       for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
         offloadingEventQueue.add(new OffloadingControlEvent(
-          OffloadingControlEvent.ControlMessageType.FLUSH, pair.left().irVertex.getId(), null));
-        LOG.info("Flush add for {}", pair.left().irVertex);
+          OffloadingControlEvent.ControlMessageType.FLUSH, pair.left().irVertex.getId()));
       }
     }
   }
