@@ -30,7 +30,6 @@ public final class OperatorMetricCollector {
   private final EvalConf evalConf;
   public final List<IRVertex> dstVertices;
 
-  private long prevFlushTime;
   private ByteBuf inputBuffer;
   private ByteBufOutputStream bos;
   public int serializedCnt;
@@ -86,8 +85,6 @@ public final class OperatorMetricCollector {
   public void startOffloading() {
     LOG.info("OPeratorMetricCollector startOffloading");
     checkSink();
-
-    prevFlushTime = System.currentTimeMillis();
     serializedCnt = 0;
     isOffloading = true;
   }
@@ -99,15 +96,13 @@ public final class OperatorMetricCollector {
     if (inputBuffer.readableBytes() > 0) {
       // TODO: send remaining data to serverless
       flushToServerless();
-      inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
-      bos = new ByteBufOutputStream(inputBuffer);
     }
     LOG.info("End of offloading vertex  -- end {}", irVertex.getId());
     serializedCnt = 0;
     isOffloading = false;
   }
 
-  private boolean isFlusheable(final long curTime) {
+  private boolean isFlusheable() {
     if (serverlessExecutorService == null || serverlessExecutorService.isShutdown()) {
       throw new RuntimeException("Serverless executor is null or shutdowned: " + serverlessExecutorService);
     }
@@ -135,6 +130,11 @@ public final class OperatorMetricCollector {
     // execute
 
     serverlessExecutorService.execute(compositeByteBuf);
+
+    // reset
+    inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
+    bos = new ByteBufOutputStream(inputBuffer);
+    serializedCnt = 0;
   }
 
   public void sendToServerless(final Object event,
@@ -158,18 +158,9 @@ public final class OperatorMetricCollector {
       serializer.getEncoderFactory().create(bos).encode(event);
       serializedCnt += 1;
 
-      final long curTime = System.currentTimeMillis();
-      if (isFlusheable(curTime)) {
-        //if (serializedCnt > 10) {
-
+      if (isFlusheable()) {
         // flush
         flushToServerless();
-        prevFlushTime = curTime;
-
-        // reset
-        inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
-        bos = new ByteBufOutputStream(inputBuffer);
-        serializedCnt = 0;
       }
     } catch (IOException e) {
       e.printStackTrace();
