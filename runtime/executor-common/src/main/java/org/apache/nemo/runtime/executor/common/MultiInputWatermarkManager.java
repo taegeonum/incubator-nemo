@@ -73,10 +73,12 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
         watermarks.toString());
     }
 
+    /*
     if (vertex != null) {
       LOG.info("At {} Track watermark {} emitted from edge {}:, {}", vertex.getId(), watermark.getTimestamp(), edgeIndex,
         watermarks.toString());
     }
+    */
 
     if (edgeIndex == minWatermarkIndex) {
       // update min watermark
