@@ -47,6 +47,8 @@ public final class OperatorMetricCollector {
 
   private final Map<Long, Integer> watermarkCounterMap;
 
+  private final boolean isMonitor;
+
   public OperatorMetricCollector(final IRVertex srcVertex,
                                  final List<IRVertex> dstVertices,
                                  final Serializer serializer,
@@ -63,8 +65,9 @@ public final class OperatorMetricCollector {
     this.processedEvents = new LinkedList<>();
     this.inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
     this.bos = new ByteBufOutputStream(inputBuffer);
+    this.isMonitor = evalConf.monitoringVertices.isEmpty() || evalConf.monitoringVertices.contains(srcVertex.getId());
 
-    //LOG.info("SrcVertex: {}, DstVertices: {}, Edge: {}", srcVertex, dstVertices, edge);
+    LOG.info("Monitoring {} {}", srcVertex, isMonitor);
   }
 
   public void setServerlessExecutorService(final ServerlessExecutorService sls) {
@@ -202,9 +205,11 @@ public final class OperatorMetricCollector {
   }
 
   public void processDone(final long startTimestamp) {
-   final long currTime = System.currentTimeMillis();
-    final long latency = (currTime - startTimestamp) - adjustTime;
-    LOG.info("Event Latency {} from {}", latency, irVertex.getId());
+    if (isMonitor) {
+      final long currTime = System.currentTimeMillis();
+      final long latency = (currTime - startTimestamp) - adjustTime;
+      LOG.info("Event Latency {} from {}", latency, irVertex.getId());
+    }
   }
 
   class LatencyAndCnt {
