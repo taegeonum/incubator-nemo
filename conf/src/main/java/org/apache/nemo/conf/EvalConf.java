@@ -11,6 +11,7 @@ import org.apache.reef.tang.formats.CommandLine;
 
 import javax.inject.Inject;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -92,9 +93,11 @@ public final class EvalConf {
     this.bottleneckDetectionPeriod = bottleneckDetectionPeriod;
     this.bottleneckDetectionConsecutive = bottleneckDetectionConsecutive;
     this.bottleneckDetectionThreshold = bottleneckDetectionThreshold;
-    this.monitoringVertices = Arrays
+    this.monitoringVertices = monitorVertices.length() == 0 ? Collections.emptyList() :
+      Arrays
       .stream(monitorVertices.split(","))
       .map(num -> "vertex" + num).collect(Collectors.toList());
+    System.out.println("Monitoring vertices: " + monitoringVertices.toString());
     this.monitorVerticesStr = monitorVertices;
   }
 
