@@ -181,7 +181,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       // See if we can emit a new watermark, as we may have processed some pushed-back elements
       onWatermark(new Watermark(curInputWatermark));
       //LOG.info("{}, On watermark at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
-      System.out.println("Pushback latency: " + (System.currentTimeMillis() - st));
+      LOG.info("Pushback latency: {}", (System.currentTimeMillis() - st));
     } else {
       //LOG.info("Main element: {}", data);
 

@@ -120,7 +120,7 @@ public final class PipeOutputWriter implements OutputWriter {
       doInitialize();
     }
 
-    LOG.info("Watermark in output writer to {}", stageEdge.getDstIRVertex().getId());
+    //LOG.info("Watermark in output writer to {}", stageEdge.getDstIRVertex().getId());
     final PriorityQueue<Watermark> expectedWatermarkQueue =
       expectedWatermarkMap.get(stageEdge.getDstIRVertex().getId()).left();
 
