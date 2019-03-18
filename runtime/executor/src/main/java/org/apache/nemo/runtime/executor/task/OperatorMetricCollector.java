@@ -47,7 +47,9 @@ public final class OperatorMetricCollector {
 
   private final boolean isMonitor;
 
-  private final List<Integer> latencyList = new ArrayList<>();
+  final double samplingRate;
+
+  private final Random random = new Random();
 
   public OperatorMetricCollector(final IRVertex srcVertex,
                                  final List<IRVertex> dstVertices,
@@ -55,7 +57,7 @@ public final class OperatorMetricCollector {
                                  final Edge edge,
                                  final EvalConf evalConf,
                                  final Map<Long, Integer> watermarkCounterMap,
-                                 final Set<String> monitoringVertices) {
+                                 final Map<String, Double> samplingMap) {
     this.irVertex = srcVertex;
     this.serializedCnt = 0;
     this.dstVertices = dstVertices;
@@ -66,9 +68,10 @@ public final class OperatorMetricCollector {
     this.processedEvents = new LinkedList<>();
     this.inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
     this.bos = new ByteBufOutputStream(inputBuffer);
-    this.isMonitor = monitoringVertices.contains(srcVertex.getId());
+    this.isMonitor = samplingMap.containsKey(srcVertex.getId());
+    this.samplingRate = samplingMap.getOrDefault(srcVertex.getId(), 0.0);
 
-    LOG.info("Monitoring {} {}", srcVertex, isMonitor);
+    LOG.info("Sampling rate of {}: {}", srcVertex, samplingRate);
   }
 
   public void setServerlessExecutorService(final ServerlessExecutorService sls) {
@@ -209,10 +212,14 @@ public final class OperatorMetricCollector {
     if (isMonitor) {
       final long currTime = System.currentTimeMillis();
       final int latency = (int)((currTime - startTimestamp) - adjustTime);
-      latencyList.add(latency);
+
+      if (random.nextDouble() < samplingRate) {
+        LOG.info("Event Latency {} from {}", latency, irVertex.getId());
+      }
     }
   }
 
+  /*
   // TODO: trigger this function
   public void flushLatencies() {
     if (!latencyList.isEmpty()) {
@@ -246,6 +253,7 @@ public final class OperatorMetricCollector {
       }
     }
   }
+  */
 
   class LatencyAndCnt {
     public long latencySum = 0;

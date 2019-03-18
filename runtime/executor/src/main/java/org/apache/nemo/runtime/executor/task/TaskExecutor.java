@@ -125,12 +125,13 @@ public final class TaskExecutor {
   private final Map<Long, Integer> watermarkCounterMap = new HashMap<>();
   private final Map<Long, Long> prevWatermarkMap = new HashMap<>();
 
-  private Set<String> monitoringVertices;
-
   // key: offloading sink, val:
   //                            - left: watermarks emitted from the offloading header
   //                            - right: pending watermarks
   public final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap = new HashMap<>();
+
+
+  final Map<String, Double> samplingMap = new HashMap<>();
   /**
    * Constructor.
    *
@@ -169,10 +170,10 @@ public final class TaskExecutor {
       taskOutgoingEdges.get(src.getId()).add(dst.getId());
     });
 
-    this.monitoringVertices = new HashSet<>();
-
     this.processedEventCollector = Executors.newSingleThreadScheduledExecutor();
     this.detector = new InputFluctuationDetector(vertexIdAndCollectorMap);
+
+    samplingMap.putAll(evalConf.samplingJson);
 
     this.evalConf = evalConf;
 
@@ -206,12 +207,14 @@ public final class TaskExecutor {
     }, 1, 1, TimeUnit.SECONDS);
 
     // For latency logging
+    /*
     se.scheduleAtFixedRate(() -> {
       for (final String monitoringVertex : monitoringVertices) {
         controlEventQueue.add(
           new ControlEvent(ControlEvent.ControlMessageType.FLUSH_LATENCY, monitoringVertex));
       }
     }, 2, 1, TimeUnit.SECONDS);
+    */
 
     // For offloading debugging
     if (evalConf.offloadingdebug) {
@@ -333,7 +336,9 @@ public final class TaskExecutor {
         childVertex.isSink = true;
         // If it is sink or emit to next stage, we log the latency
         LOG.info("MonitoringVertex: {}", childVertex.getId());
-        monitoringVertices.add(childVertex.getId());
+        if (!samplingMap.containsKey(childVertex.getId())) {
+          samplingMap.put(childVertex.getId(), 1.0);
+        }
         LOG.info("Sink vertex: {}", childVertex.getId());
       }
 
@@ -423,6 +428,7 @@ public final class TaskExecutor {
 
         OperatorMetricCollector omc;
 
+
         if (!dstVertices.isEmpty()) {
           omc = new OperatorMetricCollector(irVertex,
             dstVertices,
@@ -430,7 +436,7 @@ public final class TaskExecutor {
             edges.get(0),
             evalConf,
             watermarkCounterMap,
-            monitoringVertices);
+            samplingMap);
         } else {
           omc = new OperatorMetricCollector(irVertex,
             dstVertices,
@@ -438,7 +444,7 @@ public final class TaskExecutor {
             null,
             evalConf,
             watermarkCounterMap,
-            monitoringVertices);
+            samplingMap);
         }
 
         outputCollector = new OperatorVertexOutputCollector(
