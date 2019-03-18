@@ -245,7 +245,7 @@ public final class OperatorMetricCollector {
           }
         }
 
-        expectedCnt = 0;
+        expectedCnt = evalConf.samplingCnt;
         latencyList.clear();
       }
     }
