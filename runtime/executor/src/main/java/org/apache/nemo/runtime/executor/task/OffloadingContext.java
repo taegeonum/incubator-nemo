@@ -92,7 +92,9 @@ public final class OffloadingContext {
     isStarted = true;
     sourceAndSinkMap = new HashMap<>();
 
-    if (!burstyOperators.isEmpty()) {
+    if (burstyOperators.isEmpty()) {
+      offloadingHead = Collections.emptyList();
+    } else {
       // 1) remove stateful
 
       // build DAG
