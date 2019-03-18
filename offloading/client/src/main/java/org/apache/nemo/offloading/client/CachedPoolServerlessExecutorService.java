@@ -339,6 +339,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         throw new RuntimeException("Worker is not ready..." +
           "Finish worker " + worker.getId());
       }
+
       worker.finishOffloading();
       finishedWorkers += 1;
     }
