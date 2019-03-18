@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
-import io.netty.buffer.*;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
@@ -120,6 +119,7 @@ public final class TaskExecutor {
   private transient OffloadingContext currOffloadingContext = null;
 
   private final ConcurrentLinkedQueue<Object> offloadingEventQueue = new ConcurrentLinkedQueue<>();
+  private final ConcurrentLinkedQueue<ControlEvent> controlEventQueue = new ConcurrentLinkedQueue<>();
 
 
   private final Map<Long, Integer> watermarkCounterMap = new HashMap<>();
@@ -208,9 +208,8 @@ public final class TaskExecutor {
     // For latency logging
     se.scheduleAtFixedRate(() -> {
       for (final String monitoringVertex : monitoringVertices) {
-        offloadingEventQueue.add(
-          new OffloadingControlEvent(OffloadingControlEvent.ControlMessageType.FLUSH_LATENCY, monitoringVertex));
-        LOG.info("Send flush latency for {}, eventqueue size:{}", monitoringVertex, offloadingEventQueue.size());
+        controlEventQueue.add(
+          new ControlEvent(ControlEvent.ControlMessageType.FLUSH_LATENCY, monitoringVertex));
       }
     }, 2, 1, TimeUnit.SECONDS);
 
@@ -663,7 +662,6 @@ public final class TaskExecutor {
     return (currentTime - prevTime) >= pollingPeriod;
   }
 
-
   // For offloading!
   private void handleOffloadingEvent(final Triple<List<String>, String, Object> triple) {
     //LOG.info("Result handle {} / {} / {}", triple.first, triple.second, triple.third);
@@ -734,7 +732,17 @@ public final class TaskExecutor {
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
 
+
+      // handling control event
+      while (!controlEventQueue.isEmpty()) {
+        final ControlEvent event = controlEventQueue.poll();
+        final OperatorVertexOutputCollector oc = (OperatorVertexOutputCollector)
+          vertexIdAndCollectorMap.get(event.getDstVertexId()).right();
+        oc.handleControlMessage(event);
+      }
+
       if (evalConf.enableOffloading || evalConf.offloadingdebug) {
+
         // check offloading queue to process events
         while (!offloadingEventQueue.isEmpty()) {
           // fetch events
@@ -754,10 +762,10 @@ public final class TaskExecutor {
             }
           } else if (data instanceof OffloadingControlEvent) {
             final OffloadingControlEvent msg = (OffloadingControlEvent) data;
-            LOG.info("Control event process: {}, for {}", msg.getControlMessageType(), msg.getDstVertexId());
+            //LOG.info("Control event process: {}, for {}", msg.getControlMessageType(), msg.getDstVertexId());
             final OperatorVertexOutputCollector oc = (OperatorVertexOutputCollector)
               vertexIdAndCollectorMap.get(msg.getDstVertexId()).right();
-            oc.handleControlMessage(msg);
+            oc.handleOffloadingControlMessage(msg);
 
           } else {
             throw new RuntimeException("Unsupported type: " + data);

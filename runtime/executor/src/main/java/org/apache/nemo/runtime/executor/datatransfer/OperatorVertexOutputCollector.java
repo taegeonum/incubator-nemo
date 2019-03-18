@@ -26,6 +26,7 @@ import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.task.ControlEvent;
 import org.apache.nemo.runtime.executor.task.OffloadingContext;
 import org.apache.nemo.runtime.executor.task.OffloadingControlEvent;
 import org.apache.nemo.runtime.executor.task.OperatorMetricCollector;
@@ -118,7 +119,21 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   }
 
 
-  public void handleControlMessage(final OffloadingControlEvent msg) {
+  public void handleControlMessage(final ControlEvent msg) {
+    switch (msg.getControlMessageType()) {
+      case FLUSH_LATENCY: {
+        LOG.info("Operator {} flush latency", irVertex.getId());
+        operatorMetricCollector.flushLatencies();
+        break;
+      }
+      default: {
+        throw new RuntimeException("Unsupported type: " + msg.getControlMessageType());
+      }
+    }
+  }
+
+
+  public void handleOffloadingControlMessage(final OffloadingControlEvent msg) {
     switch (msg.getControlMessageType()) {
       case START_OFFLOADING: {
         LOG.info("Operator {} start to offload", irVertex.getId());
@@ -139,11 +154,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         if (operatorMetricCollector.hasFlushableData()) {
           operatorMetricCollector.flushToServerless();
         }
-        break;
-      }
-      case FLUSH_LATENCY: {
-        LOG.info("Operator {} flush latency", irVertex.getId());
-        operatorMetricCollector.flushLatencies();
         break;
       }
       default:
