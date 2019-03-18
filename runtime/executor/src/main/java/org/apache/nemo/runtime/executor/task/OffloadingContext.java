@@ -195,6 +195,9 @@ public final class OffloadingContext {
 
     LOG.info("End offloading!");
     // Do sth for offloading end
+    if (offloadingHead.isEmpty()) {
+      return;
+    }
 
     for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
       if (!pair.left().irVertex.isSink) {
