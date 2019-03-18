@@ -132,6 +132,8 @@ public final class TaskExecutor {
 
 
   final Map<String, Double> samplingMap = new HashMap<>();
+
+  private final long taskStartTime;
   /**
    * Constructor.
    *
@@ -194,6 +196,8 @@ public final class TaskExecutor {
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, intermediateDataIOFactory);
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
+
+    this.taskStartTime = System.currentTimeMillis();
 
 
     // For offloading: collecting input rate
@@ -641,7 +645,7 @@ public final class TaskExecutor {
       // This is for latency logging
       if (isFirstEvent) {
         isFirstEvent = false;
-        adjustTime = System.currentTimeMillis() - ((TimestampAndValue) event).timestamp;
+        adjustTime = taskStartTime - ((TimestampAndValue) event).timestamp;
         for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
           vertexIdAndCollectorMap.values()) {
           metricCollector.left().setAdjustTime(adjustTime);
