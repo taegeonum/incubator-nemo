@@ -269,7 +269,7 @@ public final class TaskExecutor {
   }
 
   public void startOffloading(final long baseTime) {
-    LOG.info("Start offloading!");
+    LOG.info("Start offloading at {}!", taskId);
 
     final List<Pair<OperatorMetricCollector, OutputCollector>> ocs = detector.retrieveBurstyOutputCollectors(baseTime);
     final OffloadingContext offloadingContext = new OffloadingContext(
@@ -291,6 +291,7 @@ public final class TaskExecutor {
   }
 
   public void endOffloading() {
+    LOG.info("End offloading at {}!", taskId);
     currOffloadingContext.endOffloading();
   }
 
