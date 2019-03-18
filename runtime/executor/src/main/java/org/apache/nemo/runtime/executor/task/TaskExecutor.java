@@ -125,6 +125,8 @@ public final class TaskExecutor {
   private final Map<Long, Integer> watermarkCounterMap = new HashMap<>();
   private final Map<Long, Long> prevWatermarkMap = new HashMap<>();
 
+  private Set<String> monitoringVertices;
+
   // key: offloading sink, val:
   //                            - left: watermarks emitted from the offloading header
   //                            - right: pending watermarks
@@ -167,9 +169,7 @@ public final class TaskExecutor {
       taskOutgoingEdges.get(src.getId()).add(dst.getId());
     });
 
-    irVertexDag.getVertices().forEach(vertex -> {
-      LOG.info("Vertex: {}", vertex.getId());
-    });
+    this.monitoringVertices = new HashSet<>();
 
     this.processedEventCollector = Executors.newSingleThreadScheduledExecutor();
     this.detector = new InputFluctuationDetector(vertexIdAndCollectorMap);
@@ -194,7 +194,8 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
-    // For offloading
+
+    // For offloading: collecting input rate
     processedEventCollector.scheduleAtFixedRate(() -> {
       for (final Pair<OperatorMetricCollector, OutputCollector> ocPair : vertexIdAndCollectorMap.values()) {
         final OperatorMetricCollector oc = ocPair.left();
@@ -204,7 +205,15 @@ public final class TaskExecutor {
       }
     }, 1, 1, TimeUnit.SECONDS);
 
-    // for offloading debugging
+    // For latency logging
+    se.scheduleAtFixedRate(() -> {
+      for (final String monitoringVertex : monitoringVertices) {
+        offloadingEventQueue.add(
+          new OffloadingControlEvent(OffloadingControlEvent.ControlMessageType.FLUSH_LATENCY, monitoringVertex));
+      }
+    }, 2, 1, TimeUnit.SECONDS);
+
+    // For offloading debugging
     if (evalConf.offloadingdebug) {
       se.scheduleAtFixedRate(() -> {
 
@@ -322,6 +331,9 @@ public final class TaskExecutor {
 
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
         childVertex.isSink = true;
+        // If it is sink or emit to next stage, we log the latency
+        LOG.info("MonitoringVertex: {}", childVertex.getId());
+        monitoringVertices.add(childVertex.getId());
         LOG.info("Sink vertex: {}", childVertex.getId());
       }
 
@@ -417,14 +429,16 @@ public final class TaskExecutor {
             serializerManager.getSerializer(edges.get(0).getId()),
             edges.get(0),
             evalConf,
-            watermarkCounterMap);
+            watermarkCounterMap,
+            monitoringVertices);
         } else {
           omc = new OperatorMetricCollector(irVertex,
             dstVertices,
             null,
             null,
             evalConf,
-            watermarkCounterMap);
+            watermarkCounterMap,
+            monitoringVertices);
         }
 
         outputCollector = new OperatorVertexOutputCollector(
@@ -433,7 +447,7 @@ public final class TaskExecutor {
           externalMainOutputs, externalAdditionalOutputMap, omc,
           prevWatermarkMap, expectedWatermarkMap);
 
-        LOG.info("Put {} to map", irVertex.getId());
+
         vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(omc, outputCollector));
       }
 

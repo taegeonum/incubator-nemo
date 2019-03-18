@@ -13,7 +13,8 @@ public final class OffloadingControlEvent {
   public enum ControlMessageType {
     START_OFFLOADING,
     STOP_OFFLOADING,
-    FLUSH
+    FLUSH,
+    FLUSH_LATENCY
   }
 
   public OffloadingControlEvent(final ControlMessageType msgType,

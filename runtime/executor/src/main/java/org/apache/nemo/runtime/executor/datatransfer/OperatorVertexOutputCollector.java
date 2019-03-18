@@ -141,6 +141,11 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         }
         break;
       }
+      case FLUSH_LATENCY: {
+        LOG.info("Operator {} flush latency", irVertex.getId());
+        operatorMetricCollector.flushLatencies();
+        break;
+      }
       default:
         throw new RuntimeException("Unsupported type: " + msg.getControlMessageType());
     }

@@ -14,9 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class OperatorMetricCollector {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorMetricCollector.class.getName());
@@ -25,7 +23,7 @@ public final class OperatorMetricCollector {
   final long windowsize = 2000;
   long adjustTime;
 
-  public int emittedCnt;
+  public int emittedCnt = 0;
   public final IRVertex irVertex;
   private final EvalConf evalConf;
   public final List<IRVertex> dstVertices;
@@ -49,23 +47,29 @@ public final class OperatorMetricCollector {
 
   private final boolean isMonitor;
 
+  private final List<Integer> latencyList = new LinkedList<>();
+
+  private int expectedCnt;
+
   public OperatorMetricCollector(final IRVertex srcVertex,
                                  final List<IRVertex> dstVertices,
                                  final Serializer serializer,
                                  final Edge edge,
                                  final EvalConf evalConf,
-                                 final Map<Long, Integer> watermarkCounterMap) {
+                                 final Map<Long, Integer> watermarkCounterMap,
+                                 final Set<String> monitoringVertices) {
     this.irVertex = srcVertex;
     this.serializedCnt = 0;
     this.dstVertices = dstVertices;
     this.evalConf = evalConf;
     this.serializer = serializer;
     this.edge = edge;
+    this.expectedCnt = evalConf.samplingCnt;
     this.watermarkCounterMap = watermarkCounterMap;
     this.processedEvents = new LinkedList<>();
     this.inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
     this.bos = new ByteBufOutputStream(inputBuffer);
-    this.isMonitor = evalConf.monitoringVertices.isEmpty() || evalConf.monitoringVertices.contains(srcVertex.getId());
+    this.isMonitor = monitoringVertices.contains(srcVertex.getId());
 
     LOG.info("Monitoring {} {}", srcVertex, isMonitor);
   }
@@ -207,8 +211,37 @@ public final class OperatorMetricCollector {
   public void processDone(final long startTimestamp) {
     if (isMonitor) {
       final long currTime = System.currentTimeMillis();
-      final long latency = (currTime - startTimestamp) - adjustTime;
-      LOG.info("Event Latency {} from {}", latency, irVertex.getId());
+      final int latency = (int)((currTime - startTimestamp) - adjustTime);
+      latencyList.add(latency);
+    }
+  }
+
+  // TODO: trigger this function
+  public void flushLatencies() {
+    if (latencyList.isEmpty()) {
+      // accumulate the expected cnt
+      expectedCnt += evalConf.samplingCnt;
+    } else {
+      final long cTime = System.currentTimeMillis();
+      final int cnt = Math.min(1, latencyList.size());
+      final double samplingRate = Math.max(1.0, expectedCnt / (double) cnt);
+      final Random random = new Random(cTime);
+
+      final Iterator<Integer> iterator = latencyList.iterator();
+      while (iterator.hasNext() && expectedCnt > 0) {
+        final Integer latency = iterator.next();
+        if (random.nextDouble() < samplingRate) {
+          LOG.info("Event Latency {} from {} expectedCnt: {}", latency, irVertex.getId(), expectedCnt);
+          expectedCnt -= 1;
+          iterator.remove();
+        }
+      }
+
+      if (expectedCnt == 0) {
+        latencyList.clear();
+      }
+
+      expectedCnt += evalConf.samplingCnt;
     }
   }
 
