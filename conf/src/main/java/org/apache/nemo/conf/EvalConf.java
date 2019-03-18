@@ -41,7 +41,7 @@ public final class EvalConf {
   public final class FlushPeriod implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "latency sampling cnt per sec", short_name = "sampling_cnt", default_value = "5")
+  @NamedParameter(doc = "latency sampling cnt per 10000", short_name = "sampling_cnt", default_value = "5")
   public final class SamplingCount implements Name<Integer> {
   }
 
