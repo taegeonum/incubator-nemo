@@ -208,9 +208,9 @@ public final class TaskExecutor {
     // For latency logging
     se.scheduleAtFixedRate(() -> {
       for (final String monitoringVertex : monitoringVertices) {
-        LOG.info("Send flush latency for {}", monitoringVertex);
         offloadingEventQueue.add(
           new OffloadingControlEvent(OffloadingControlEvent.ControlMessageType.FLUSH_LATENCY, monitoringVertex));
+        LOG.info("Send flush latency for {}, eventqueue size:{}", monitoringVertex, offloadingEventQueue.size());
       }
     }, 2, 1, TimeUnit.SECONDS);
 
