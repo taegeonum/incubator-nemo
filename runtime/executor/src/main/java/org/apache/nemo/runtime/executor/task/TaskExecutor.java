@@ -285,34 +285,46 @@ public final class TaskExecutor {
 
     while (!Thread.interrupted()) {
 
-      // wait until the previous context is finished
-      while (currOffloadingContext != null && !currOffloadingContext.isFinished()) {
-        Thread.sleep(200);
-      }
 
       final OffloadingRequestEvent event = offloadingRequestQueue.take();
 
       if (event.isStart) {
-        LOG.info("Start offloading at {}!", taskId);
-        final List<Pair<OperatorMetricCollector, OutputCollector>> ocs =
-          detector.retrieveBurstyOutputCollectors(event.startTime);
+        // wait until the previous context is finished
+        while (currOffloadingContext != null && !currOffloadingContext.isFinished()) {
+          Thread.sleep(200);
+        }
 
-        final OffloadingContext offloadingContext = new OffloadingContext(
-          taskId,
-          offloadingEventQueue,
-          ocs,
-          serverlessExecutorProvider,
-          irVertexDag,
-          serializedDag,
-          taskOutgoingEdges,
-          serializerManager,
-          vertexIdAndCollectorMap,
-          outputWriterMap,
-          operatorInfoMap,
-          evalConf);
+        if (!offloadingRequestQueue.isEmpty()) {
+          final OffloadingRequestEvent endEvent = offloadingRequestQueue.poll();
+          if (!endEvent.isStart) {
+            // just remove it
+            LOG.warn("The offloading start " + event.isStart + " at time " + event.startTime + " is not triggered yet... so just ignore offloading end");
+          } else {
+            throw new RuntimeException("Received offloading start message after starting offload!");
+          }
+        } else {
 
-        currOffloadingContext = offloadingContext;
-        offloadingContext.startOffloading();
+          LOG.info("Start offloading at {}!", taskId);
+          final List<Pair<OperatorMetricCollector, OutputCollector>> ocs =
+            detector.retrieveBurstyOutputCollectors(event.startTime);
+
+          final OffloadingContext offloadingContext = new OffloadingContext(
+            taskId,
+            offloadingEventQueue,
+            ocs,
+            serverlessExecutorProvider,
+            irVertexDag,
+            serializedDag,
+            taskOutgoingEdges,
+            serializerManager,
+            vertexIdAndCollectorMap,
+            outputWriterMap,
+            operatorInfoMap,
+            evalConf);
+
+          currOffloadingContext = offloadingContext;
+          offloadingContext.startOffloading();
+        }
       } else {
         LOG.info("End offloading at {}!", taskId);
         currOffloadingContext.endOffloading();
@@ -325,13 +337,7 @@ public final class TaskExecutor {
   }
 
   public void endOffloading() {
-    final OffloadingRequestEvent event = offloadingRequestQueue.poll();
-    if (event != null) {
-      // just remove it
-      LOG.warn("The offloading start " + event.isStart + " at time " + event.startTime + " is not triggered yet... so just ignore offloading end");
-    } else {
-      offloadingRequestQueue.add(new OffloadingRequestEvent(false, 0));
-    }
+    offloadingRequestQueue.add(new OffloadingRequestEvent(false, 0));
   }
 
 
