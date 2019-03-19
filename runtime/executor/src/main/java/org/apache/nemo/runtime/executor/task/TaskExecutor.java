@@ -109,7 +109,7 @@ public final class TaskExecutor {
   private final ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
   private final ExecutorService offloadingService = Executors.newSingleThreadExecutor();
 
-  private long adjustTime;
+  private final long adjustTime;
 
   private boolean isFirstEvent = true;
 
@@ -201,6 +201,13 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
 
     this.taskStartTime = System.currentTimeMillis();
+
+    this.adjustTime = System.currentTimeMillis() - 1436886000000L;
+
+    for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
+      vertexIdAndCollectorMap.values()) {
+      metricCollector.left().setAdjustTime(adjustTime);
+    }
 
 
     // For offloading: collecting input rate
@@ -700,7 +707,9 @@ public final class TaskExecutor {
     } else if (event instanceof TimestampAndValue) {
 
       // This is for latency logging
+      /*
       if (isFirstEvent) {
+        final long elapsedTime = System.currentTimeMillis() - taskStartTime;
         isFirstEvent = false;
         adjustTime = taskStartTime - ((TimestampAndValue) event).timestamp;
         for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
@@ -708,6 +717,7 @@ public final class TaskExecutor {
           metricCollector.left().setAdjustTime(adjustTime);
         }
       }
+      */
 
       // Process data element
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
