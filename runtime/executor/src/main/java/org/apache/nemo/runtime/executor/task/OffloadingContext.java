@@ -231,7 +231,7 @@ public final class OffloadingContext {
   }
 
   public boolean isFinished() {
-    return serverlessExecutorService.isFinished();
+    return offloadingHead.isEmpty() || serverlessExecutorService.isFinished();
   }
 
   public List<String> getOffloadingSinks(final IRVertex src) {

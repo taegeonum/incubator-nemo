@@ -286,7 +286,7 @@ public final class TaskExecutor {
     while (!Thread.interrupted()) {
 
       // wait until the previous context is finished
-      while (currOffloadingContext != null && currOffloadingContext.isFinished()) {
+      while (currOffloadingContext != null && !currOffloadingContext.isFinished()) {
         Thread.sleep(200);
       }
 
