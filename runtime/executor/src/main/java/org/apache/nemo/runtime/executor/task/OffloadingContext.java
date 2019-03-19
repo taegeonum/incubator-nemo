@@ -193,7 +193,7 @@ public final class OffloadingContext {
     }
 
 
-    LOG.info("End offloading!");
+    LOG.info("End offloading at {}, {}", taskId, offloadingHead);
     // Do sth for offloading end
     if (offloadingHead.isEmpty()) {
       return;
