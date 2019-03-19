@@ -233,7 +233,7 @@ public final class TaskExecutor {
           if (!evalConf.burstyOperatorStr.isEmpty()) {
             final String[] ops = evalConf.burstyOperatorStr.split(",");
             for (int i = 0; i < ops.length; i++) {
-              burstyOps.add(vertexIdAndCollectorMap.get(ops[i]));
+              burstyOps.add(vertexIdAndCollectorMap.get("vertex" + ops[i]));
             }
           } else {
             burstyOps.addAll(vertexIdAndCollectorMap.values());
