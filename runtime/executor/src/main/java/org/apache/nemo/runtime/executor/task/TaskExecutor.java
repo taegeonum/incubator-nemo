@@ -202,7 +202,7 @@ public final class TaskExecutor {
 
     this.taskStartTime = System.currentTimeMillis();
 
-    this.adjustTime = System.currentTimeMillis() - 1436886000000L;
+    this.adjustTime = System.currentTimeMillis() - 1436918400000L;
 
     for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
       vertexIdAndCollectorMap.values()) {
