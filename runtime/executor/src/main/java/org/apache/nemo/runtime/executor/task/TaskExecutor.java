@@ -228,12 +228,23 @@ public final class TaskExecutor {
       se.scheduleAtFixedRate(() -> {
 
         try {
-          LOG.info("Start offloading at task {}, {}!", taskId, vertexIdAndCollectorMap.values());
+          final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOps = new LinkedList<>();
+
+          if (!evalConf.burstyOperatorStr.isEmpty()) {
+            final String[] ops = evalConf.burstyOperatorStr.split(",");
+            for (int i = 0; i < ops.length; i++) {
+              burstyOps.add(vertexIdAndCollectorMap.get(ops[i]));
+            }
+          } else {
+            burstyOps.addAll(vertexIdAndCollectorMap.values());
+          }
+
+          LOG.info("Start offloading at task {}, {}!", taskId, burstyOps);
 
           final OffloadingContext offloadingContext = new OffloadingContext(
             taskId,
             offloadingEventQueue,
-            vertexIdAndCollectorMap.values(),
+            burstyOps,
             serverlessExecutorProvider,
             irVertexDag,
             serializedDag,

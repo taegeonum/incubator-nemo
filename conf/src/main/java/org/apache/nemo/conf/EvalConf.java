@@ -51,6 +51,10 @@ public final class EvalConf {
   }
 
 
+  @NamedParameter(short_name = "bursty_op", default_value = "")
+  public final class BurstyOperatorString implements Name<String> {
+  }
+
   @NamedParameter(short_name = "bottleneck_detection_period", default_value = "1000")
   public static final class BottleneckDetectionPeriod implements Name<Long> {
   }
@@ -76,7 +80,7 @@ public final class EvalConf {
   public final double bottleneckDetectionThreshold;
   public final String samplingJsonStr;
   public final Map<String, Double> samplingJson;
-
+  public final String burstyOperatorStr;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -88,7 +92,8 @@ public final class EvalConf {
                    @Parameter(BottleneckDetectionPeriod.class) final long bottleneckDetectionPeriod,
                    @Parameter(BottleneckDetectionConsecutive.class) final int bottleneckDetectionConsecutive,
                    @Parameter(BottleneckDetectionCpuThreshold.class) final double bottleneckDetectionThreshold,
-                   @Parameter(SamplingJsonString.class) final String samplingJsonStr) throws IOException {
+                   @Parameter(SamplingJsonString.class) final String samplingJsonStr,
+                   @Parameter(BurstyOperatorString.class) final String burstyOperatorStr) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -99,6 +104,7 @@ public final class EvalConf {
     this.bottleneckDetectionConsecutive = bottleneckDetectionConsecutive;
     this.bottleneckDetectionThreshold = bottleneckDetectionThreshold;
     this.samplingJsonStr = samplingJsonStr;
+    this.burstyOperatorStr = burstyOperatorStr;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -120,6 +126,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(BottleneckDetectionConsecutive.class, Integer.toString(bottleneckDetectionConsecutive));
     jcb.bindNamedParameter(BottleneckDetectionCpuThreshold.class, Double.toString(bottleneckDetectionThreshold));
     jcb.bindNamedParameter(SamplingJsonString.class, samplingJsonStr);
+    jcb.bindNamedParameter(BurstyOperatorString.class, burstyOperatorStr);
     return jcb.build();
   }
 
@@ -135,6 +142,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(BottleneckDetectionConsecutive.class);
     cl.registerShortNameOfClass(BottleneckDetectionPeriod.class);
     cl.registerShortNameOfClass(SamplingPath.class);
+    cl.registerShortNameOfClass(BurstyOperatorString.class);
   }
 
   @Override
@@ -152,6 +160,7 @@ public final class EvalConf {
     sb.append("bottleneckDectionConsectutive: "); sb.append(bottleneckDetectionConsecutive); sb.append("\n");
     sb.append("bottleneckDetectionThreshold: "); sb.append(bottleneckDetectionThreshold); sb.append("\n");
     sb.append("samplingJson: "); sb.append(samplingJsonStr); sb.append("\n");
+    sb.append("burstyOps: "); sb.append(burstyOperatorStr); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();
