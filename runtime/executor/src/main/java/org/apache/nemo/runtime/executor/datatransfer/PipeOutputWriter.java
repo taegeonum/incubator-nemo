@@ -173,6 +173,7 @@ public final class PipeOutputWriter implements OutputWriter {
         }
       }
     } else {
+      LOG.info("No-offloading watermark {} from {}", watermark, stageEdge.getSrcIRVertex().getId());
       final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermark, srcTaskIndex);
       // flush data whenever receiving watermarks
       writeData(watermarkWithIndex, pipes, true);
