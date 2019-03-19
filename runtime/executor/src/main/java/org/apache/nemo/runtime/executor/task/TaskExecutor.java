@@ -688,7 +688,7 @@ public final class TaskExecutor {
 
         if (elem instanceof Watermark) {
           final Watermark watermark = (Watermark) elem;
-          //LOG.info("Receive watermark {} for {}", watermark, interOp.getNextOperator().getId());
+          LOG.info("Receive watermark {} for {}", watermark, interOp.getNextOperator().getId());
           interOp.getWatermarkManager().trackAndEmitWatermarks(interOp.getEdgeIndex(), watermark);
 
         } else if (elem instanceof TimestampAndValue) {
