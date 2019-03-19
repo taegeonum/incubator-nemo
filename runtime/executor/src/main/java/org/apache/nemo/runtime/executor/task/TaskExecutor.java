@@ -107,6 +107,7 @@ public final class TaskExecutor {
   // Variables for offloading - end
 
   private final ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
+  private final ExecutorService offloadingService = Executors.newSingleThreadExecutor();
 
   private long adjustTime;
 
@@ -134,6 +135,8 @@ public final class TaskExecutor {
   final Map<String, Double> samplingMap = new HashMap<>();
 
   private final long taskStartTime;
+
+  private final BlockingQueue<OffloadingRequestEvent> offloadingRequestQueue = new LinkedBlockingQueue<>();
   /**
    * Constructor.
    *
@@ -264,35 +267,71 @@ public final class TaskExecutor {
         }
       }, 30, 50, TimeUnit.SECONDS);
 
+    }
 
+    if (evalConf.enableOffloading) {
+      offloadingService.execute(() -> {
+        try {
+          handleOffloadingRequestEvent();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
+    }
+  }
+
+  private void handleOffloadingRequestEvent() throws InterruptedException {
+
+    while (!Thread.interrupted()) {
+
+      // wait until the previous context is finished
+      while (currOffloadingContext != null && currOffloadingContext.isFinished()) {
+        Thread.sleep(200);
+      }
+
+      final OffloadingRequestEvent event = offloadingRequestQueue.take();
+
+      if (event.isStart) {
+        LOG.info("Start offloading at {}!", taskId);
+        final List<Pair<OperatorMetricCollector, OutputCollector>> ocs =
+          detector.retrieveBurstyOutputCollectors(event.startTime);
+
+        final OffloadingContext offloadingContext = new OffloadingContext(
+          taskId,
+          offloadingEventQueue,
+          ocs,
+          serverlessExecutorProvider,
+          irVertexDag,
+          serializedDag,
+          taskOutgoingEdges,
+          serializerManager,
+          vertexIdAndCollectorMap,
+          outputWriterMap,
+          operatorInfoMap,
+          evalConf);
+
+        currOffloadingContext = offloadingContext;
+        offloadingContext.startOffloading();
+      } else {
+        LOG.info("End offloading at {}!", taskId);
+        currOffloadingContext.endOffloading();
+      }
     }
   }
 
   public void startOffloading(final long baseTime) {
-    LOG.info("Start offloading at {}!", taskId);
-
-    final List<Pair<OperatorMetricCollector, OutputCollector>> ocs = detector.retrieveBurstyOutputCollectors(baseTime);
-    final OffloadingContext offloadingContext = new OffloadingContext(
-      taskId,
-      offloadingEventQueue,
-      ocs,
-      serverlessExecutorProvider,
-      irVertexDag,
-      serializedDag,
-      taskOutgoingEdges,
-      serializerManager,
-      vertexIdAndCollectorMap,
-      outputWriterMap,
-      operatorInfoMap,
-      evalConf);
-
-    currOffloadingContext = offloadingContext;
-    offloadingContext.startOffloading();
+    offloadingRequestQueue.add(new OffloadingRequestEvent(true, baseTime));
   }
 
   public void endOffloading() {
-    LOG.info("End offloading at {}!", taskId);
-    currOffloadingContext.endOffloading();
+    final OffloadingRequestEvent event = offloadingRequestQueue.poll();
+    if (event != null) {
+      // just remove it
+      LOG.warn("The offloading start " + event.isStart + " at time " + event.startTime + " is not triggered yet... so just ignore offloading end");
+    } else {
+      offloadingRequestQueue.add(new OffloadingRequestEvent(false, 0));
+    }
   }
 
 
