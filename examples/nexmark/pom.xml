@@ -51,12 +51,13 @@ under the License.
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/org.springframework/org.springframework.expression -->
+    <!-- https://mvnrepository.com/artifact/org.springframework/spring-core -->
+    <!-- https://mvnrepository.com/artifact/org.springframework/spring-expression -->
     <dependency>
       <groupId>org.springframework</groupId>
-      <artifactId>org.springframework.expression</artifactId>
-      <version>3.2.2.release</version>
+      <artifactId>spring-expression</artifactId>
+      <version>5.1.5.RELEASE</version>
     </dependency>
-
 
     <!-- https://mvnrepository.com/artifact/org.apache.beam/beam-sdks-java-io-google-cloud-platform -->
     <dependency>
