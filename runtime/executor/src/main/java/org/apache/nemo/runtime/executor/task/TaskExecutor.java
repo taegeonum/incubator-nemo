@@ -859,7 +859,6 @@ public final class TaskExecutor {
         try {
           //final long a = System.currentTimeMillis();
           final Object element = dataFetcher.fetchDataElement();
-          LOG.info("Event from data fetcher: {}, {}", dataFetcher.getDataSource(), element);
 
           //fetchTime += (System.currentTimeMillis() - a);
 
