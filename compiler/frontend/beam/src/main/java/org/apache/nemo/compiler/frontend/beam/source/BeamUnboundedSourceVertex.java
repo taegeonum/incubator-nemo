@@ -170,6 +170,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     @Override
     public long readWatermark() {
       final Instant watermark = reader.getWatermark();
+      LOG.info("Reader {}, watermark {}", reader, watermark);
       // Finish if the watermark == TIMESTAMP_MAX_VALUE
       isFinished = (watermark.getMillis() >= GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis());
       return watermark.getMillis();
