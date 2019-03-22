@@ -24,8 +24,8 @@ dependencies {
 
     // beam
     //compile group: 'org.apache.beam', name: 'beam-sdks-java-core', version: '2.6.0'
-    compile group: 'org.apache.beam', name: 'beam-runners-core-java', version: '2.6.0'
-    compile group: 'org.apache.beam', name: 'beam-sdks-java-io-google-cloud-platform', version: '2.6.0'
+    //compile group: 'org.apache.beam', name: 'beam-runners-core-java', version: '2.6.0'
+    //compile group: 'org.apache.beam', name: 'beam-sdks-java-io-google-cloud-platform', version: '2.6.0'
 
     // for kafka
     //compile group: 'org.apache.kafka', name: 'kafka_2.12', version: '2.1.0'
