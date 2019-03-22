@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 cp $M2_HOME/org/apache/beam/beam-sdks-java-nexmark/2.6.0-SNAPSHOT/beam-sdks-java-nexmark-2.6.0-SNAPSHOT.jar jars/
+cp $M2_HOME/org/apache/beam/beam-sdks-java-io-kafka/2.6.0-SNAPSHOT/beam-sdks-java-io-kafka-2.6.0-SNAPSHOT.jar jars/
+cp lib/* jars/
 cp ../../../compiler/frontend/beam/target/nemo-compiler-frontend-beam-0.2-SNAPSHOT.jar jars/
 cp ../../../common/target/nemo-common-0.2-SNAPSHOT-shaded.jar jars/
 cp ../common/target/offloading-worker-common-0.2-SNAPSHOT.jar jars/
