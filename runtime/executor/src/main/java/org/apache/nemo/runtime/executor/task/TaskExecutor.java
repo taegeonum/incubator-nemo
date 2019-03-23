@@ -843,6 +843,8 @@ public final class TaskExecutor {
             oc.handleOffloadingControlMessage(msg);
 
           } else if (data instanceof OffloadingKafkaEvent) {
+            kafkaOffloading = true;
+
             if (dataFetchers.size() != 1) {
               throw new RuntimeException("Data fetcher size should be 1 in this example!");
             }
