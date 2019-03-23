@@ -854,7 +854,6 @@ public final class TaskExecutor {
             final UnboundedSource unboundedSource = readable.getUnboundedSource();
             final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
             final BeamUnboundedSourceVertex beamUnboundedSourceVertex = ((BeamUnboundedSourceVertex) dataFetcher.getDataSource());
-            beamUnboundedSourceVertex.setUnboundedSource(unboundedSource);
             LOG.info("datefetcher: {}, readable: {}, checkpointMark: {}, unboundedSourceVertex: {}",
               dataFetcher, readable, checkpointMark, beamUnboundedSourceVertex);
 
@@ -879,6 +878,9 @@ public final class TaskExecutor {
             final DAG<IRVertex, Edge<IRVertex>> copyDag = SerializationUtils.deserialize(serializedDag);
 
             copyDag.getVertices().forEach(vertex -> {
+              if (vertex instanceof BeamUnboundedSourceVertex) {
+                ((BeamUnboundedSourceVertex) vertex).setUnboundedSource(unboundedSource);
+              }
                 // this edge can be offloaded
               if (vertex.isSink) {
                 vertex.isOffloading = false;
