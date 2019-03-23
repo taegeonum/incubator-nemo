@@ -855,6 +855,7 @@ public final class TaskExecutor {
               dataFetcher, readable, checkpointMark, beamUnboundedSourceVertex);
 
             final UnboundedSource unboundedSource = beamUnboundedSourceVertex.getUnboundedSource();
+            LOG.info("unbounded source: {}", unboundedSource);
             final Coder<UnboundedSource.CheckpointMark> coder = unboundedSource.getCheckpointMarkCoder();
 
             LOG.info("Offloading marker: {}", checkpointMark);
