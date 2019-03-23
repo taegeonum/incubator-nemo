@@ -901,6 +901,11 @@ public final class TaskExecutor {
 
       // do not process data!!
       if (kafkaOffloading) {
+        try {
+          Thread.sleep(300);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
         continue;
       }
 
