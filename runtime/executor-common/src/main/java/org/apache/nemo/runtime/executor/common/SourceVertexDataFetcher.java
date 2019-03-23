@@ -49,9 +49,9 @@ public class SourceVertexDataFetcher extends DataFetcher {
   private boolean isStarted = false;
 
   public SourceVertexDataFetcher(final SourceVertex dataSource,
-                          final RuntimeEdge edge,
-                          final Readable readable,
-                          final OutputCollector outputCollector) {
+                                 final RuntimeEdge edge,
+                                 final Readable readable,
+                                 final OutputCollector outputCollector) {
     super(dataSource, edge, outputCollector);
     this.readable = readable;
     this.bounded = dataSource.isBounded();
