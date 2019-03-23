@@ -27,6 +27,9 @@ import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
+import org.apache.nemo.offloading.client.StreamingWorkerService;
+import org.apache.nemo.offloading.common.OffloadingWorker;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -148,6 +151,7 @@ public final class TaskExecutor {
 
   private boolean pollingTime = false;
   private boolean kafkaOffloading = false;
+  private final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory;
 
   /**
    * Constructor.
@@ -169,6 +173,7 @@ public final class TaskExecutor {
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                       final SerializerManager serializerManager,
                       final ServerlessExecutorProvider serverlessExecutorProvider,
+                      final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                       final EvalConf evalConf) {
     // Essential information
     this.task = task;
@@ -177,6 +182,7 @@ public final class TaskExecutor {
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
+    this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.outputWriterMap = new HashMap<>();
     this.taskOutgoingEdges = new HashMap<>();
@@ -889,13 +895,15 @@ public final class TaskExecutor {
               }
             });
 
-            final ServerlessExecutorService
-            serverlessExecutorService = serverlessExecutorProvider
-              .newCachedPool(new KafkaOffloadingTransform(copyDag, taskOutgoingEdges, coder, serializedMark),
+            final StreamingWorkerService streamingWorkerService =
+              new StreamingWorkerService(lambdaOffloadingWorkerFactory,
+                new KafkaOffloadingTransform(copyDag, taskOutgoingEdges, coder, serializedMark),
                 new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
                 new StatelessOffloadingEventHandler(offloadingEventQueue));
 
-            serverlessExecutorService.createStreamWorker();
+
+            LOG.info("Execute streaming worker!");
+            streamingWorkerService.createStreamWorker();
           } else {
             throw new RuntimeException("Unsupported type: " + data);
           }

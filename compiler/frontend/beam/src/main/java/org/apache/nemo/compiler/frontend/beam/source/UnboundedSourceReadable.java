@@ -80,7 +80,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
     if (isCurrentAvailable) {
       final O elem = reader.getCurrent();
       final Instant currTs = reader.getCurrentTimestamp();
-      LOG.info("Curr timestamp: {}", currTs);
+      //LOG.info("Curr timestamp: {}", currTs);
       return new TimestampAndValue<>(currTs.getMillis(),
         WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
     } else {

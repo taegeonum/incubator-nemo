@@ -11,6 +11,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.nemo.offloading.common.*;
 
@@ -21,6 +22,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.logging.LogManager;
 
 public final class OffloadingHandler {
 
@@ -57,6 +59,9 @@ public final class OffloadingHandler {
   private int dataProcessingCnt = 0;
 
 	public OffloadingHandler() {
+    Logger.getRootLogger().setLevel(Level.INFO);
+
+
 		LOG.info("Handler is created!");
           this.clientWorkerGroup = new NioEventLoopGroup(1,
         new DefaultThreadFactory("hello" + "-ClientWorker"));
