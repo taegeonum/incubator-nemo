@@ -77,7 +77,7 @@ public final class HandleDataFetcher {
 
         if (pollingTime) {
           // flush data
-          resultCollector.flush(1);
+          resultCollector.flush(-1);
 
           // We check pending data every polling interval
           pollingTime = false;

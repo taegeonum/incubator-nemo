@@ -835,10 +835,14 @@ public final class TaskExecutor {
 
             final long inputWatermark = msg.watermark;
             // handle input watermark
-            watermarkCounterMap.put(inputWatermark, watermarkCounterMap.get(inputWatermark) - 1);
-            LOG.info("Receive input watermark {}, cnt: {}", inputWatermark, watermarkCounterMap.get(inputWatermark));
+
+            if (inputWatermark > 0) {
+              watermarkCounterMap.put(inputWatermark, watermarkCounterMap.get(inputWatermark) - 1);
+              LOG.info("Receive input watermark {}, cnt: {}", inputWatermark, watermarkCounterMap.get(inputWatermark));
+            }
 
             for (final Triple<List<String>, String, Object> triple : msg.data) {
+              LOG.info("Data {}, {}, {}", triple.first, triple.second, triple.third);
               handleOffloadingEvent(triple);
             }
           } else if (data instanceof OffloadingControlEvent) {
