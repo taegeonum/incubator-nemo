@@ -28,6 +28,8 @@ public final class HandleDataFetcher {
   private boolean closed = false;
   private final OffloadingResultCollector resultCollector;
 
+  private int processedCnt = 0;
+
   public HandleDataFetcher(final List<DataFetcher> fetchers,
                            final OffloadingResultCollector resultCollector) {
     LOG.info("Handle data fetcher start");
@@ -76,8 +78,11 @@ public final class HandleDataFetcher {
         final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
 
         if (pollingTime) {
-          // flush data
-          resultCollector.flush(-1);
+          if (processedCnt > 0) {
+            // flush data
+            resultCollector.flush(-1);
+          }
+          processedCnt = 0;
 
           // We check pending data every polling interval
           pollingTime = false;
@@ -148,16 +153,18 @@ public final class HandleDataFetcher {
    * @param event event
    * @param dataFetcher current data fetcher
    */
-  private static void onEventFromDataFetcher(final Object event,
+  private void onEventFromDataFetcher(final Object event,
                                       final DataFetcher dataFetcher) {
 
     if (event instanceof Finishmark) {
       // We've consumed all the data from this data fetcher.
     } else if (event instanceof Watermark) {
       // Watermark
+      LOG.info("Watermark: {}", event);
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
       // Process data element
+      LOG.info("Data: {}", event);
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
     } else {
       throw new RuntimeException("Invalid type of event: " + event);
@@ -168,14 +175,16 @@ public final class HandleDataFetcher {
   /**
    * Process a data element down the DAG dependency.
    */
-  private static void processElement(final OutputCollector outputCollector,
-                                     final TimestampAndValue dataElement) {
+  private void processElement(final OutputCollector outputCollector,
+                              final TimestampAndValue dataElement) {
+    processedCnt += 1;
     outputCollector.setInputTimestamp(dataElement.timestamp);
     outputCollector.emit(dataElement.value);
   }
 
-  private static void processWatermark(final OutputCollector outputCollector,
+  private void processWatermark(final OutputCollector outputCollector,
                                        final Watermark watermark) {
+    processedCnt += 1;
     outputCollector.emitWatermark(watermark);
   }
 }
