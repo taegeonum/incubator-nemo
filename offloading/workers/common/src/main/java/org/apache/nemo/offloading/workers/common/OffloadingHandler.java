@@ -22,7 +22,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.logging.LogManager;
 
 public final class OffloadingHandler {
 
@@ -376,7 +375,7 @@ public final class OffloadingHandler {
 
     @Override
     public void emit(Object output) {
-      System.out.println("Emit output of data " + dataId);
+      //System.out.println("Emit output of data " + dataId);
       result.add(Pair.of(output, dataId));
       hasDataReceived = true;
     }
