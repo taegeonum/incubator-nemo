@@ -19,9 +19,13 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
+import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
+import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
@@ -31,6 +35,7 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.offloading.common.ServerlessExecutorService;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -98,7 +103,7 @@ public final class TaskExecutor {
 
   // Variables for offloading - start
   private final ServerlessExecutorProvider serverlessExecutorProvider;
-  private final InputFluctuationDetector detector;
+  private final OutputFluctuationDetector detector;
   private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
   private final Map<String, OutputWriter> outputWriterMap;
   private final Map<String, List<String>> taskOutgoingEdges;
@@ -137,6 +142,13 @@ public final class TaskExecutor {
   private final long taskStartTime;
 
   private final BlockingQueue<OffloadingRequestEvent> offloadingRequestQueue = new LinkedBlockingQueue<>();
+
+  private final int pollingInterval = 200; // ms
+  private final ScheduledExecutorService pollingTrigger = Executors.newSingleThreadScheduledExecutor();
+
+  private boolean pollingTime = false;
+  private boolean kafkaOffloading = false;
+
   /**
    * Constructor.
    *
@@ -175,8 +187,9 @@ public final class TaskExecutor {
       taskOutgoingEdges.get(src.getId()).add(dst.getId());
     });
 
+
     this.processedEventCollector = Executors.newSingleThreadScheduledExecutor();
-    this.detector = new InputFluctuationDetector(vertexIdAndCollectorMap);
+    this.detector = new OutputFluctuationDetector(vertexIdAndCollectorMap);
 
     samplingMap.putAll(evalConf.samplingJson);
 
@@ -202,6 +215,11 @@ public final class TaskExecutor {
 
     this.taskStartTime = System.currentTimeMillis();
 
+
+    pollingTrigger.scheduleAtFixedRate(() -> {
+      pollingTime = true;
+    }, pollingInterval, pollingInterval, TimeUnit.MILLISECONDS);
+
     if (evalConf.isLocalSource) {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
     } else {
@@ -213,7 +231,6 @@ public final class TaskExecutor {
       metricCollector.left().setAdjustTime(adjustTime);
     }
 
-
     // For offloading: collecting input rate
     processedEventCollector.scheduleAtFixedRate(() -> {
       for (final Pair<OperatorMetricCollector, OutputCollector> ocPair : vertexIdAndCollectorMap.values()) {
@@ -224,20 +241,13 @@ public final class TaskExecutor {
       }
     }, 1, 1, TimeUnit.SECONDS);
 
-    // For latency logging
-    /*
-    se.scheduleAtFixedRate(() -> {
-      for (final String monitoringVertex : monitoringVertices) {
-        controlEventQueue.add(
-          new ControlEvent(ControlEvent.ControlMessageType.FLUSH_LATENCY, monitoringVertex));
-      }
-    }, 2, 1, TimeUnit.SECONDS);
-    */
-
     // For offloading debugging
     if (evalConf.offloadingdebug) {
-      se.scheduleAtFixedRate(() -> {
 
+      se.scheduleAtFixedRate(() -> {
+        offloadingEventQueue.add(new OffloadingKafkaEvent());
+
+      /* TODO: this is for operator-based offloading
         try {
           final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOps = new LinkedList<>();
 
@@ -274,10 +284,13 @@ public final class TaskExecutor {
           e.printStackTrace();
           throw new RuntimeException(e);
         }
+        */
 
       }, 10, 50, TimeUnit.SECONDS);
 
       se.scheduleAtFixedRate(() -> {
+
+        /* TODO: this is for operator-based offloading
         try {
           LOG.info("End offloading start");
           currOffloadingContext.endOffloading();
@@ -287,6 +300,7 @@ public final class TaskExecutor {
           e.printStackTrace();
           throw new RuntimeException(e);
         }
+        */
       }, 30, 50, TimeUnit.SECONDS);
 
     }
@@ -306,7 +320,6 @@ public final class TaskExecutor {
   private void handleOffloadingRequestEvent() throws InterruptedException {
 
     while (!Thread.interrupted()) {
-
 
       final OffloadingRequestEvent event = offloadingRequestQueue.take();
 
@@ -329,6 +342,7 @@ public final class TaskExecutor {
           LOG.info("Start offloading at {}!", taskId);
           final List<Pair<OperatorMetricCollector, OutputCollector>> ocs =
             detector.retrieveBurstyOutputCollectors(event.startTime);
+
 
           final OffloadingContext offloadingContext = new OffloadingContext(
             taskId,
@@ -731,18 +745,6 @@ public final class TaskExecutor {
     }
   }
 
-  /**
-   * Check if it is time to poll pending fetchers' data.
-   * @param pollingPeriod polling period
-   * @param currentTime current time
-   * @param prevTime prev time
-   */
-  private boolean isPollingTime(final long pollingPeriod,
-                                final long currentTime,
-                                final long prevTime) {
-    return (currentTime - prevTime) >= pollingPeriod;
-  }
-
   // For offloading!
   private void handleOffloadingEvent(final Triple<List<String>, String, Object> triple) {
     //LOG.info("Result handle {} / {} / {}", triple.first, triple.second, triple.third);
@@ -803,15 +805,8 @@ public final class TaskExecutor {
     final List<DataFetcher> availableFetchers = new LinkedList<>(fetchers);
     final List<DataFetcher> pendingFetchers = new LinkedList<>();
 
-    // Polling interval.
-    final long pollingInterval = 100; // ms
-
-    // Previous polling time
-    long prevPollingTime = System.currentTimeMillis();
-
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
-
 
       // handling control event
       while (!controlEventQueue.isEmpty()) {
@@ -847,10 +842,59 @@ public final class TaskExecutor {
               vertexIdAndCollectorMap.get(msg.getDstVertexId()).right();
             oc.handleOffloadingControlMessage(msg);
 
+          } else if (data instanceof OffloadingKafkaEvent) {
+            if (dataFetchers.size() != 1) {
+              throw new RuntimeException("Data fetcher size should be 1 in this example!");
+            }
+
+            final SourceVertexDataFetcher dataFetcher = (SourceVertexDataFetcher) dataFetchers.get(0);
+            final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
+            final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
+            final Coder<UnboundedSource.CheckpointMark> coder = ((BeamUnboundedSourceVertex) dataFetcher.getDataSource())
+              .getUnboundedSource().getCheckpointMarkCoder();
+
+            LOG.info("Offloading marker: {}", checkpointMark);
+
+            final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            final byte[] serializedMark;
+            try {
+              coder.encode(checkpointMark, bos);
+              bos.close();
+
+              serializedMark = bos.toByteArray();
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+
+            // build DAG
+            final DAG<IRVertex, Edge<IRVertex>> copyDag = SerializationUtils.deserialize(serializedDag);
+
+            copyDag.getVertices().forEach(vertex -> {
+                // this edge can be offloaded
+              if (vertex.isSink) {
+                vertex.isOffloading = false;
+              } else {
+                vertex.isOffloading = true;
+              }
+            });
+
+            final ServerlessExecutorService
+            serverlessExecutorService = serverlessExecutorProvider
+              .newCachedPool(new KafkaOffloadingTransform(copyDag, taskOutgoingEdges, coder, serializedMark),
+                new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
+                new StatelessOffloadingEventHandler(offloadingEventQueue));
+
+            serverlessExecutorService.createStreamWorker();
           } else {
             throw new RuntimeException("Unsupported type: " + data);
           }
         }
+      }
+
+      // do not process data!!
+      if (kafkaOffloading) {
+        continue;
       }
 
 
@@ -888,12 +932,10 @@ public final class TaskExecutor {
       }
 
       final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
-      final long currentTime = System.currentTimeMillis();
 
-
-      if (isPollingTime(pollingInterval, currentTime, prevPollingTime)) {
+      if (pollingTime) {
         // We check pending data every polling interval
-        prevPollingTime = currentTime;
+        pollingTime = false;
 
         while (pendingIterator.hasNext()) {
 

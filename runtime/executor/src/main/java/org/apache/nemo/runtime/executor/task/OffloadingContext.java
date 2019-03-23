@@ -1,5 +1,7 @@
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
@@ -8,14 +10,19 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
+import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.ServerlessExecutorService;
 import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
+import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.lambdaexecutor.KafkaOffloadingTransform;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingTransform;

@@ -340,6 +340,7 @@ public final class OffloadingHandler {
         case END:
           // send result
           System.out.println("Offloading end");
+          offloadingTransform.close();
           nemoEvent.getByteBuf().release();
           endBlockingQueue.add(0);
           // end of event

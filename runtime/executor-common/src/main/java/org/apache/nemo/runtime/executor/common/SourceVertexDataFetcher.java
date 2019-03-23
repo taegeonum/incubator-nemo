@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.task;
+package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Fetches data from a data source.
  */
-class SourceVertexDataFetcher extends DataFetcher {
+public class SourceVertexDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(SourceVertexDataFetcher.class.getName());
 
   private final Readable readable;
@@ -46,13 +46,14 @@ class SourceVertexDataFetcher extends DataFetcher {
   private boolean watermarkTriggered = false;
   private final boolean bounded;
 
-  SourceVertexDataFetcher(final SourceVertex dataSource,
+  private boolean isStarted = false;
+
+  public SourceVertexDataFetcher(final SourceVertex dataSource,
                           final RuntimeEdge edge,
                           final Readable readable,
                           final OutputCollector outputCollector) {
     super(dataSource, edge, outputCollector);
     this.readable = readable;
-    this.readable.prepare();
     this.bounded = dataSource.isBounded();
 
     LOG.info("Is bounded: {}, source: {}", bounded, dataSource);
@@ -66,13 +67,22 @@ class SourceVertexDataFetcher extends DataFetcher {
     }
   }
 
+  public Readable getReadable() {
+    return readable;
+  }
+
   /**
    * This is non-blocking operation.
    * @return current data
    * @throws NoSuchElementException if the current data is not available
    */
   @Override
-  Object fetchDataElement() throws NoSuchElementException, IOException {
+  public Object fetchDataElement() throws NoSuchElementException, IOException {
+    if (!isStarted) {
+      isStarted = true;
+      this.readable.prepare();
+    }
+
     if (readable.isFinished()) {
       return Finishmark.getInstance();
     } else {
@@ -83,7 +93,7 @@ class SourceVertexDataFetcher extends DataFetcher {
     }
   }
 
-  final long getBoundedSourceReadTime() {
+  public final long getBoundedSourceReadTime() {
     return boundedSourceReadTime;
   }
 
