@@ -51,6 +51,10 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
     return reader;
   }
 
+  public UnboundedSource getUnboundedSource() {
+    return unboundedSource;
+  }
+
   @Override
   public void prepare() {
     try {

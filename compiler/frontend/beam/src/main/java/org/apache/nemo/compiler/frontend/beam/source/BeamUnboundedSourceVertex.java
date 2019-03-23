@@ -71,10 +71,6 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     this.displayData = that.displayData;
   }
 
-  public UnboundedSource getUnboundedSource() {
-    return source;
-  }
-
   @Override
   public IRVertex getClone() {
     return new BeamUnboundedSourceVertex<>(this);
