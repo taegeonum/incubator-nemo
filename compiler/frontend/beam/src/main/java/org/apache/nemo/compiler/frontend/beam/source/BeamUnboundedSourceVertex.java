@@ -96,6 +96,14 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     }
   }
 
+  public void setUnboundedSource(final UnboundedSource unboundedSource) {
+    source = unboundedSource;
+  }
+
+  public UnboundedSource getUnboundedSource() {
+    return source;
+  }
+
   @Override
   public void clearInternalStates() {
     source = null;

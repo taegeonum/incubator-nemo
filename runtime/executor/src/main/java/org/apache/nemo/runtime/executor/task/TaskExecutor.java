@@ -854,6 +854,7 @@ public final class TaskExecutor {
             final UnboundedSource unboundedSource = readable.getUnboundedSource();
             final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
             final BeamUnboundedSourceVertex beamUnboundedSourceVertex = ((BeamUnboundedSourceVertex) dataFetcher.getDataSource());
+            beamUnboundedSourceVertex.setUnboundedSource(unboundedSource);
             LOG.info("datefetcher: {}, readable: {}, checkpointMark: {}, unboundedSourceVertex: {}",
               dataFetcher, readable, checkpointMark, beamUnboundedSourceVertex);
 
