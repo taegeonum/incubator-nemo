@@ -884,6 +884,7 @@ public final class TaskExecutor {
 
               LOG.info("Restart readable at checkpointmark {}", checkpointMark);
 
+              streamingWorker = null;
             } else {
               throw new RuntimeException("Streaming worker is not finished when receiving checkpointmark!!");
             }
@@ -891,7 +892,6 @@ public final class TaskExecutor {
             // send end signal!
             // we should wait checkpoint mark after shutting down the worker
             streamingWorkerService.shutdown();
-            streamingWorker = null;
 
           } else if (data instanceof StartOffloadingKafkaEvent) {
             // KAFKA SOURCE OFFLOADING !!!!
