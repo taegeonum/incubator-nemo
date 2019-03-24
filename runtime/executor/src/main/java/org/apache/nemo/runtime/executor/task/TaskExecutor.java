@@ -908,6 +908,7 @@ public final class TaskExecutor {
             final BeamUnboundedSourceVertex beamUnboundedSourceVertex = ((BeamUnboundedSourceVertex) dataFetcher.getDataSource());
             LOG.info("datefetcher: {}, readable: {}, unboundedSourceVertex: {}",
               dataFetcher, readable, beamUnboundedSourceVertex);
+            beamUnboundedSourceVertex.setUnboundedSource(unboundedSource);
 
             LOG.info("unbounded source: {}", unboundedSource);
             final Coder<UnboundedSource.CheckpointMark> coder = unboundedSource.getCheckpointMarkCoder();
