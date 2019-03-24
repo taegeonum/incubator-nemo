@@ -48,12 +48,17 @@ public final class HandleDataFetcher {
   }
 
   public void start() {
+
+    if (fetchers.size() <= 0) {
+      throw new RuntimeException("Fetcher size is zero..");
+    }
+
     executorService.execute(() -> {
       final List<DataFetcher> availableFetchers = new LinkedList<>(fetchers);
       final List<DataFetcher> pendingFetchers = new LinkedList<>();
 
       // empty means we've consumed all task-external input data
-      while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty() || !closed) {
+      while (!closed) {
 
         // We first fetch data from available data fetchers
         final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
@@ -134,6 +139,8 @@ public final class HandleDataFetcher {
         }
       }
 
+      LOG.info("Closed handle datafetcher");
+
       if (closed) {
         if (processedCnt > 0) {
           // flush data
@@ -165,7 +172,9 @@ public final class HandleDataFetcher {
   public void close() throws Exception {
     closed = true;
     executorService.shutdown();
+    LOG.info("Await termination..");
     executorService.awaitTermination(10, TimeUnit.SECONDS);
+    LOG.info("End of await termination..");
   }
 
   /**
