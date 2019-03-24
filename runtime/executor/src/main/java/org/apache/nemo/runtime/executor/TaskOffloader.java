@@ -88,7 +88,7 @@ public final class TaskOffloader {
       LOG.info("Current cpu load: {}, # events: {}, consecutive: {}/{}, threshold: {}",
         cpuMean, eventMean, currConsecutive, k, threshold);
 
-      if (cpuMean < 0.94 && cpuMean > 0.05) {
+      if (cpuMean < 0.94 && cpuMean > 0.03 && eventMean > 100) {
         // prevent bias
         LOG.info("Add model to {} / {}", cpuMean, eventMean);
         cpuEventModel.add(cpuMean, (int) eventMean);
@@ -126,10 +126,11 @@ public final class TaskOffloader {
             // if there are offloaded executors
             // we should finish the offloading
             final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold - 0.1);
-            final int desiredNum = Math.min(taskExecutorMap.size(),
-              (int) ((desirableEvents / eventMean) * (taskExecutorMap.size() - offloadedExecutors.size())));
+            final int currTaskNum = taskExecutorMap.size() - offloadedExecutors.size();
+            final int desiredNum = Math.max(1, Math.min(taskExecutorMap.size(),
+              (int) ((desirableEvents / eventMean) * currTaskNum)));
 
-            final int stopOffloadingNum = desiredNum - taskExecutorMap.size();
+            final int stopOffloadingNum = desiredNum - currTaskNum;
 
             LOG.info("Stop desirable events: {} for load {}, total: {}, finishCnt: {}",
               desirableEvents, threshold - 0.1, eventMean, stopOffloadingNum);
