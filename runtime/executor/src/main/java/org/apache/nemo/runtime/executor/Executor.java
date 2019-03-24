@@ -94,8 +94,6 @@ public final class Executor {
 
   private final ServerlessExecutorProvider serverlessExecutorProvider;
 
-  private final CpuBottleneckDetector bottleneckDetector;
-
   private volatile boolean started = false;
 
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
@@ -104,9 +102,8 @@ public final class Executor {
   private final EvalConf evalConf;
   private final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory;
 
-  private final CpuEventModel cpuEventModel;
+  private final TaskOffloader taskOffloader;
 
-  private final double cpuThreshold;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -117,12 +114,13 @@ public final class Executor {
                    final BroadcastManagerWorker broadcastManagerWorker,
                    final MetricManagerWorker metricMessageSender,
                    final ServerlessExecutorProvider serverlessExecutorProvider,
-                   final CpuBottleneckDetector bottleneckDetector,
+                   final TaskOffloader taskOffloader,
+                   //final CpuBottleneckDetector bottleneckDetector,
                    final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                    final EvalConf evalConf,
-                   final TaskExecutorMapWrapper taskExecutorMapWrapper,
-                   @Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
-                   final CpuEventModel cpuEventModel) {
+                   final TaskExecutorMapWrapper taskExecutorMapWrapper) {
+                   //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
+                   //final CpuEventModel cpuEventModel) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
               .namingPattern("TaskExecutor thread-%d")
@@ -131,14 +129,12 @@ public final class Executor {
     this.serializerManager = serializerManager;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
+    this.taskOffloader = taskOffloader;
     this.metricMessageSender = metricMessageSender;
     this.evalConf = evalConf;
-    this.cpuThreshold = threshold;
     LOG.info("\n{}", evalConf);
     this.serverlessExecutorProvider = serverlessExecutorProvider;
     this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
-    this.bottleneckDetector = bottleneckDetector;
-    this.cpuEventModel = cpuEventModel;
     this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
@@ -155,8 +151,9 @@ public final class Executor {
       SerializationUtils.deserialize(task.getSerializedIRDag());
 
     if (!started) {
-      bottleneckDetector.setBottleneckHandler(new BottleneckHandler());
-      bottleneckDetector.start();
+      taskOffloader.start();
+      //bottleneckDetector.setBottleneckHandler(new BottleneckHandler());
+      //bottleneckDetector.start();
       started = true;
     }
 
@@ -310,6 +307,7 @@ public final class Executor {
     }
   }
 
+  /*
   final class BottleneckHandler implements EventHandler<CpuBottleneckDetector.BottleneckEvent> {
 
     private List<TaskExecutor> prevOffloadingExecutors = new ArrayList<>();
@@ -376,4 +374,5 @@ public final class Executor {
       }
     }
   }
+  */
 }
