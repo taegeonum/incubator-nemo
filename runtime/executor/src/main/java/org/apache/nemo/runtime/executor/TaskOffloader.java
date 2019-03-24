@@ -133,7 +133,7 @@ public final class TaskOffloader {
             final int stopOffloadingNum = desiredNum - currTaskNum;
 
             LOG.info("Stop desirable events: {} for load {}, total: {}, finishCnt: {}, curr offloaded executors: {}",
-              desirableEvents, threshold - 0.1, eventMean, stopOffloadingNum, offloadedExecutors);
+              desirableEvents, threshold - 0.1, eventMean, stopOffloadingNum, offloadedExecutors.size());
 
             final Iterator<TaskExecutor> iterator = offloadedExecutors.iterator();
             int cnt = 0;
