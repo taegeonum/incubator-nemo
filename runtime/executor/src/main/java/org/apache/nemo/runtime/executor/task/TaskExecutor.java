@@ -472,7 +472,8 @@ public final class TaskExecutor {
             edges.get(0),
             evalConf,
             watermarkCounterMap,
-            samplingMap);
+            samplingMap,
+            taskId);
         } else {
           omc = new OperatorMetricCollector(irVertex,
             dstVertices,
@@ -480,7 +481,8 @@ public final class TaskExecutor {
             null,
             evalConf,
             watermarkCounterMap,
-            samplingMap);
+            samplingMap,
+            taskId);
         }
 
         outputCollector = new OperatorVertexOutputCollector(
@@ -829,13 +831,12 @@ public final class TaskExecutor {
           } else if (data instanceof EndOffloadingKafkaEvent) {
             // send end signal!
             // we should wait checkpoint mark after shutting down the worker
-            LOG.info("Streaming worker shutdown");
+            LOG.info("Streaming worker shutdown at {}", taskId);
             streamingWorkerService.shutdown();
 
           } else if (data instanceof StartOffloadingKafkaEvent) {
             // KAFKA SOURCE OFFLOADING !!!!
             // VM -> Serverless
-
             if (dataFetchers.size() != 1) {
               throw new RuntimeException("Data fetcher size should be 1 in this example!");
             }
@@ -844,11 +845,11 @@ public final class TaskExecutor {
             final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
             final UnboundedSource unboundedSource = readable.getUnboundedSource();
             final BeamUnboundedSourceVertex beamUnboundedSourceVertex = ((BeamUnboundedSourceVertex) dataFetcher.getDataSource());
-            LOG.info("datefetcher: {}, readable: {}, unboundedSourceVertex: {}",
-              dataFetcher, readable, beamUnboundedSourceVertex);
+            //LOG.info("datefetcher: {}, readable: {}, unboundedSourceVertex: {}",
+             // dataFetcher, readable, beamUnboundedSourceVertex);
             beamUnboundedSourceVertex.setUnboundedSource(unboundedSource);
 
-            LOG.info("unbounded source: {}", unboundedSource);
+            //LOG.info("unbounded source: {}", unboundedSource);
             final Coder<UnboundedSource.CheckpointMark> coder = unboundedSource.getCheckpointMarkCoder();
 
             // build DAG
@@ -872,7 +873,7 @@ public final class TaskExecutor {
                 new KafkaOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer, coder),
                 new StatelessOffloadingEventHandler(offloadingEventQueue));
 
-            LOG.info("Execute streaming worker!");
+            LOG.info("Execute streaming worker at {}!", taskId);
             streamingWorker = streamingWorkerService.createStreamWorker();
           } else {
             throw new RuntimeException("Unsupported type: " + data);
