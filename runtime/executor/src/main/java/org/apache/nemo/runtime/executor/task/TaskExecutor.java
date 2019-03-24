@@ -891,6 +891,7 @@ public final class TaskExecutor {
           } else if (data instanceof EndOffloadingKafkaEvent) {
             // send end signal!
             // we should wait checkpoint mark after shutting down the worker
+            LOG.info("Streaming worker shutdown");
             streamingWorkerService.shutdown();
 
           } else if (data instanceof StartOffloadingKafkaEvent) {

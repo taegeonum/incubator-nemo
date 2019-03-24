@@ -225,7 +225,11 @@ public final class OffloadingHandler {
       if (endFlag == 0) {
         System.out.println("end elapsed time: " + (System.currentTimeMillis() - sst));
         try {
-          opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
+          if (opendChannel.isOpen()) {
+            opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
+          } else {
+            throw new RuntimeException("Channel is already closed..");
+          }
         } catch (InterruptedException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
