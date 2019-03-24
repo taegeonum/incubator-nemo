@@ -829,10 +829,19 @@ public final class TaskExecutor {
               throw new RuntimeException("Streaming worker is not finished when receiving checkpointmark!!");
             }
           } else if (data instanceof EndOffloadingKafkaEvent) {
-            // send end signal!
-            // we should wait checkpoint mark after shutting down the worker
-            LOG.info("Streaming worker shutdown at {}", taskId);
-            streamingWorkerService.shutdown();
+
+            if (!kafkaOffloading) {
+              // It means that this is not initialized yet
+              // just finish this worker!
+              LOG.info("Force close worker at {}", taskId);
+              streamingWorker.forceClose();
+              streamingWorker = null;
+            } else {
+              // send end signal!
+              // we should wait checkpoint mark after shutting down the worker
+              LOG.info("Streaming worker shutdown at {}", taskId);
+              streamingWorkerService.shutdown();
+            }
 
           } else if (data instanceof StartOffloadingKafkaEvent) {
             // KAFKA SOURCE OFFLOADING !!!!

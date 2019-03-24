@@ -151,7 +151,15 @@ public final class Executor {
       SerializationUtils.deserialize(task.getSerializedIRDag());
 
     if (!started) {
-      taskOffloader.start();
+
+      if (evalConf.enableOffloading) {
+        taskOffloader.start();
+      }
+
+      if (evalConf.offloadingdebug) {
+
+      }
+
       //bottleneckDetector.setBottleneckHandler(new BottleneckHandler());
       //bottleneckDetector.start();
       started = true;

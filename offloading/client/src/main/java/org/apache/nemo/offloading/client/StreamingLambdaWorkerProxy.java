@@ -41,6 +41,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   private final EventHandler<O> eventHandler;
 
+  private final ExecutorService closeThread = Executors.newSingleThreadExecutor();
+
   public StreamingLambdaWorkerProxy(final int workerId,
                                     final Future<Pair<Channel, OffloadingEvent>> channelFuture,
                                     final OffloadingWorkerFactory offloadingWorkerFactory,
@@ -160,6 +162,28 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     return null;
   }
 
+
+  @Override
+  public void forceClose() {
+    if (channel != null) {
+      //byteBufOutputStream.buffer().release();
+      channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
+    } else {
+      closeThread.execute(() -> {
+        while (channel != null) {
+          try {
+            Thread.sleep(200);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+
+        channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
+      });
+    }
+
+    finished = true;
+  }
 
   @Override
   public <T> T finishOffloading() {
