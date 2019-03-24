@@ -175,16 +175,6 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     //channelThread.shutdown();
     finished = true;
 
-    // TODO: return checkpoint mark again!
-
-
-    try {
-      Thread.sleep(5000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-
-    LOG.info("Is channel closed: {}", channel.isOpen());
     return null;
   }
 
