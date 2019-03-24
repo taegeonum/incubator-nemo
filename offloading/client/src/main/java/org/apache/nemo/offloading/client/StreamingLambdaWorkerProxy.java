@@ -171,8 +171,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
       throw new RuntimeException("Channel cannot be null when finishOffloading");
     }
 
-    offloadingWorkerFactory.deleteOffloadingWorker(this);
-    channelThread.shutdown();
+    //offloadingWorkerFactory.deleteOffloadingWorker(this);
+    //channelThread.shutdown();
     finished = true;
 
     // TODO: return checkpoint mark again!
