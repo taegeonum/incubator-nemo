@@ -33,7 +33,7 @@ public final class TaskOffloader {
   private List<TaskExecutor> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
-  private long slackTime = 10000;
+  private long slackTime = 15000;
 
 
   private final int windowSize = 4;
@@ -132,16 +132,15 @@ public final class TaskOffloader {
 
             final int stopOffloadingNum = desiredNum - currTaskNum;
 
-            LOG.info("Stop desirable events: {} for load {}, total: {}, finishCnt: {}",
-              desirableEvents, threshold - 0.1, eventMean, stopOffloadingNum);
+            LOG.info("Stop desirable events: {} for load {}, total: {}, finishCnt: {}, curr offloaded executors: {}",
+              desirableEvents, threshold - 0.1, eventMean, stopOffloadingNum, offloadedExecutors);
 
             final Iterator<TaskExecutor> iterator = offloadedExecutors.iterator();
             int cnt = 0;
-            while (!offloadedExecutors.isEmpty() && cnt < stopOffloadingNum) {
+            while (iterator.hasNext() && cnt < stopOffloadingNum) {
               final TaskExecutor taskExecutor = iterator.next();
               taskExecutor.endOffloading();
               iterator.remove();
-
               cnt += 1;
             }
 
