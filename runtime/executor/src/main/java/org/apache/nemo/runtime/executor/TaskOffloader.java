@@ -9,9 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 
 public final class TaskOffloader {
@@ -30,7 +28,7 @@ public final class TaskOffloader {
   private final TaskEventRateCalculator taskEventRateCalculator;
   private final CpuEventModel cpuEventModel;
 
-  private List<TaskExecutor> offloadedExecutors;
+  private final Set<TaskExecutor> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
   private long slackTime = 15000;
@@ -65,7 +63,7 @@ public final class TaskOffloader {
 
     this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     this.cpuEventModel = cpuEventModel;
-    this.offloadedExecutors = new ArrayList<>();
+    this.offloadedExecutors = new HashSet<>();
   }
 
   private boolean timeToDecision(final long currTime) {
@@ -111,7 +109,7 @@ public final class TaskOffloader {
 
           int cnt = 0;
           for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-            if (taskExecutor.isStateless()) {
+            if (taskExecutor.isStateless() && !offloadedExecutors.contains(taskExecutor)) {
               LOG.info("Start offloading of {}", taskExecutor.getId());
               taskExecutor.startOffloading(currTime);
               offloadedExecutors.add(taskExecutor);
