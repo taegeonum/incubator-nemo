@@ -100,11 +100,14 @@ public final class TaskOffloader {
           // we should offload some task executors
           final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
           final double ratio = desirableEvents / eventMean;
-          final int numExecutors = taskExecutorMap.keySet().size();
-          final int offloadingCnt = Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors));
+          final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
+          final int adjustVmCnt = Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors));
+          final int offloadingCnt = numExecutors - adjustVmCnt;
 
-          LOG.info("Start desirable events: {} for load {}, total: {}, offloadingCnt: {}",
-            desirableEvents, threshold, eventMean, offloadingCnt);
+          LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
+              "offloadingCnt: {}, offloadedExecutors: {}",
+            desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors,
+            offloadingCnt, offloadedExecutors.size());
 
           int cnt = 0;
           for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
@@ -125,19 +128,19 @@ public final class TaskOffloader {
           if (timeToDecision(currTime)) {
             // if there are offloaded executors
             // we should finish the offloading
-            final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold - 0.1);
-            final int currTaskNum = taskExecutorMap.size() - offloadedExecutors.size();
-            final int desiredNum = Math.max(1, Math.min(taskExecutorMap.size(),
-              (int) ((desirableEvents / eventMean) * currTaskNum)));
+            final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
+            final double ratio = desirableEvents / eventMean;
+            final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
+            final int adjustVmCnt = Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors));
+            final int deOffloadingCnt = adjustVmCnt - numExecutors;
 
-            final int stopOffloadingNum = desiredNum - currTaskNum;
-
-            LOG.info("Stop desirable events: {} for load {}, total: {}, finishCnt: {}, curr offloaded executors: {}",
-              desirableEvents, threshold - 0.1, eventMean, stopOffloadingNum, offloadedExecutors.size());
+            LOG.info("Stop desirable events: {} for load {}, total: {}, desriableVm: {}, currVm: {}, " +
+                "deoffloadingCnt: {}, offloadedExecutors: {}",
+              desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors, deOffloadingCnt, offloadedExecutors.size());
 
             final Iterator<TaskExecutor> iterator = offloadedExecutors.iterator();
             int cnt = 0;
-            while (iterator.hasNext() && cnt < stopOffloadingNum) {
+            while (iterator.hasNext() && cnt < deOffloadingCnt) {
               final TaskExecutor taskExecutor = iterator.next();
               taskExecutor.endOffloading();
               iterator.remove();
