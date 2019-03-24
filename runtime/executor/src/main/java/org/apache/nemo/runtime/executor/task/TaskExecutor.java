@@ -62,6 +62,7 @@ import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
@@ -146,7 +147,6 @@ public final class TaskExecutor {
 
   final Map<String, Double> samplingMap = new HashMap<>();
 
-  private final long taskStartTime;
 
   private final BlockingQueue<OffloadingRequestEvent> offloadingRequestQueue = new LinkedBlockingQueue<>();
 
@@ -156,6 +156,10 @@ public final class TaskExecutor {
   private boolean pollingTime = false;
   private boolean kafkaOffloading = false;
   private final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory;
+
+  private final AtomicInteger processedCnt = new AtomicInteger(0);
+
+  private boolean isStateless = true;
 
   /**
    * Constructor.
@@ -223,9 +227,6 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
-    this.taskStartTime = System.currentTimeMillis();
-
-
     pollingTrigger.scheduleAtFixedRate(() -> {
       pollingTime = true;
     }, pollingInterval, pollingInterval, TimeUnit.MILLISECONDS);
@@ -236,20 +237,11 @@ public final class TaskExecutor {
       this.adjustTime = 0;
     }
 
+    // For latency logging
     for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
       vertexIdAndCollectorMap.values()) {
       metricCollector.left().setAdjustTime(adjustTime);
     }
-
-    // For offloading: collecting input rate
-    processedEventCollector.scheduleAtFixedRate(() -> {
-      for (final Pair<OperatorMetricCollector, OutputCollector> ocPair : vertexIdAndCollectorMap.values()) {
-        final OperatorMetricCollector oc = ocPair.left();
-        final int cnt = oc.emittedCnt;
-        oc.emittedCnt -= cnt;
-        detector.collect(oc, System.currentTimeMillis(), cnt);
-      }
-    }, 1, 1, TimeUnit.SECONDS);
 
     // For offloading debugging
     if (evalConf.offloadingdebug) {
@@ -257,63 +249,11 @@ public final class TaskExecutor {
       se.scheduleAtFixedRate(() -> {
         LOG.info("Start offloading kafka");
         offloadingEventQueue.add(new StartOffloadingKafkaEvent());
-
-      /* TODO: this is for operator-based offloading
-        try {
-          final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOps = new LinkedList<>();
-
-          if (!evalConf.burstyOperatorStr.isEmpty()) {
-            final String[] ops = evalConf.burstyOperatorStr.split(",");
-            for (int i = 0; i < ops.length; i++) {
-              burstyOps.add(vertexIdAndCollectorMap.get("vertex" + ops[i]));
-            }
-          } else {
-            burstyOps.addAll(vertexIdAndCollectorMap.values());
-          }
-
-          LOG.info("Start offloading at task {}, {}!", taskId, burstyOps);
-
-          final OffloadingContext offloadingContext = new OffloadingContext(
-            taskId,
-            offloadingEventQueue,
-            burstyOps,
-            serverlessExecutorProvider,
-            irVertexDag,
-            serializedDag,
-            taskOutgoingEdges,
-            serializerManager,
-            vertexIdAndCollectorMap,
-            outputWriterMap,
-            operatorInfoMap,
-            evalConf);
-
-          currOffloadingContext = offloadingContext;
-
-          offloadingContext.startOffloading();
-          LOG.info("Start offloading finish at {}", taskId);
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-        */
-
       }, 10, 50, TimeUnit.SECONDS);
 
       se.scheduleAtFixedRate(() -> {
         LOG.info("End offloading kafka");
         offloadingEventQueue.add(new EndOffloadingKafkaEvent());
-
-        /* TODO: this is for operator-based offloading
-        try {
-          LOG.info("End offloading start");
-          currOffloadingContext.endOffloading();
-          LOG.info("End offloading finish");
-
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-        */
       }, 30, 50, TimeUnit.SECONDS);
 
     }
@@ -328,6 +268,18 @@ public final class TaskExecutor {
         }
       });
     }
+  }
+
+  public String getId() {
+    return taskId;
+  }
+
+  public boolean isStateless() {
+    return isStateless;
+  }
+
+  public AtomicInteger getProcessedCnt() {
+    return processedCnt;
   }
 
   private void handleOffloadingRequestEvent() throws InterruptedException {
@@ -353,30 +305,11 @@ public final class TaskExecutor {
         } else {
 
           LOG.info("Start offloading at {}!", taskId);
-          final List<Pair<OperatorMetricCollector, OutputCollector>> ocs =
-            detector.retrieveBurstyOutputCollectors(event.startTime);
-
-
-          final OffloadingContext offloadingContext = new OffloadingContext(
-            taskId,
-            offloadingEventQueue,
-            ocs,
-            serverlessExecutorProvider,
-            irVertexDag,
-            serializedDag,
-            taskOutgoingEdges,
-            serializerManager,
-            vertexIdAndCollectorMap,
-            outputWriterMap,
-            operatorInfoMap,
-            evalConf);
-
-          currOffloadingContext = offloadingContext;
-          offloadingContext.startOffloading();
+          offloadingEventQueue.add(new StartOffloadingKafkaEvent());
         }
       } else {
         LOG.info("End offloading at {}!", taskId);
-        currOffloadingContext.endOffloading();
+        offloadingEventQueue.add(new EndOffloadingKafkaEvent());
       }
     }
   }
@@ -427,6 +360,10 @@ public final class TaskExecutor {
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     final Map<Edge, Integer> edgeIndexMap = new HashMap<>();
     reverseTopologicallySorted.forEach(childVertex -> {
+
+      if (childVertex.isStateful) {
+        isStateless = false;
+      }
 
       // FOR OFFLOADING
       expectedWatermarkMap.put(childVertex.getId(), Pair.of(new PriorityQueue<>(), new PriorityQueue<>()));
@@ -643,6 +580,7 @@ public final class TaskExecutor {
    * Process a data element down the DAG dependency.
    */
   private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
+    processedCnt.getAndIncrement();
     outputCollector.setInputTimestamp(dataElement.timestamp);
     outputCollector.emit(dataElement.value);
   }

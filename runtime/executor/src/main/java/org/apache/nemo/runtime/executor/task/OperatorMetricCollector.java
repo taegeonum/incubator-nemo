@@ -23,7 +23,6 @@ public final class OperatorMetricCollector {
   final long windowsize = 2000;
   long adjustTime;
 
-  public int emittedCnt = 0;
   public final IRVertex irVertex;
   private final EvalConf evalConf;
   public final List<IRVertex> dstVertices;

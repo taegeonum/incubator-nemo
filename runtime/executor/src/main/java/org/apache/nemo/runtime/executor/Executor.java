@@ -58,7 +58,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.*;
 
 import org.apache.reef.wake.EventHandler;
@@ -101,6 +104,10 @@ public final class Executor {
   private final EvalConf evalConf;
   private final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory;
 
+  private final CpuEventModel cpuEventModel;
+
+  private final double cpuThreshold;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -112,7 +119,10 @@ public final class Executor {
                    final ServerlessExecutorProvider serverlessExecutorProvider,
                    final CpuBottleneckDetector bottleneckDetector,
                    final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
-                   final EvalConf evalConf) {
+                   final EvalConf evalConf,
+                   final TaskExecutorMapWrapper taskExecutorMapWrapper,
+                   @Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
+                   final CpuEventModel cpuEventModel) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
               .namingPattern("TaskExecutor thread-%d")
@@ -123,11 +133,13 @@ public final class Executor {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
     this.evalConf = evalConf;
+    this.cpuThreshold = threshold;
     LOG.info("\n{}", evalConf);
     this.serverlessExecutorProvider = serverlessExecutorProvider;
     this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
     this.bottleneckDetector = bottleneckDetector;
-    this.taskExecutorMap = new ConcurrentHashMap<>();
+    this.cpuEventModel = cpuEventModel;
+    this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
@@ -300,21 +312,47 @@ public final class Executor {
 
   final class BottleneckHandler implements EventHandler<CpuBottleneckDetector.BottleneckEvent> {
 
+    private List<TaskExecutor> prevOffloadingExecutors = new ArrayList<>();
+
     @Override
     public void onNext(final CpuBottleneckDetector.BottleneckEvent event) {
       LOG.info("Bottleneck event: {}", event);
       if (evalConf.enableOffloading) {
         switch (event.type) {
           case START: {
+            // estimate desirable events
+            final int desirableEvents = cpuEventModel.desirableCountForLoad(cpuThreshold);
+
+            final double ratio = desirableEvents / (double)event.processedEvents;
+            final int numExecutors = taskExecutorMap.keySet().size();
+            final int offloadingCnt = Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors));
+
+            LOG.info("Desirable events: {} for load {}, total: {}, offloadingCnt: {}",
+              desirableEvents, cpuThreshold, event.processedEvents, offloadingCnt);
+
+            int cnt = 0;
             for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-              taskExecutor.startOffloading(event.startTime);
+              if (taskExecutor.isStateless()) {
+                LOG.info("Start offloading of {}", taskExecutor.getId());
+                taskExecutor.startOffloading(event.startTime);
+                prevOffloadingExecutors.add(taskExecutor);
+
+                cnt += 1;
+                if (offloadingCnt == cnt) {
+                  break;
+                }
+              }
             }
             break;
           }
+
           case END: {
-            for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+            for (final TaskExecutor taskExecutor : prevOffloadingExecutors) {
+              LOG.info("End offloading of {}", taskExecutor.getId());
               taskExecutor.endOffloading();
             }
+
+            prevOffloadingExecutors.clear();
             break;
           }
           default:
