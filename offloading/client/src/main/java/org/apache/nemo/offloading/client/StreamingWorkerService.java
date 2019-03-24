@@ -101,7 +101,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
   // we don't have to send data to streaming workers
   // because it will pull the data
   @Override
-  public void createStreamWorker() {
+  public OffloadingWorker createStreamWorker() {
     createdWorkers.getAndIncrement();
     // create new worker
     //LOG.info("Create worker");
@@ -116,6 +116,8 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
     synchronized (streamingWorkers) {
       streamingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
     }
+
+    return worker;
   }
 
   @Override

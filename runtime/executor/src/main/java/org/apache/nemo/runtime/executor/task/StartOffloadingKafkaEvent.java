@@ -2,5 +2,5 @@ package org.apache.nemo.runtime.executor.task;
 
 import java.util.Optional;
 
-public final class OffloadingKafkaEvent {
+public final class StartOffloadingKafkaEvent {
 }

@@ -1,7 +1,6 @@
-package org.apache.nemo.runtime.lambdaexecutor;
+package org.apache.nemo.runtime.lambdaexecutor.kafka;
 
 import avro.shaded.com.google.common.collect.Lists;
-import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
@@ -17,6 +16,10 @@ import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingDataEvent;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingOperatorVertexOutputCollector;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingTransformContextImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,14 +32,12 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public final class KafkaOffloadingTransform<O> implements OffloadingTransform<OffloadingDataEvent, O> {
+public final class KafkaOffloadingTransform<O> implements OffloadingTransform<UnboundedSource.CheckpointMark, O> {
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaOffloadingTransform.class.getName());
 
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final Map<String, List<String>> taskOutgoingEdges;
-  private final Coder<UnboundedSource.CheckpointMark> checkpointMarkAvroCoder;
-  private final byte[] serializedCheckpointMark;
 
   // key: data fetcher id, value: head operator
   private transient Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
@@ -44,32 +45,19 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Of
   private transient OffloadingResultCollector resultCollector;
 
   private transient HandleDataFetcher dataFetcherExecutor;
+  final List<DataFetcher> dataFetchers = new ArrayList<>();
 
 
   // TODO: we should get checkpoint mark in constructor!
   public KafkaOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
-                                  final Map<String, List<String>> taskOutgoingEdges,
-                                  final Coder<UnboundedSource.CheckpointMark> checkpointMarkAvroCoder,
-                                  final byte[] serializedCheckpointMark) {
+                                  final Map<String, List<String>> taskOutgoingEdges) {
     this.irDag = irDag;
     this.taskOutgoingEdges = taskOutgoingEdges;
-    this.checkpointMarkAvroCoder = checkpointMarkAvroCoder;
-    this.serializedCheckpointMark = serializedCheckpointMark;
   }
 
   @Override
   public void prepare(final OffloadingContext context,
                       final OffloadingOutputCollector oc) {
-    final ByteArrayInputStream bis = new ByteArrayInputStream(serializedCheckpointMark);
-    final UnboundedSource.CheckpointMark checkpointMark;
-    try {
-      checkpointMark = checkpointMarkAvroCoder.decode(bis);
-      LOG.info("Decoding checkpoitn mark: {}", checkpointMark);
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-
     this.outputCollectorMap = new HashMap<>();
     this.operatorVertexMap = new HashMap<>();
     System.out.println("Stateless offloading transform prepare");
@@ -119,7 +107,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Of
     });
 
 
-    final List<DataFetcher> dataFetchers = new ArrayList<>(sourceCnt.get());
+
 
     reverseTopologicallySorted.forEach(irVertex -> {
 
@@ -155,20 +143,13 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Of
         // get source
         if (irVertex instanceof BeamUnboundedSourceVertex) {
           final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) irVertex;
-          final UnboundedSource unboundedSource = beamUnboundedSourceVertex.getUnboundedSource();
-
-          // TODO: get checkpoint mark
-          final UnboundedSourceReadable readable =
-            new UnboundedSourceReadable(unboundedSource, null, checkpointMark);
-
           final RuntimeEdge edge = irDag.getOutgoingEdgesOf(irVertex).get(0);
 
           final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
-            beamUnboundedSourceVertex, edge, readable, outputCollector);
+            beamUnboundedSourceVertex, edge, null, outputCollector);
           dataFetchers.add(dataFetcher);
           LOG.info("SourceVertex data fetcher: {}, edge: {}", irVertex.getId(), edge.getId());
         }
-
 
         final Transform transform;
         if (irVertex instanceof OperatorVertex) {
@@ -178,18 +159,26 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Of
       }
     });
 
-
-    dataFetcherExecutor = new HandleDataFetcher(dataFetchers, resultCollector);
-    dataFetcherExecutor.start();
   }
 
   // receive batch (list) data
   @Override
-  public void onData(final OffloadingDataEvent element) {
-    throw new RuntimeException("Should not be called");
+  public void onData(final UnboundedSource.CheckpointMark checkpointMark) {
+    // TODO: handle multiple data fetchers!!
 
-    // TODO: how to flush
-    // resultCollector.flush(element.watermark);
+    LOG.info("Receive checkpointmark: {}", checkpointMark);
+
+    final SourceVertexDataFetcher dataFetcher = (SourceVertexDataFetcher) dataFetchers.get(0);
+    final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) dataFetcher.getDataSource();
+    final UnboundedSource unboundedSource = beamUnboundedSourceVertex.getUnboundedSource();
+
+    final UnboundedSourceReadable readable =
+      new UnboundedSourceReadable(unboundedSource, null, checkpointMark);
+
+    dataFetcher.setReadable(readable);
+
+    dataFetcherExecutor = new HandleDataFetcher(dataFetchers, resultCollector);
+    dataFetcherExecutor.start();
   }
 
   @Override

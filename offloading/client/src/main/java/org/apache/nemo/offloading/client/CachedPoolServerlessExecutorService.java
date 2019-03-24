@@ -30,8 +30,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   private final List<Pair<Long, OffloadingWorker>> initializingWorkers;
 
-  private final List<Pair<Long, OffloadingWorker>> streamingWorkers;
-
   // left: start time, right: worker
   private final List<Pair<Long, OffloadingWorker>> runningWorkers;
 
@@ -87,7 +85,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     this.workerFactory = workerFactory;
     this.speculativeDataProcessedMap = new HashMap<>();
     this.initializingWorkers = new LinkedList<>();
-    this.streamingWorkers = new LinkedList<>();
     this.runningWorkers = new LinkedList<>();
 
     this.workerInitBuffer = Unpooled.directBuffer();
@@ -467,25 +464,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     createNewWorker(data);
   }
 
-  // we don't have to send data to streaming workers
-  // because it will pull the data
   @Override
-  public void createStreamWorker() {
-    createdWorkers.getAndIncrement();
-    // create new worker
-    //LOG.info("Create worker");
-    final ByteBuf copiedBuf;
-    synchronized (workerInitBuffer) {
-      copiedBuf = workerInitBuffer.retainedDuplicate();
-    }
-
-    final OffloadingWorker<I, O> worker =
-      workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
-
-    synchronized (streamingWorkers) {
-      streamingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
-      initWorkerSpeculative.put(worker, false);
-    }
+  public OffloadingWorker createStreamWorker() {
+    throw new RuntimeException("Not support");
   }
 
   @Override
@@ -494,16 +475,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     shutdown = true;
     // shutdown all workers
     long prevTime = System.currentTimeMillis();
-
-    synchronized (streamingWorkers) {
-      if (!streamingWorkers.isEmpty()) {
-        LOG.info("Shutting down streaming workers: {}", streamingWorkers.size());
-        for (final Pair<Long, OffloadingWorker> pair : streamingWorkers) {
-          pair.right().finishOffloading();
-        }
-      }
-    }
-
 
     synchronized (initializingWorkers) {
       synchronized (runningWorkers) {

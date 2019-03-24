@@ -19,6 +19,9 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.*;
@@ -38,7 +41,6 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.offloading.common.ServerlessExecutorService;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -67,6 +69,8 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.executor.datatransfer.RunTimeMessageOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
+import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingSerializer;
+import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -251,7 +255,8 @@ public final class TaskExecutor {
     if (evalConf.offloadingdebug) {
 
       se.scheduleAtFixedRate(() -> {
-        offloadingEventQueue.add(new OffloadingKafkaEvent());
+        LOG.info("Start offloading kafka");
+        offloadingEventQueue.add(new StartOffloadingKafkaEvent());
 
       /* TODO: this is for operator-based offloading
         try {
@@ -295,6 +300,8 @@ public final class TaskExecutor {
       }, 10, 50, TimeUnit.SECONDS);
 
       se.scheduleAtFixedRate(() -> {
+        LOG.info("End offloading kafka");
+        offloadingEventQueue.add(new EndOffloadingKafkaEvent());
 
         /* TODO: this is for operator-based offloading
         try {
@@ -810,6 +817,9 @@ public final class TaskExecutor {
   private boolean handleDataFetchers(final List<DataFetcher> fetchers) {
     final List<DataFetcher> availableFetchers = new LinkedList<>(fetchers);
     final List<DataFetcher> pendingFetchers = new LinkedList<>();
+    StreamingWorkerService streamingWorkerService = null;
+    OffloadingWorker streamingWorker = null;
+
 
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
@@ -852,8 +862,40 @@ public final class TaskExecutor {
               vertexIdAndCollectorMap.get(msg.getDstVertexId()).right();
             oc.handleOffloadingControlMessage(msg);
 
-          } else if (data instanceof OffloadingKafkaEvent) {
-            kafkaOffloading = true;
+          }
+          else if (data instanceof UnboundedSource.CheckpointMark) {
+            // handling checkpoint mark to resume the kafka source reading
+            // Serverless -> VM
+            // we start to read kafka events again
+            final UnboundedSource.CheckpointMark checkpointMark = (UnboundedSource.CheckpointMark) data;
+            LOG.info("Receive checkpoint mark in VM: {}", checkpointMark);
+
+            if (streamingWorkerService.isFinished()) {
+              kafkaOffloading = false;
+
+              final SourceVertexDataFetcher dataFetcher = (SourceVertexDataFetcher) dataFetchers.get(0);
+              final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) dataFetcher.getDataSource();
+              final UnboundedSource unboundedSource = beamUnboundedSourceVertex.getUnboundedSource();
+
+              final UnboundedSourceReadable readable =
+                new UnboundedSourceReadable(unboundedSource, null, checkpointMark);
+
+              dataFetcher.setReadable(readable);
+
+              LOG.info("Restart readable at checkpointmark {}", checkpointMark);
+
+            } else {
+              throw new RuntimeException("Streaming worker is not finished when receiving checkpointmark!!");
+            }
+          } else if (data instanceof EndOffloadingKafkaEvent) {
+            // send end signal!
+            // we should wait checkpoint mark after shutting down the worker
+            streamingWorkerService.shutdown();
+            streamingWorker = null;
+
+          } else if (data instanceof StartOffloadingKafkaEvent) {
+            // KAFKA SOURCE OFFLOADING !!!!
+            // VM -> Serverless
 
             if (dataFetchers.size() != 1) {
               throw new RuntimeException("Data fetcher size should be 1 in this example!");
@@ -862,27 +904,12 @@ public final class TaskExecutor {
             final SourceVertexDataFetcher dataFetcher = (SourceVertexDataFetcher) dataFetchers.get(0);
             final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
             final UnboundedSource unboundedSource = readable.getUnboundedSource();
-            final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
             final BeamUnboundedSourceVertex beamUnboundedSourceVertex = ((BeamUnboundedSourceVertex) dataFetcher.getDataSource());
-            LOG.info("datefetcher: {}, readable: {}, checkpointMark: {}, unboundedSourceVertex: {}",
-              dataFetcher, readable, checkpointMark, beamUnboundedSourceVertex);
+            LOG.info("datefetcher: {}, readable: {}, unboundedSourceVertex: {}",
+              dataFetcher, readable, beamUnboundedSourceVertex);
 
             LOG.info("unbounded source: {}", unboundedSource);
             final Coder<UnboundedSource.CheckpointMark> coder = unboundedSource.getCheckpointMarkCoder();
-
-            LOG.info("Offloading marker: {}", checkpointMark);
-
-            final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            final byte[] serializedMark;
-            try {
-              coder.encode(checkpointMark, bos);
-              bos.close();
-
-              serializedMark = bos.toByteArray();
-            } catch (IOException e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
 
             // build DAG
             final DAG<IRVertex, Edge<IRVertex>> copyDag = SerializationUtils.deserialize(serializedDag);
@@ -899,29 +926,64 @@ public final class TaskExecutor {
               }
             });
 
-            final StreamingWorkerService streamingWorkerService =
+            streamingWorkerService =
               new StreamingWorkerService(lambdaOffloadingWorkerFactory,
-                new KafkaOffloadingTransform(copyDag, taskOutgoingEdges, coder, serializedMark),
-                new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
+                new KafkaOffloadingTransform(copyDag, taskOutgoingEdges),
+                new KafkaOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer, coder),
                 new StatelessOffloadingEventHandler(offloadingEventQueue));
 
-
             LOG.info("Execute streaming worker!");
-            streamingWorkerService.createStreamWorker();
+            streamingWorker = streamingWorkerService.createStreamWorker();
           } else {
             throw new RuntimeException("Unsupported type: " + data);
           }
         }
       }
 
-      // do not process data!!
       if (kafkaOffloading) {
+        // do not process data!!
         try {
           Thread.sleep(300);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
         continue;
+
+      } else {
+        if (streamingWorker != null && streamingWorker.isReady()) {
+          // set kafka offloading true
+          kafkaOffloading = true;
+          // and send checkpoint mark!
+          final SourceVertexDataFetcher dataFetcher = (SourceVertexDataFetcher) dataFetchers.get(0);
+          final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
+          final UnboundedSource unboundedSource = readable.getUnboundedSource();
+          final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
+
+          final Coder<UnboundedSource.CheckpointMark> coder = unboundedSource.getCheckpointMarkCoder();
+
+          final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
+          final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+          try {
+            coder.encode(checkpointMark, bos);
+            bos.close();
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+
+          LOG.info("Offloading marker write: {}", checkpointMark);
+          streamingWorker.execute(byteBuf, 0, false);
+
+          LOG.info("Close readable");
+          try {
+            readable.close();
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+
+          continue;
+        }
       }
 
 

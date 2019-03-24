@@ -10,7 +10,7 @@ public interface ServerlessExecutorService<I> {
   void execute(final I data);
   void execute(final ByteBuf data);
 
-  void createStreamWorker();
+  OffloadingWorker createStreamWorker();
 
   void shutdown();
 

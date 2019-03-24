@@ -1,14 +1,19 @@
-package org.apache.nemo.runtime.lambdaexecutor;
+package org.apache.nemo.runtime.lambdaexecutor.kafka;
 
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -29,6 +34,7 @@ public final class HandleDataFetcher {
   private final OffloadingResultCollector resultCollector;
 
   private int processedCnt = 0;
+
 
   public HandleDataFetcher(final List<DataFetcher> fetchers,
                            final OffloadingResultCollector resultCollector) {
@@ -78,12 +84,6 @@ public final class HandleDataFetcher {
         final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
 
         if (pollingTime) {
-          if (processedCnt > 0) {
-            // flush data
-            resultCollector.flush(-1);
-          }
-          processedCnt = 0;
-
           // We check pending data every polling interval
           pollingTime = false;
 
@@ -114,6 +114,12 @@ public final class HandleDataFetcher {
               throw new RuntimeException(e);
             }
           }
+
+          if (processedCnt > 0) {
+            // flush data
+            resultCollector.flush(-1);
+          }
+          processedCnt = 0;
         }
 
         // If there are no available fetchers,
@@ -127,6 +133,21 @@ public final class HandleDataFetcher {
           }
         }
       }
+
+      if (closed) {
+        if (processedCnt > 0) {
+          // flush data
+          resultCollector.flush(-1);
+        }
+      }
+
+
+      // send checkpoint mark to the VM!!
+      final SourceVertexDataFetcher dataFetcher = (SourceVertexDataFetcher) fetchers.get(0);
+      final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
+      final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
+      LOG.info("Send checkpointmark to vm: {}", checkpointMark);
+      resultCollector.collector.emit(checkpointMark);
 
       // Close all data fetchers
       fetchers.forEach(fetcher -> {
@@ -160,11 +181,11 @@ public final class HandleDataFetcher {
       // We've consumed all the data from this data fetcher.
     } else if (event instanceof Watermark) {
       // Watermark
-      LOG.info("Watermark: {}", event);
+      //LOG.info("Watermark: {}", event);
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
       // Process data element
-      LOG.info("Data: {}", event);
+      //LOG.info("Data: {}", event);
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
     } else {
       throw new RuntimeException("Invalid type of event: " + event);

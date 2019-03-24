@@ -145,7 +145,19 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   @Override
   public Future<Optional<O>> execute(final ByteBuf input, final int dataId,
                                      final boolean speculative) {
-    throw new RuntimeException("Streaming worker does not receive input");
+    input.writeInt(dataId);
+
+    if (channel != null) {
+      if (Constants.enableLambdaLogging) {
+        LOG.info("Write data from worker {}, id: {}", workerId, dataId);
+      }
+
+      channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, input));
+    } else {
+      throw new RuntimeException("Channel is null");
+    }
+
+    return null;
   }
 
 

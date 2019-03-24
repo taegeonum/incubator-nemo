@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 public class SourceVertexDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(SourceVertexDataFetcher.class.getName());
 
-  private final Readable readable;
+  private Readable readable;
   private long boundedSourceReadTime = 0;
   private static final long WATERMARK_PERIOD = 1000; // ms
   private final ScheduledExecutorService watermarkTriggerService;
@@ -65,6 +65,11 @@ public class SourceVertexDataFetcher extends DataFetcher {
     } else {
       this.watermarkTriggerService = null;
     }
+  }
+
+  public void setReadable(final Readable r) {
+    readable = r;
+    isStarted = false;
   }
 
   public Readable getReadable() {
