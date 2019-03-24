@@ -313,6 +313,9 @@ public final class Executor {
   final class BottleneckHandler implements EventHandler<CpuBottleneckDetector.BottleneckEvent> {
 
     private List<TaskExecutor> prevOffloadingExecutors = new ArrayList<>();
+    private long prevEndTime = System.currentTimeMillis();
+    private long slackTime = 10000;
+    private boolean started = false;
 
     @Override
     public void onNext(final CpuBottleneckDetector.BottleneckEvent event) {
@@ -320,26 +323,34 @@ public final class Executor {
       if (evalConf.enableOffloading) {
         switch (event.type) {
           case START: {
-            // estimate desirable events
-            final int desirableEvents = cpuEventModel.desirableCountForLoad(cpuThreshold);
 
-            final double ratio = desirableEvents / (double)event.processedEvents;
-            final int numExecutors = taskExecutorMap.keySet().size();
-            final int offloadingCnt = Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors));
+            if (!(slackTime >= System.currentTimeMillis() - prevEndTime)) {
+              // skip
+              LOG.info("Skip start event!");
+            } else {
+              started = true;
 
-            LOG.info("Desirable events: {} for load {}, total: {}, offloadingCnt: {}",
-              desirableEvents, cpuThreshold, event.processedEvents, offloadingCnt);
+              // estimate desirable events
+              final int desirableEvents = cpuEventModel.desirableCountForLoad(cpuThreshold);
 
-            int cnt = 0;
-            for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-              if (taskExecutor.isStateless()) {
-                LOG.info("Start offloading of {}", taskExecutor.getId());
-                taskExecutor.startOffloading(event.startTime);
-                prevOffloadingExecutors.add(taskExecutor);
+              final double ratio = desirableEvents / (double) event.processedEvents;
+              final int numExecutors = taskExecutorMap.keySet().size();
+              final int offloadingCnt = Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors));
 
-                cnt += 1;
-                if (offloadingCnt == cnt) {
-                  break;
+              LOG.info("Desirable events: {} for load {}, total: {}, offloadingCnt: {}",
+                desirableEvents, cpuThreshold, event.processedEvents, offloadingCnt);
+
+              int cnt = 0;
+              for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+                if (taskExecutor.isStateless()) {
+                  LOG.info("Start offloading of {}", taskExecutor.getId());
+                  taskExecutor.startOffloading(event.startTime);
+                  prevOffloadingExecutors.add(taskExecutor);
+
+                  cnt += 1;
+                  if (offloadingCnt == cnt) {
+                    break;
+                  }
                 }
               }
             }
@@ -347,12 +358,16 @@ public final class Executor {
           }
 
           case END: {
-            for (final TaskExecutor taskExecutor : prevOffloadingExecutors) {
-              LOG.info("End offloading of {}", taskExecutor.getId());
-              taskExecutor.endOffloading();
-            }
+            if (started) {
+              started = false;
+              for (final TaskExecutor taskExecutor : prevOffloadingExecutors) {
+                LOG.info("End offloading of {}", taskExecutor.getId());
+                taskExecutor.endOffloading();
+              }
 
-            prevOffloadingExecutors.clear();
+              prevEndTime = System.currentTimeMillis();
+              prevOffloadingExecutors.clear();
+            }
             break;
           }
           default:

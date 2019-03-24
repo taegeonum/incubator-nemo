@@ -911,7 +911,7 @@ public final class TaskExecutor {
             throw new RuntimeException(e);
           }
 
-          LOG.info("Offloading marker write: {}", checkpointMark);
+          LOG.info("Offloading marker for {} write: {}", taskId, checkpointMark);
           streamingWorker.execute(byteBuf, 0, false);
 
           LOG.info("Close readable");
