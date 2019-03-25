@@ -35,10 +35,14 @@ public final class HandleDataFetcher {
 
   private int processedCnt = 0;
 
+  private final int id;
 
-  public HandleDataFetcher(final List<DataFetcher> fetchers,
+
+  public HandleDataFetcher(final int id,
+                           final List<DataFetcher> fetchers,
                            final OffloadingResultCollector resultCollector) {
     LOG.info("Handle data fetcher start");
+    this.id = id;
     this.executorService = Executors.newSingleThreadExecutor();
     this.resultCollector = resultCollector;
     this.fetchers = fetchers;
@@ -153,8 +157,8 @@ public final class HandleDataFetcher {
       final SourceVertexDataFetcher dataFetcher = (SourceVertexDataFetcher) fetchers.get(0);
       final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
       final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
-      LOG.info("Send checkpointmark to vm: {}", checkpointMark);
-      resultCollector.collector.emit(checkpointMark);
+      LOG.info("Send checkpointmark {} to vm: {}", id, checkpointMark);
+      resultCollector.collector.emit(new KafkaOffloadingOutput(id, checkpointMark));
 
       // Close all data fetchers
       fetchers.forEach(fetcher -> {
