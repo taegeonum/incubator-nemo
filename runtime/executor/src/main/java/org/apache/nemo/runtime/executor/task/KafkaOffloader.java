@@ -29,9 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -49,13 +47,14 @@ public final class KafkaOffloader {
   private final String taskId;
   private final List<DataFetcher> availableFetchers;
   private final List<DataFetcher> pendingFetchers;
+  final ExecutorService closeService = Executors.newCachedThreadPool();
 
 
   private static final AtomicInteger sourceId = new AtomicInteger(0);
 
   private final List<OffloadingWorker> runningWorkers = new ArrayList<>();
   final Map<Integer, SourceVertexDataFetcher> offloadedDataFetcherMap = new ConcurrentHashMap<>();
-  final List<SourceVertexDataFetcher> reExecutedDataFetchers = new ArrayList<>();
+  final List<Pair<SourceVertexDataFetcher, UnboundedSource.CheckpointMark>> reExecutedDataFetchers = new ArrayList<>();
   final Queue<KafkaOffloadingDataEvent> kafkaOffloadPendingEvents = new LinkedBlockingQueue<>();
 
   public KafkaOffloader(final byte[] serializedDag,
@@ -137,6 +136,8 @@ public final class KafkaOffloader {
     // Serverless -> VM
     // we start to read kafka events again
 
+
+
     final int id = output.id;
     final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) output.checkpointMark;
     LOG.info("Receive checkpoint mark for source {} in VM: {}", id, checkpointMark);
@@ -155,7 +156,7 @@ public final class KafkaOffloader {
 
     LOG.info("Restart source {} at checkpointmark {}", id, checkpointMark);
     availableFetchers.add(offloadedDataFetcher);
-    reExecutedDataFetchers.add(offloadedDataFetcher);
+    reExecutedDataFetchers.add(Pair.of(offloadedDataFetcher, checkpointMark));
 
     if (offloadedDataFetcherMap.isEmpty()) {
       // TODO: merge sources!!
@@ -183,6 +184,7 @@ public final class KafkaOffloader {
   }
 
   public synchronized void handleStartOffloadingKafkaEvent() {
+
     // KAFKA SOURCE OFFLOADING !!!!
     // VM -> Serverless
     if (sourceVertexDataFetchers.size() > 1) {
@@ -200,14 +202,40 @@ public final class KafkaOffloader {
       // not merged yet... just offload them
       LOG.info("Task {} Offload re-executed data fetchers: {}", taskId, reExecutedDataFetchers.size());
 
-      for (final SourceVertexDataFetcher reExecutedFetcher : reExecutedDataFetchers) {
+      for (final Pair<SourceVertexDataFetcher, UnboundedSource.CheckpointMark> pair : reExecutedDataFetchers) {
+        final SourceVertexDataFetcher reExecutedFetcher = pair.left();
+        final UnboundedSource.CheckpointMark cMark = pair.right();
+
         final BeamUnboundedSourceVertex beamUnboundedSourceVertex =
           (BeamUnboundedSourceVertex) reExecutedFetcher.getDataSource();
         final UnboundedSource unboundedSource = beamUnboundedSourceVertex.getUnboundedSource();
         final OffloadingWorker worker = streamingWorkerService.createStreamWorker();
+        final UnboundedSourceReadable readable = (UnboundedSourceReadable) reExecutedFetcher.getReadable();
+        final UnboundedSource.CheckpointMark checkpointMark;
+        if (reExecutedFetcher.isStarted()) {
+          checkpointMark = readable.getReader().getCheckpointMark();
+        } else {
+          checkpointMark =  cMark;
+        }
+
+        // 1. remove this data fetcher from current
+        if (!availableFetchers.remove(reExecutedFetcher)) {
+          pendingFetchers.remove(reExecutedFetcher);
+        }
 
         kafkaOffloadPendingEvents.add(new KafkaOffloadingDataEvent(
-          worker, unboundedSource, sourceId.getAndIncrement(), reExecutedFetcher, null));
+          worker, unboundedSource, sourceId.getAndIncrement(), reExecutedFetcher, checkpointMark));
+
+        if (reExecutedFetcher.isStarted()) {
+          closeService.execute(() -> {
+            try {
+              reExecutedFetcher.getReadable().close();
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+          });
+        }
       }
     } else {
 
@@ -218,7 +246,10 @@ public final class KafkaOffloader {
       beamUnboundedSourceVertex.setUnboundedSource(unboundedSource);
 
       // 1. remove this data fetcher from current
-      availableFetchers.remove(dataFetcher);
+      if (!availableFetchers.remove(dataFetcher)) {
+        pendingFetchers.remove(dataFetcher);
+      }
+
       // 2. get checkpoint mark
       final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
       // 3. split sources and create new source vertex data fetcher
@@ -261,11 +292,13 @@ public final class KafkaOffloader {
           */
 
       // 7. close current fetcher and start split data fetchers
-      try {
-        readable.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
+      if (dataFetcher.isStarted()) {
+        try {
+          readable.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       }
     }
   }
@@ -293,13 +326,17 @@ public final class KafkaOffloader {
           final SourceVertexDataFetcher splitDataFetcher = event.sourceVertexDataFetcher;
 
           // remove from available and pending
+          // don't have to remove because we do not add it
+          /*
           if (!availableFetchers.remove(splitDataFetcher)) {
             pendingFetchers.remove(splitDataFetcher);
           }
+          */
 
           // SEND checkpoint and unbounded source
           final UnboundedSourceReadable readable = (UnboundedSourceReadable) splitDataFetcher.getReadable();
-          final UnboundedSource.CheckpointMark checkpointMark;
+          final UnboundedSource.CheckpointMark checkpointMark = event.checkpointMark;
+          /*
           if (splitDataFetcher.isStarted()) {
             try {
               checkpointMark = readable.getReader().getCheckpointMark();
@@ -310,6 +347,7 @@ public final class KafkaOffloader {
           } else {
             checkpointMark = event.checkpointMark;
           }
+          */
 
           final Coder<UnboundedSource.CheckpointMark> coder = unboundedSource.getCheckpointMarkCoder();
 
@@ -334,6 +372,7 @@ public final class KafkaOffloader {
           initWorker.execute(byteBuf, 0, false);
           runningWorkers.add(initWorker);
 
+          /* already closed
           if (splitDataFetcher.isStarted()) {
             try {
               readable.close();
@@ -342,6 +381,7 @@ public final class KafkaOffloader {
               throw new RuntimeException(e);
             }
           }
+          */
         }
       }
     }
