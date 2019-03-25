@@ -808,11 +808,15 @@ public final class TaskExecutor {
 
           } else if (data instanceof EndOffloadingKafkaEvent) {
 
+            LOG.info("Start -- Receive end offloading event {}", taskId);
             kafkaOffloader.get().handleEndOffloadingKafkaEvent();
+            LOG.info("End -- Receive end offloading event {}", taskId);
 
           } else if (data instanceof StartOffloadingKafkaEvent) {
 
+            LOG.info("Start -- handle start offloading kafka event {}", taskId);
             kafkaOffloader.get().handleStartOffloadingKafkaEvent();
+            LOG.info("End -- handle start offloading kafka event {}", taskId);
           } else {
             throw new RuntimeException("Unsupported type: " + data);
           }
