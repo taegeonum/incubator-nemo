@@ -207,7 +207,7 @@ public final class KafkaOffloader {
         final OffloadingWorker worker = streamingWorkerService.createStreamWorker();
 
         kafkaOffloadPendingEvents.add(new KafkaOffloadingDataEvent(
-          worker, unboundedSource, sourceId.getAndIncrement(), reExecutedFetcher));
+          worker, unboundedSource, sourceId.getAndIncrement(), reExecutedFetcher, null));
       }
     } else {
 
