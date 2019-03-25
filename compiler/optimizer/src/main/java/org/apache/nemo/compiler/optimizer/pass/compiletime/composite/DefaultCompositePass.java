@@ -44,4 +44,20 @@ public final class DefaultCompositePass extends CompositePass {
         new ResourceSlotPass()
     ));
   }
+  /**
+   * Default constructor.
+   */
+  public DefaultCompositePass() {
+    super(Arrays.asList(
+        new DefaultParallelismPass(),
+        new DefaultEdgeEncoderPass(),
+        new DefaultEdgeDecoderPass(),
+        new DefaultDataStorePass(),
+        new DefaultDataPersistencePass(),
+        new DefaultScheduleGroupPass(),
+        new CompressionPass(),
+        new ResourceLocalityPass(),
+        new ResourceSlotPass()
+    ));
+  }
 }
