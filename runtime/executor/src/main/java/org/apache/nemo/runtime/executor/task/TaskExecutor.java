@@ -777,7 +777,7 @@ public final class TaskExecutor {
     }
 
     // empty means we've consumed all task-external input data
-    while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
+    while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty() || kafkaOffloader.isPresent()) {
 
       // handling control event
       while (!controlEventQueue.isEmpty()) {
@@ -902,7 +902,7 @@ public final class TaskExecutor {
 
       // If there are no available fetchers,
       // Sleep and retry fetching element from pending fetchers every polling interval
-      if (availableFetchers.isEmpty() && !pendingFetchers.isEmpty()) {
+      if (availableFetchers.isEmpty()) {
         try {
           Thread.sleep(pollingInterval);
         } catch (InterruptedException e) {
