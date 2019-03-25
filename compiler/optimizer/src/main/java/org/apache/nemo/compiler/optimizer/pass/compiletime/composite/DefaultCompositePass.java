@@ -31,9 +31,9 @@ public final class DefaultCompositePass extends CompositePass {
   /**
    * Default constructor.
    */
-  public DefaultCompositePass() {
+  public DefaultCompositePass(int parallelism) {
     super(Arrays.asList(
-        new DefaultParallelismPass(),
+        new DefaultParallelismPass(parallelism, 1),
         new DefaultEdgeEncoderPass(),
         new DefaultEdgeDecoderPass(),
         new DefaultDataStorePass(),

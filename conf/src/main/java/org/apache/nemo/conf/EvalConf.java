@@ -69,6 +69,10 @@ public final class EvalConf {
   public static final class IsLocalSource implements Name<Boolean> {
   }
 
+  @NamedParameter(short_name = "source_parallelism", default_value = "1")
+  public static final class SourceParallelism implements Name<Integer> {
+  }
+
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
   public final int poolSize;
@@ -83,6 +87,7 @@ public final class EvalConf {
   public final Map<String, Double> samplingJson;
   public final String burstyOperatorStr;
   public final boolean isLocalSource;
+  public final int sourceParallelism;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -96,7 +101,8 @@ public final class EvalConf {
                    @Parameter(BottleneckDetectionCpuThreshold.class) final double bottleneckDetectionThreshold,
                    @Parameter(SamplingJsonString.class) final String samplingJsonStr,
                    @Parameter(BurstyOperatorString.class) final String burstyOperatorStr,
-                   @Parameter(IsLocalSource.class) final boolean isLocalSource) throws IOException {
+                   @Parameter(IsLocalSource.class) final boolean isLocalSource,
+                   @Parameter(SourceParallelism.class) final int sourceParallelism) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -109,6 +115,7 @@ public final class EvalConf {
     this.samplingJsonStr = samplingJsonStr;
     this.burstyOperatorStr = burstyOperatorStr;
     this.isLocalSource = isLocalSource;
+    this.sourceParallelism = sourceParallelism;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -132,6 +139,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(SamplingJsonString.class, samplingJsonStr);
     jcb.bindNamedParameter(BurstyOperatorString.class, burstyOperatorStr);
     jcb.bindNamedParameter(IsLocalSource.class, Boolean.toString(isLocalSource));
+    jcb.bindNamedParameter(SourceParallelism.class, Integer.toString(sourceParallelism));
     return jcb.build();
   }
 
@@ -149,6 +157,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(SamplingPath.class);
     cl.registerShortNameOfClass(BurstyOperatorString.class);
     cl.registerShortNameOfClass(IsLocalSource.class);
+    cl.registerShortNameOfClass(SourceParallelism.class);
   }
 
   @Override
@@ -168,6 +177,7 @@ public final class EvalConf {
     sb.append("samplingJson: "); sb.append(samplingJsonStr); sb.append("\n");
     sb.append("burstyOps: "); sb.append(burstyOperatorStr); sb.append("\n");
     sb.append("isLocalSource: "); sb.append(isLocalSource); sb.append("\n");
+    sb.append("sourceParallelism: "); sb.append(sourceParallelism); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();
