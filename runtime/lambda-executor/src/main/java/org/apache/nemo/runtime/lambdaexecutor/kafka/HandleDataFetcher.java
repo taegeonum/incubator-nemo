@@ -28,7 +28,7 @@ public final class HandleDataFetcher {
   private final ExecutorService executorService;
   private final List<DataFetcher> fetchers;
   private boolean pollingTime;
-  private final int pollingInterval = 200; // ms
+  private final int pollingInterval = 400; // ms
 
   private boolean closed = false;
   private final OffloadingResultCollector resultCollector;
@@ -48,7 +48,7 @@ public final class HandleDataFetcher {
     this.fetchers = fetchers;
     this.pollingTrigger.scheduleAtFixedRate(() -> {
       pollingTime = true;
-    }, 200, 200, TimeUnit.MILLISECONDS);
+    }, pollingInterval, pollingInterval, TimeUnit.MILLISECONDS);
   }
 
   public void start() {

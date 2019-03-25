@@ -175,6 +175,7 @@ public final class KafkaOffloader {
     }
 
     for (final OffloadingWorker runningWorker : runningWorkers) {
+      LOG.info("Closing running worker {} at {}", runningWorker.getId(), taskId);
       runningWorker.forceClose();
     }
 
