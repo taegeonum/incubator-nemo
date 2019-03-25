@@ -19,7 +19,6 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Objec
 
   @Override
   public void onNext(Object msg) {
-    LOG.info("Result received: {}", msg.getClass());
     if (msg instanceof OffloadingResultEvent) {
       if (((OffloadingResultEvent) msg).data.size() > 0) {
         //LOG.info("Result received: cnt {}", ((OffloadingResultEvent) msg).data.size());
