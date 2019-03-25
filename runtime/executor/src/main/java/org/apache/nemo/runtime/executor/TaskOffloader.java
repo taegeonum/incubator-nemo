@@ -110,13 +110,14 @@ public final class TaskOffloader {
           int cnt = 0;
           for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
             if (taskExecutor.isStateless() && !offloadedExecutors.contains(taskExecutor)) {
+              if (offloadingCnt == cnt) {
+                break;
+              }
+
               LOG.info("Start offloading of {}", taskExecutor.getId());
               taskExecutor.startOffloading(currTime);
               offloadedExecutors.add(taskExecutor);
               cnt += 1;
-              if (offloadingCnt == cnt) {
-                break;
-              }
             }
           }
         }

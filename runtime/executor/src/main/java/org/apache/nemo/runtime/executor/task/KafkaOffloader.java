@@ -51,7 +51,7 @@ public final class KafkaOffloader {
   private final List<DataFetcher> pendingFetchers;
 
 
-  private final AtomicInteger sourceId = new AtomicInteger(0);
+  private static final AtomicInteger sourceId = new AtomicInteger(0);
 
   private final List<OffloadingWorker> runningWorkers = new ArrayList<>();
   final Map<Integer, SourceVertexDataFetcher> offloadedDataFetcherMap = new ConcurrentHashMap<>();
