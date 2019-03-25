@@ -237,6 +237,8 @@ public final class KafkaOffloader {
           });
         }
       }
+
+      reExecutedDataFetchers.clear();
     } else {
 
       final SourceVertexDataFetcher dataFetcher = sourceVertexDataFetchers.get(0);
@@ -251,7 +253,7 @@ public final class KafkaOffloader {
       }
 
       // 2. get checkpoint mark
-      final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
+      final KafkaCheckpointMark unSplitCheckpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
       // 3. split sources and create new source vertex data fetcher
       final List<KafkaUnboundedSource> splitSources;
       try {
@@ -271,9 +273,11 @@ public final class KafkaOffloader {
         final BeamUnboundedSourceVertex sourceVertex =
           new BeamUnboundedSourceVertex(splitSource, null);
 
+        final UnboundedSource.CheckpointMark splitCheckpointMark =
+          createCheckpointMarkForSource(splitSource, unSplitCheckpointMark);
+
         final UnboundedSourceReadable newReadable =
-          new UnboundedSourceReadable(splitSource, null,
-            KafkaOffloader.createCheckpointMarkForSource(splitSource, checkpointMark));
+          new UnboundedSourceReadable(splitSource, null, splitCheckpointMark);
 
         final SourceVertexDataFetcher sourceVertexDataFetcher =
           new SourceVertexDataFetcher(sourceVertex, dataFetcher.edge, newReadable, dataFetcher.getOutputCollector());
@@ -281,7 +285,7 @@ public final class KafkaOffloader {
         final OffloadingWorker worker = streamingWorkerService.createStreamWorker();
 
         kafkaOffloadPendingEvents.add(new KafkaOffloadingDataEvent(
-          worker, splitSource, sourceId.getAndIncrement(), sourceVertexDataFetcher, checkpointMark));
+          worker, splitSource, sourceId.getAndIncrement(), sourceVertexDataFetcher, splitCheckpointMark));
       });
 
       // 6. add it to available fetchers!
