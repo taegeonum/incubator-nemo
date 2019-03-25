@@ -250,7 +250,7 @@ public final class KafkaOffloader {
         final OffloadingWorker worker = streamingWorkerService.createStreamWorker();
 
         kafkaOffloadPendingEvents.add(new KafkaOffloadingDataEvent(
-          worker, splitSource, sourceId.getAndIncrement(), sourceVertexDataFetcher));
+          worker, splitSource, sourceId.getAndIncrement(), sourceVertexDataFetcher, checkpointMark));
       });
 
       // 6. add it to available fetchers!
@@ -298,11 +298,15 @@ public final class KafkaOffloader {
           // SEND checkpoint and unbounded source
           final UnboundedSourceReadable readable = (UnboundedSourceReadable) splitDataFetcher.getReadable();
           final UnboundedSource.CheckpointMark checkpointMark;
-          try {
-            checkpointMark = readable.getReader().getCheckpointMark();
-          } catch (NullPointerException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Null at handling source " + id + ", readable: " + readable);
+          if (splitDataFetcher.isStarted()) {
+            try {
+              checkpointMark = readable.getReader().getCheckpointMark();
+            } catch (NullPointerException e) {
+              e.printStackTrace();
+              throw new RuntimeException("Null at handling source " + id + ", readable: " + readable);
+            }
+          } else {
+            checkpointMark = event.checkpointMark;
           }
 
           final Coder<UnboundedSource.CheckpointMark> coder = unboundedSource.getCheckpointMarkCoder();
@@ -328,11 +332,13 @@ public final class KafkaOffloader {
           initWorker.execute(byteBuf, 0, false);
           runningWorkers.add(initWorker);
 
-          try {
-            readable.close();
-          } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
+          if (splitDataFetcher.isStarted()) {
+            try {
+              readable.close();
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
           }
         }
       }
