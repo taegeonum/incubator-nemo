@@ -254,9 +254,11 @@ public final class KafkaOffloader {
       });
 
       // 6. add it to available fetchers!
+      /*
       availableFetchers.addAll(kafkaOffloadPendingEvents.stream()
         .map(kafkaOffloadingDataEvent ->
           kafkaOffloadingDataEvent.sourceVertexDataFetcher).collect(Collectors.toList()));
+          */
 
       // 7. close current fetcher and start split data fetchers
       try {
