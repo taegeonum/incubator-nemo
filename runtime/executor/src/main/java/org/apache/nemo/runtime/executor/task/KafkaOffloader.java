@@ -297,8 +297,9 @@ public final class KafkaOffloader {
 
           // SEND checkpoint and unbounded source
           final UnboundedSourceReadable readable = (UnboundedSourceReadable) splitDataFetcher.getReadable();
+          final UnboundedSource.CheckpointMark checkpointMark;
           try {
-            final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
+            checkpointMark = readable.getReader().getCheckpointMark();
           } catch (NullPointerException e) {
             e.printStackTrace();
             throw new RuntimeException("Null at handling source " + id + ", readable: " + readable);
