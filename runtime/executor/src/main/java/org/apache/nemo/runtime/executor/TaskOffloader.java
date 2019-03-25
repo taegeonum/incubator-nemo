@@ -28,7 +28,8 @@ public final class TaskOffloader {
   private final TaskEventRateCalculator taskEventRateCalculator;
   private final CpuEventModel cpuEventModel;
 
-  private final Set<TaskExecutor> offloadedExecutors;
+  // value: start time of offloading
+  private final Map<TaskExecutor, Long> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
   private long slackTime = 15000;
@@ -63,7 +64,7 @@ public final class TaskOffloader {
 
     this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     this.cpuEventModel = cpuEventModel;
-    this.offloadedExecutors = new HashSet<>();
+    this.offloadedExecutors = new HashMap<>();
   }
 
   private boolean timeToDecision(final long currTime) {
@@ -94,60 +95,61 @@ public final class TaskOffloader {
 
       if (cpuMean > threshold) {
         final long currTime = System.currentTimeMillis();
-        if (timeToDecision(currTime)) {
-          // we should offload some task executors
-          final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
-          final double ratio = desirableEvents / eventMean;
-          final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
-          final int adjustVmCnt = Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors));
-          final int offloadingCnt = numExecutors - adjustVmCnt;
+        // we should offload some task executors
+        final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
+        final double ratio = desirableEvents / eventMean;
+        final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
+        final int adjustVmCnt = Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors));
+        final int offloadingCnt = numExecutors - adjustVmCnt;
 
-          LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
-              "offloadingCnt: {}, offloadedExecutors: {}",
-            desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors,
-            offloadingCnt, offloadedExecutors.size());
+        LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
+            "offloadingCnt: {}, offloadedExecutors: {}",
+          desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors,
+          offloadingCnt, offloadedExecutors.size());
 
-          int cnt = 0;
-          for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-            if (taskExecutor.isStateless() && !offloadedExecutors.contains(taskExecutor)) {
-              if (offloadingCnt == cnt) {
-                break;
-              }
-
-              LOG.info("Start offloading of {}", taskExecutor.getId());
-              taskExecutor.startOffloading(currTime);
-              offloadedExecutors.add(taskExecutor);
-              cnt += 1;
+        int cnt = 0;
+        for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+          if (taskExecutor.isStateless() && !offloadedExecutors.containsKey(taskExecutor)) {
+            if (offloadingCnt == cnt) {
+              break;
             }
+
+            LOG.info("Start offloading of {}", taskExecutor.getId());
+            taskExecutor.startOffloading(currTime);
+            offloadedExecutors.put(taskExecutor, currTime);
+            cnt += 1;
           }
         }
       } else {
         if (!offloadedExecutors.isEmpty()) {
           final long currTime = System.currentTimeMillis();
-          if (timeToDecision(currTime)) {
-            // if there are offloaded executors
-            // we should finish the offloading
-            final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
-            final double ratio = desirableEvents / eventMean;
-            final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
-            final int adjustVmCnt = Math.min(taskExecutorMap.size(), (int) Math.ceil(ratio * numExecutors));
-            final int deOffloadingCnt = adjustVmCnt - numExecutors;
+          // if there are offloaded executors
+          // we should finish the offloading
+          final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
+          final double ratio = desirableEvents / eventMean;
+          final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
+          final int adjustVmCnt = Math.min(taskExecutorMap.size(), (int) Math.ceil(ratio * numExecutors));
+          final int deOffloadingCnt = adjustVmCnt - numExecutors;
 
-            LOG.info("Stop desirable events: {} for load {}, total: {}, desriableVm: {}, currVm: {}, " +
-                "deoffloadingCnt: {}, offloadedExecutors: {}",
-              desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors, deOffloadingCnt, offloadedExecutors.size());
+          LOG.info("Stop desirable events: {} for load {}, total: {}, desriableVm: {}, currVm: {}, " +
+              "deoffloadingCnt: {}, offloadedExecutors: {}",
+            desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors, deOffloadingCnt, offloadedExecutors.size());
 
-            final Iterator<TaskExecutor> iterator = offloadedExecutors.iterator();
-            int cnt = 0;
-            while (iterator.hasNext() && cnt < deOffloadingCnt) {
-              final TaskExecutor taskExecutor = iterator.next();
+          final Iterator<Map.Entry<TaskExecutor, Long>> iterator = offloadedExecutors.entrySet().iterator();
+          int cnt = 0;
+          while (iterator.hasNext() && cnt < deOffloadingCnt) {
+            final Map.Entry<TaskExecutor, Long> entry = iterator.next();
+            final TaskExecutor taskExecutor = entry.getKey();
+            final Long offloadingTime = entry.getValue();
+
+            if (currTime - offloadingTime >= slackTime) {
               taskExecutor.endOffloading();
               iterator.remove();
               cnt += 1;
             }
-
-            LOG.info("Actual stop offloading: {}", cnt);
           }
+
+          LOG.info("Actual stop offloading: {}", cnt);
         }
       }
     }, r, r, TimeUnit.MILLISECONDS);
