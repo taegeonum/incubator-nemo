@@ -39,16 +39,6 @@ public final class TaskOffloader {
   private final DescriptiveStatistics eventAverage;
   private final EvalConf evalConf;
 
-  private enum BurstyStat {
-    NORMAL,
-    BURSTY
-  }
-
-  private final int size = 20;
-  private List<Pair<Long, Double>> metrics = new ArrayList<>(size);
-
-  private BurstyStat burstyStat;
-
   // TODO: high threshold
   // TODO: low threshold ==> threshold 2개 놓기
 
@@ -63,7 +53,6 @@ public final class TaskOffloader {
     final CpuEventModel cpuEventModel,
     final EvalConf evalConf) {
     this.evalConf = evalConf;
-    this.burstyStat = BurstyStat.NORMAL;
     this.r = r;
     this.k = k;
     this.threshold = threshold;
@@ -104,13 +93,7 @@ public final class TaskOffloader {
       final double cpuMean = cpuAverage.getMean();
       final double eventMean = eventAverage.getMean();
 
-      // METRIC
       final long currTime = System.currentTimeMillis();
-      if (metrics.size() >= size) {
-        metrics.remove(0);
-      }
-      metrics.add(Pair.of(currTime, eventMean));
-      // METRIC
 
       LOG.info("Current cpu load: {}, # events: {}, consecutive: {}/{}, threshold: {}",
         cpuMean, eventMean, currConsecutive, k, threshold);
@@ -121,43 +104,36 @@ public final class TaskOffloader {
         cpuEventModel.add(cpuMean, (int) eventMean);
       }
 
-      if (cpuMean > threshold) {
-        if (burstyStat == BurstyStat.BURSTY || isBursty(currTime, metrics)) {
-          burstyStat = BurstyStat.BURSTY;
-        }
-
+      if (cpuMean > threshold && eventMean > evalConf.eventThreshold) {
         // offload if it is bursty state
-        if (burstyStat == BurstyStat.BURSTY) {
-          // we should offload some task executors
-          final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
-          final double ratio = desirableEvents / eventMean;
-          final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
-          final int adjustVmCnt = Math.max(evalConf.minVmTask,
-            Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors)));
-          final int offloadingCnt = numExecutors - adjustVmCnt;
+        // we should offload some task executors
+        final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
+        final double ratio = desirableEvents / eventMean;
+        final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
+        final int adjustVmCnt = Math.max(evalConf.minVmTask,
+          Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors)));
+        final int offloadingCnt = numExecutors - adjustVmCnt;
 
-          LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
-              "offloadingCnt: {}, offloadedExecutors: {}",
-            desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors,
-            offloadingCnt, offloadedExecutors.size());
+        LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
+            "offloadingCnt: {}, offloadedExecutors: {}",
+          desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors,
+          offloadingCnt, offloadedExecutors.size());
 
-          int cnt = 0;
-          final Collection<TaskExecutor> offloadableTasks = findOffloadableTasks();
-          for (final TaskExecutor taskExecutor : offloadableTasks) {
-            if (taskExecutor.isStateless()) {
-              if (offloadingCnt == cnt) {
-                break;
-              }
-
-              LOG.info("Start offloading of {}", taskExecutor.getId());
-              taskExecutor.startOffloading(currTime);
-              offloadedExecutors.add(Pair.of(taskExecutor, currTime));
-              cnt += 1;
+        int cnt = 0;
+        final Collection<TaskExecutor> offloadableTasks = findOffloadableTasks();
+        for (final TaskExecutor taskExecutor : offloadableTasks) {
+          if (taskExecutor.isStateless()) {
+            if (offloadingCnt == cnt) {
+              break;
             }
+
+            LOG.info("Start offloading of {}", taskExecutor.getId());
+            taskExecutor.startOffloading(currTime);
+            offloadedExecutors.add(Pair.of(taskExecutor, currTime));
+            cnt += 1;
           }
         }
       } else {
-        burstyStat = BurstyStat.NORMAL;
         if (!offloadedExecutors.isEmpty()) {
           // if there are offloaded executors
           // we should finish the offloading

@@ -65,6 +65,10 @@ public final class EvalConf {
   public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
   }
 
+  @NamedParameter(short_name = "event_threshold", default_value = "200000")
+  public static final class EventThreshold implements Name<Integer> {
+  }
+
   @NamedParameter(short_name = "min_vm_task", default_value = "8")
   public static final class MinVmTask implements Name<Integer> {
   }
@@ -93,6 +97,7 @@ public final class EvalConf {
   public final boolean isLocalSource;
   public final int sourceParallelism;
   public final int minVmTask;
+  public final int eventThreshold;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -108,7 +113,8 @@ public final class EvalConf {
                    @Parameter(BurstyOperatorString.class) final String burstyOperatorStr,
                    @Parameter(IsLocalSource.class) final boolean isLocalSource,
                    @Parameter(SourceParallelism.class) final int sourceParallelism,
-                   @Parameter(MinVmTask.class) final int minVmTask) throws IOException {
+                   @Parameter(MinVmTask.class) final int minVmTask,
+                   @Parameter(EventThreshold.class) final int eventThreshold) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -123,6 +129,7 @@ public final class EvalConf {
     this.isLocalSource = isLocalSource;
     this.sourceParallelism = sourceParallelism;
     this.minVmTask = minVmTask;
+    this.eventThreshold = eventThreshold;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -148,6 +155,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(IsLocalSource.class, Boolean.toString(isLocalSource));
     jcb.bindNamedParameter(SourceParallelism.class, Integer.toString(sourceParallelism));
     jcb.bindNamedParameter(MinVmTask.class, Integer.toString(minVmTask));
+    jcb.bindNamedParameter(EventThreshold.class, Integer.toString(eventThreshold));
     return jcb.build();
   }
 
@@ -167,6 +175,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(IsLocalSource.class);
     cl.registerShortNameOfClass(SourceParallelism.class);
     cl.registerShortNameOfClass(MinVmTask.class);
+    cl.registerShortNameOfClass(EventThreshold.class);
   }
 
   @Override
@@ -188,6 +197,7 @@ public final class EvalConf {
     sb.append("isLocalSource: "); sb.append(isLocalSource); sb.append("\n");
     sb.append("sourceParallelism: "); sb.append(sourceParallelism); sb.append("\n");
     sb.append("minVmTask: "); sb.append(minVmTask); sb.append("\n");
+    sb.append("eventThreshold: "); sb.append(eventThreshold); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();
