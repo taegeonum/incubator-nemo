@@ -65,7 +65,7 @@ public final class EvalConf {
   public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
   }
 
-  @NamedParameter(short_name = "event_threshold", default_value = "200000")
+  @NamedParameter(short_name = "event_threshold", default_value = "250000")
   public static final class EventThreshold implements Name<Integer> {
   }
 
