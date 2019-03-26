@@ -31,7 +31,7 @@ public final class TaskOffloader {
   private final Queue<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
-  private long slackTime = 5000;
+  private long slackTime = 15000;
 
 
   private final int windowSize = 4;
@@ -144,11 +144,12 @@ public final class TaskOffloader {
 
           int cnt = 0;
           while (!offloadedExecutors.isEmpty() && cnt < deOffloadingCnt) {
-            final Pair<TaskExecutor, Long> pair = offloadedExecutors.poll();
+            final Pair<TaskExecutor, Long> pair = offloadedExecutors.peek();
             final TaskExecutor taskExecutor = pair.left();
             final Long offloadingTime = pair.right();
 
             if (currTime - offloadingTime >= slackTime) {
+              offloadedExecutors.poll();
               taskExecutor.endOffloading();
               cnt += 1;
             } else {
