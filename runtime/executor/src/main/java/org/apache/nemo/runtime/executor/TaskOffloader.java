@@ -37,6 +37,7 @@ public final class TaskOffloader {
   private final int windowSize = 4;
   private final DescriptiveStatistics cpuAverage;
   private final DescriptiveStatistics eventAverage;
+  private final EvalConf evalConf;
 
   // TODO: high threshold
   // TODO: low threshold ==> threshold 2개 놓기
@@ -49,7 +50,9 @@ public final class TaskOffloader {
     @Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
     final TaskEventRateCalculator taskEventRateCalculator,
     final TaskExecutorMapWrapper taskExecutorMapWrapper,
-    final CpuEventModel cpuEventModel) {
+    final CpuEventModel cpuEventModel,
+    final EvalConf evalConf) {
+    this.evalConf = evalConf;
     this.r = r;
     this.k = k;
     this.threshold = threshold;
@@ -105,8 +108,8 @@ public final class TaskOffloader {
         final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
         final double ratio = desirableEvents / eventMean;
         final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
-        final int adjustVmCnt = Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors));
-        final int offloadingCnt = numExecutors - adjustVmCnt;
+        final int adjustVmCnt = Math.min(evalConf.minVmTask, (int) Math.ceil(ratio * numExecutors));
+        final int offloadingCnt = Math.max(0, numExecutors - adjustVmCnt);
 
         LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
             "offloadingCnt: {}, offloadedExecutors: {}",
