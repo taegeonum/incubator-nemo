@@ -167,7 +167,18 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   public void forceClose() {
     if (channel != null) {
       //byteBufOutputStream.buffer().release();
-      channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
+      closeThread.execute(() -> {
+        try {
+          LOG.info("Send end mesesage to worker {}", workerId);
+          channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
     } else {
       closeThread.execute(() -> {
         while (channel != null) {
@@ -178,7 +189,16 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
           }
         }
 
-        channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
+        try {
+          LOG.info("Send end mesesage to worker {}", workerId);
+          channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       });
     }
 
