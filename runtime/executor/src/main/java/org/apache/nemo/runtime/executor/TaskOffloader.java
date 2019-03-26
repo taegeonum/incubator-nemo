@@ -80,7 +80,9 @@ public final class TaskOffloader {
 
   private Collection<TaskExecutor> findOffloadableTasks() {
     final Set<TaskExecutor> taskExecutors = new HashSet<>(taskExecutorMap.keySet());
-    offloadedExecutors.forEach(offloaded -> taskExecutors.remove(offloaded));
+    for (final Pair<TaskExecutor, Long> pair : offloadedExecutors) {
+      taskExecutors.remove(pair.left());
+    }
 
     return taskExecutors;
   }
@@ -104,33 +106,35 @@ public final class TaskOffloader {
         cpuEventModel.add(cpuMean, (int) eventMean);
       }
 
-      if (cpuMean > threshold && eventMean > evalConf.eventThreshold) {
-        // offload if it is bursty state
-        // we should offload some task executors
-        final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
-        final double ratio = desirableEvents / eventMean;
-        final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
-        final int adjustVmCnt = Math.max(evalConf.minVmTask,
-          Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors)));
-        final int offloadingCnt = numExecutors - adjustVmCnt;
+      if (cpuMean > threshold) {
+        if (eventMean > evalConf.eventThreshold) {
+          // offload if it is bursty state
+          // we should offload some task executors
+          final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
+          final double ratio = desirableEvents / eventMean;
+          final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
+          final int adjustVmCnt = Math.max(evalConf.minVmTask,
+            Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors)));
+          final int offloadingCnt = numExecutors - adjustVmCnt;
 
-        LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
-            "offloadingCnt: {}, offloadedExecutors: {}",
-          desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors,
-          offloadingCnt, offloadedExecutors.size());
+          LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
+              "offloadingCnt: {}, offloadedExecutors: {}",
+            desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors,
+            offloadingCnt, offloadedExecutors.size());
 
-        int cnt = 0;
-        final Collection<TaskExecutor> offloadableTasks = findOffloadableTasks();
-        for (final TaskExecutor taskExecutor : offloadableTasks) {
-          if (taskExecutor.isStateless()) {
-            if (offloadingCnt == cnt) {
-              break;
+          int cnt = 0;
+          final Collection<TaskExecutor> offloadableTasks = findOffloadableTasks();
+          for (final TaskExecutor taskExecutor : offloadableTasks) {
+            if (taskExecutor.isStateless()) {
+              if (offloadingCnt == cnt) {
+                break;
+              }
+
+              LOG.info("Start offloading of {}", taskExecutor.getId());
+              taskExecutor.startOffloading(currTime);
+              offloadedExecutors.add(Pair.of(taskExecutor, currTime));
+              cnt += 1;
             }
-
-            LOG.info("Start offloading of {}", taskExecutor.getId());
-            taskExecutor.startOffloading(currTime);
-            offloadedExecutors.add(Pair.of(taskExecutor, currTime));
-            cnt += 1;
           }
         }
       } else {
