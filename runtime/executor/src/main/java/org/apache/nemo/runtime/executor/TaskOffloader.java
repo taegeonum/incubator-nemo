@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.apache.reef.tang.annotations.Parameter;
@@ -21,18 +22,16 @@ public final class TaskOffloader {
   private final long r;
   private final int k;
   private final double threshold;
-  private int currBottleneckId = 0;
   private int currConsecutive = 0;
-  private int endConsecutive = 0;
 
   private final TaskEventRateCalculator taskEventRateCalculator;
   private final CpuEventModel cpuEventModel;
 
-  // value: start time of offloading
-  private final Map<TaskExecutor, Long> offloadedExecutors;
+  // key: offloaded task executor, value: start time of offloading
+  private final Queue<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
-  private long slackTime = 15000;
+  private long slackTime = 5000;
 
 
   private final int windowSize = 4;
@@ -64,7 +63,7 @@ public final class TaskOffloader {
 
     this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     this.cpuEventModel = cpuEventModel;
-    this.offloadedExecutors = new HashMap<>();
+    this.offloadedExecutors = new ArrayDeque<>();
   }
 
   private boolean timeToDecision(final long currTime) {
@@ -74,6 +73,13 @@ public final class TaskOffloader {
     } else {
       return false;
     }
+  }
+
+  private Collection<TaskExecutor> findOffloadableTasks() {
+    final Set<TaskExecutor> taskExecutors = new HashSet<>(taskExecutorMap.keySet());
+    offloadedExecutors.forEach(offloaded -> taskExecutors.remove(offloaded));
+
+    return taskExecutors;
   }
 
   public void start() {
@@ -108,15 +114,16 @@ public final class TaskOffloader {
           offloadingCnt, offloadedExecutors.size());
 
         int cnt = 0;
-        for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-          if (taskExecutor.isStateless() && !offloadedExecutors.containsKey(taskExecutor)) {
+        final Collection<TaskExecutor> offloadableTasks = findOffloadableTasks();
+        for (final TaskExecutor taskExecutor : offloadableTasks) {
+          if (taskExecutor.isStateless()) {
             if (offloadingCnt == cnt) {
               break;
             }
 
             LOG.info("Start offloading of {}", taskExecutor.getId());
             taskExecutor.startOffloading(currTime);
-            offloadedExecutors.put(taskExecutor, currTime);
+            offloadedExecutors.add(Pair.of(taskExecutor, currTime));
             cnt += 1;
           }
         }
@@ -135,17 +142,17 @@ public final class TaskOffloader {
               "deoffloadingCnt: {}, offloadedExecutors: {}",
             desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors, deOffloadingCnt, offloadedExecutors.size());
 
-          final Iterator<Map.Entry<TaskExecutor, Long>> iterator = offloadedExecutors.entrySet().iterator();
           int cnt = 0;
-          while (iterator.hasNext() && cnt < deOffloadingCnt) {
-            final Map.Entry<TaskExecutor, Long> entry = iterator.next();
-            final TaskExecutor taskExecutor = entry.getKey();
-            final Long offloadingTime = entry.getValue();
+          while (!offloadedExecutors.isEmpty() && cnt < deOffloadingCnt) {
+            final Pair<TaskExecutor, Long> pair = offloadedExecutors.poll();
+            final TaskExecutor taskExecutor = pair.left();
+            final Long offloadingTime = pair.right();
 
             if (currTime - offloadingTime >= slackTime) {
               taskExecutor.endOffloading();
-              iterator.remove();
               cnt += 1;
+            } else {
+              break;
             }
           }
 

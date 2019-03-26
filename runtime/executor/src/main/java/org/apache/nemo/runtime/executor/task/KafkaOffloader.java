@@ -13,6 +13,7 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
@@ -135,9 +136,6 @@ public final class KafkaOffloader {
     // handling checkpoint mark to resume the kafka source reading
     // Serverless -> VM
     // we start to read kafka events again
-
-
-
     final int id = output.id;
     final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) output.checkpointMark;
     LOG.info("Receive checkpoint mark for source {} in VM: {}", id, checkpointMark);
@@ -147,6 +145,19 @@ public final class KafkaOffloader {
     }
 
     final SourceVertexDataFetcher offloadedDataFetcher = offloadedDataFetcherMap.remove(id);
+
+    restartDataFetcher(offloadedDataFetcher, checkpointMark, id);
+
+    if (offloadedDataFetcherMap.isEmpty()) {
+      // TODO: merge sources!!
+      // 1) remove reExecute data fetchers
+      // 2) merge all of them into one!
+    }
+  }
+
+  private void restartDataFetcher(final SourceVertexDataFetcher offloadedDataFetcher,
+                                  final UnboundedSource.CheckpointMark checkpointMark,
+                                  final int id) {
     final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) offloadedDataFetcher.getDataSource();
     final UnboundedSource unboundedSource = beamUnboundedSourceVertex.getUnboundedSource();
 
@@ -157,22 +168,20 @@ public final class KafkaOffloader {
     LOG.info("Restart source {} at checkpointmark {}", id, checkpointMark);
     availableFetchers.add(offloadedDataFetcher);
     reExecutedDataFetchers.add(Pair.of(offloadedDataFetcher, checkpointMark));
-
-    if (offloadedDataFetcherMap.isEmpty()) {
-      // TODO: merge sources!!
-      // 1) remove reExecute data fetchers
-      // 2) merge all of them into one!
-    }
   }
 
   public synchronized void handleEndOffloadingKafkaEvent() {
     if (!kafkaOffloadPendingEvents.isEmpty()) {
       // It means that this is not initialized yet
       // just finish this worker!
-      LOG.info("Close {} init workers at {}", kafkaOffloadPendingEvents.size(), taskId);
       for (final KafkaOffloadingDataEvent event : kafkaOffloadPendingEvents) {
         event.offloadingWorker.forceClose();
+        // restart the workers
+        LOG.info("Just restart source {} init workers at {}", event.id, taskId);
+        restartDataFetcher(event.sourceVertexDataFetcher, event.checkpointMark, event.id);
       }
+
+      kafkaOffloadPendingEvents.clear();
     }
 
     for (final OffloadingWorker runningWorker : runningWorkers) {
