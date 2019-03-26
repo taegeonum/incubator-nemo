@@ -34,10 +34,20 @@ public final class TaskOffloader {
   private long slackTime = 15000;
 
 
-  private final int windowSize = 4;
+  private final int windowSize = 5;
   private final DescriptiveStatistics cpuAverage;
   private final DescriptiveStatistics eventAverage;
   private final EvalConf evalConf;
+
+  private enum BurstyStat {
+    NORMAL,
+    BURSTY
+  }
+
+  private final int size = 20;
+  private List<Pair<Long, Double>> metrics = new ArrayList<>(size);
+
+  private BurstyStat burstyStat;
 
   // TODO: high threshold
   // TODO: low threshold ==> threshold 2개 놓기
@@ -53,6 +63,7 @@ public final class TaskOffloader {
     final CpuEventModel cpuEventModel,
     final EvalConf evalConf) {
     this.evalConf = evalConf;
+    this.burstyStat = BurstyStat.NORMAL;
     this.r = r;
     this.k = k;
     this.threshold = threshold;
@@ -62,7 +73,7 @@ public final class TaskOffloader {
     this.cpuAverage = new DescriptiveStatistics();
     cpuAverage.setWindowSize(windowSize);
     this.eventAverage = new DescriptiveStatistics();
-    eventAverage.setWindowSize(windowSize);
+    eventAverage.setWindowSize(2);
 
     this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     this.cpuEventModel = cpuEventModel;
@@ -93,6 +104,14 @@ public final class TaskOffloader {
       final double cpuMean = cpuAverage.getMean();
       final double eventMean = eventAverage.getMean();
 
+      // METRIC
+      final long currTime = System.currentTimeMillis();
+      if (metrics.size() >= size) {
+        metrics.remove(0);
+      }
+      metrics.add(Pair.of(currTime, eventMean));
+      // METRIC
+
       LOG.info("Current cpu load: {}, # events: {}, consecutive: {}/{}, threshold: {}",
         cpuMean, eventMean, currConsecutive, k, threshold);
 
@@ -103,37 +122,43 @@ public final class TaskOffloader {
       }
 
       if (cpuMean > threshold) {
-        final long currTime = System.currentTimeMillis();
-        // we should offload some task executors
-        final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
-        final double ratio = desirableEvents / eventMean;
-        final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
-        final int adjustVmCnt = Math.max(evalConf.minVmTask,
-          Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors)));
-        final int offloadingCnt = numExecutors - adjustVmCnt;
+        if (burstyStat == BurstyStat.BURSTY || isBursty(currTime, metrics)) {
+          burstyStat = BurstyStat.BURSTY;
+        }
 
-        LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
-            "offloadingCnt: {}, offloadedExecutors: {}",
-          desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors,
-          offloadingCnt, offloadedExecutors.size());
+        // offload if it is bursty state
+        if (burstyStat == BurstyStat.BURSTY) {
+          // we should offload some task executors
+          final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
+          final double ratio = desirableEvents / eventMean;
+          final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
+          final int adjustVmCnt = Math.max(evalConf.minVmTask,
+            Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors)));
+          final int offloadingCnt = numExecutors - adjustVmCnt;
 
-        int cnt = 0;
-        final Collection<TaskExecutor> offloadableTasks = findOffloadableTasks();
-        for (final TaskExecutor taskExecutor : offloadableTasks) {
-          if (taskExecutor.isStateless()) {
-            if (offloadingCnt == cnt) {
-              break;
+          LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
+              "offloadingCnt: {}, offloadedExecutors: {}",
+            desirableEvents, threshold, eventMean, adjustVmCnt, numExecutors,
+            offloadingCnt, offloadedExecutors.size());
+
+          int cnt = 0;
+          final Collection<TaskExecutor> offloadableTasks = findOffloadableTasks();
+          for (final TaskExecutor taskExecutor : offloadableTasks) {
+            if (taskExecutor.isStateless()) {
+              if (offloadingCnt == cnt) {
+                break;
+              }
+
+              LOG.info("Start offloading of {}", taskExecutor.getId());
+              taskExecutor.startOffloading(currTime);
+              offloadedExecutors.add(Pair.of(taskExecutor, currTime));
+              cnt += 1;
             }
-
-            LOG.info("Start offloading of {}", taskExecutor.getId());
-            taskExecutor.startOffloading(currTime);
-            offloadedExecutors.add(Pair.of(taskExecutor, currTime));
-            cnt += 1;
           }
         }
       } else {
+        burstyStat = BurstyStat.NORMAL;
         if (!offloadedExecutors.isEmpty()) {
-          final long currTime = System.currentTimeMillis();
           // if there are offloaded executors
           // we should finish the offloading
           final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
@@ -169,5 +194,38 @@ public final class TaskOffloader {
 
   public void close() {
     monitorThread.shutdown();
+  }
+
+
+  // 어느 시점 (baseTime) 을 기준으로 fluctuation 하였는가?
+  private boolean isBursty(final long baseTime,
+                           final List<Pair<Long, Double>> processedEvents) {
+    final List<Double> beforeBaseTime = new ArrayList<>();
+    final List<Double> afterBaseTime = new ArrayList<>();
+
+    for (final Pair<Long, Double> pair : processedEvents) {
+      if (pair.left() < baseTime) {
+        beforeBaseTime.add(pair.right());
+      } else {
+        afterBaseTime.add(pair.right());
+      }
+    }
+
+    final double avgEventBeforeBaseTime = beforeBaseTime.stream()
+      .reduce(0.0, (x, y) -> x + y) / (Math.max(1, beforeBaseTime.size()));
+
+    final double avgEventAfterBaseTime = afterBaseTime.stream()
+      .reduce(0.0, (x, y) -> x + y) / (Math.max(1, afterBaseTime.size()));
+
+    LOG.info("avgEventBeforeBaseTime: {} (size: {}), avgEventAfterBaseTime: {} (size: {}), baseTime: {}",
+      avgEventBeforeBaseTime, beforeBaseTime.size(), avgEventAfterBaseTime, afterBaseTime.size(), baseTime);
+
+    processedEvents.clear();
+
+    if (avgEventBeforeBaseTime * 2 < avgEventAfterBaseTime) {
+      return true;
+    } else {
+      return false;
+    }
   }
 }
