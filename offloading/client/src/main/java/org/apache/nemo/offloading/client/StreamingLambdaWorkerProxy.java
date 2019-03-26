@@ -181,7 +181,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
       });
     } else {
       closeThread.execute(() -> {
-        while (channel != null) {
+        while (channel == null) {
           try {
             Thread.sleep(200);
           } catch (InterruptedException e) {

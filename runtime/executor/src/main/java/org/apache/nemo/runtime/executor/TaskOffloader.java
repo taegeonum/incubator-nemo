@@ -108,8 +108,9 @@ public final class TaskOffloader {
         final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
         final double ratio = desirableEvents / eventMean;
         final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
-        final int adjustVmCnt = Math.min(evalConf.minVmTask, (int) Math.ceil(ratio * numExecutors));
-        final int offloadingCnt = Math.max(0, numExecutors - adjustVmCnt);
+        final int adjustVmCnt = Math.max(evalConf.minVmTask,
+          Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors)));
+        final int offloadingCnt = numExecutors - adjustVmCnt;
 
         LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
             "offloadingCnt: {}, offloadedExecutors: {}",
