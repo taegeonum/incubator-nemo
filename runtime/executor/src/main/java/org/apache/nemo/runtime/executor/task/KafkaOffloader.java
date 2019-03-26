@@ -177,6 +177,10 @@ public final class KafkaOffloader {
         })
         .collect(Collectors.toList());
 
+    partitionMarks.sort((o1, o2) -> {
+        return o1.getPartition() - o2.getPartition();
+    });
+
     return new KafkaCheckpointMark(partitionMarks, Optional.empty());
   }
 
