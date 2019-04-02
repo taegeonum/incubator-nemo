@@ -234,14 +234,14 @@ public final class TaskOffloader {
         cpuLoadStable = 0;
       }
 
-      cpuAverage.addValue(profiler.getCpuLoad());
-      final double cpuMean = cpuAverage.getMean();
+      //cpuAverage.addValue(profiler.getCpuLoad());
+      //final double cpuMean = cpuAverage.getMean();
 
       final long currTime = System.currentTimeMillis();
 
-      LOG.info("CpuMean: {}, threshold: {}", cpuMean, threshold);
+      LOG.info("CpuMean: {}, threshold: {}", cpuLoad, threshold);
 
-      if (cpuMean > threshold) {
+      if (cpuLoad > threshold) {
         final StatelessTaskStatInfo taskStatInfo = measureTaskStatInfo();
         final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
@@ -261,7 +261,7 @@ public final class TaskOffloader {
             currCpuTimeSum -= cpuTimeOfThisTask;
           }
         }
-      } else if (cpuMean < threshold - 0.2) {
+      } else if (cpuLoad < threshold - 0.2) {
         if (!offloadedExecutors.isEmpty()) {
           final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
