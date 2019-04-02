@@ -33,8 +33,9 @@ public final class TaskOffloader {
   private long slackTime = 5000;
 
 
-  private final int windowSize = 2;
-  private final DescriptiveStatistics cpuAverage;
+  private final int windowSize = 5;
+  private final DescriptiveStatistics cpuHighAverage;
+  private final DescriptiveStatistics cpuLowAverage;
   private final DescriptiveStatistics eventAverage;
   private final EvalConf evalConf;
 
@@ -68,8 +69,11 @@ public final class TaskOffloader {
     this.monitorThread = Executors.newSingleThreadScheduledExecutor();
     this.taskEventRateCalculator = taskEventRateCalculator;
     this.cpuTimeModel = cpuTimeModel;
-    this.cpuAverage = new DescriptiveStatistics();
-    cpuAverage.setWindowSize(windowSize);
+    this.cpuHighAverage = new DescriptiveStatistics();
+    cpuHighAverage.setWindowSize(2);
+    this.cpuLowAverage = new DescriptiveStatistics();
+    cpuLowAverage.setWindowSize(5);
+
     this.eventAverage = new DescriptiveStatistics();
     eventAverage.setWindowSize(2);
 
@@ -234,14 +238,16 @@ public final class TaskOffloader {
         cpuLoadStable = 0;
       }
 
-      //cpuAverage.addValue(profiler.getCpuLoad());
-      //final double cpuMean = cpuAverage.getMean();
+      cpuHighAverage.addValue(cpuLoad);
+      cpuLowAverage.addValue(cpuLoad);
+      final double cpuHighMean = cpuHighAverage.getMean();
+      final double cpuLowMean = cpuLowAverage.getMean();
 
       final long currTime = System.currentTimeMillis();
 
-      LOG.info("CpuMean: {}, threshold: {}", cpuLoad, threshold);
+      LOG.info("CpuHighMean: {}, CpuLowMean: {}, threshold: {}", cpuHighMean, cpuLowMean, threshold);
 
-      if (cpuLoad > threshold) {
+      if (cpuHighMean > threshold) {
         final StatelessTaskStatInfo taskStatInfo = measureTaskStatInfo();
         final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
@@ -261,7 +267,7 @@ public final class TaskOffloader {
             currCpuTimeSum -= cpuTimeOfThisTask;
           }
         }
-      } else if (cpuLoad < threshold - 0.2) {
+      } else if (cpuLowMean < threshold - 0.2) {
         if (!offloadedExecutors.isEmpty()) {
           final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
