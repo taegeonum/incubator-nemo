@@ -253,8 +253,8 @@ public final class TaskOffloader {
         final long currTime = System.currentTimeMillis();
 
         final StatelessTaskStatInfo taskStatInfo = measureTaskStatInfo();
-        LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}",
-          cpuHighMean, cpuLowMean, taskStatInfo.running, threshold);
+        LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}, observed: {}",
+          cpuHighMean, cpuLowMean, taskStatInfo.running, threshold, observedCnt);
 
         if (cpuHighMean > threshold && observedCnt >= observeWindow) {
           final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
