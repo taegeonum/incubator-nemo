@@ -50,6 +50,9 @@ public final class TaskOffloader {
 
   private final PolynomialCpuTimeModel cpuTimeModel;
 
+  private int observedCnt = 0;
+  private final int observeWindow = 30;
+
   @Inject
   private TaskOffloader(
     final SystemLoadProfiler profiler,
@@ -241,6 +244,9 @@ public final class TaskOffloader {
 
         cpuHighAverage.addValue(cpuLoad);
         cpuLowAverage.addValue(cpuLoad);
+
+        observedCnt += 1;
+
         final double cpuHighMean = cpuHighAverage.getMean();
         final double cpuLowMean = cpuLowAverage.getMean();
 
@@ -250,7 +256,7 @@ public final class TaskOffloader {
         LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}",
           cpuHighMean, cpuLowMean, taskStatInfo.running, threshold);
 
-        if (cpuHighMean > threshold) {
+        if (cpuHighMean > threshold && observedCnt >= observeWindow) {
           final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
           long currCpuTimeSum = elapsedCpuTimeSum;
@@ -269,7 +275,7 @@ public final class TaskOffloader {
               currCpuTimeSum -= cpuTimeOfThisTask;
             }
           }
-        } else if (cpuLowMean < threshold - 0.2) {
+        } else if (cpuLowMean < threshold - 0.2 &&  observedCnt >= observeWindow) {
           if (!offloadedExecutors.isEmpty()) {
             final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
