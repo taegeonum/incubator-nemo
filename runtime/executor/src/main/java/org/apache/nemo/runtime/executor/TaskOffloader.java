@@ -221,11 +221,13 @@ public final class TaskOffloader {
       prevTaskCpuTimeMap = currTaskCpuTimeMap;
 
       final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x,y) -> x+y);
+      LOG.info("Cpu load: {}, elapsedCpuTimeSum: {}", cpuLoad, elapsedCpuTimeSum);
+
       // calculate stable cpu time
       if (cpuLoad >= 0.15 && cpuLoad <= 0.6) {
         cpuLoadStable += 1;
         if (cpuLoadStable >= 2) {
-          LOG.info("Cpu load: {}, elapsedCpuTimeSum: {}", cpuLoad, elapsedCpuTimeSum);
+
           cpuTimeModel.add(cpuLoad, elapsedCpuTimeSum);
         }
       } else {
@@ -237,11 +239,14 @@ public final class TaskOffloader {
 
       final long currTime = System.currentTimeMillis();
 
+      LOG.info("CpuMean: {}, threshold: {}", cpuMean, threshold);
+
       if (cpuMean > threshold) {
         final StatelessTaskStatInfo taskStatInfo = measureTaskStatInfo();
         final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
         long currCpuTimeSum = elapsedCpuTimeSum;
+        LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
         for (final TaskExecutor runningTask : taskStatInfo.runningTasks) {
           final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
