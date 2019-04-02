@@ -219,75 +219,81 @@ public final class TaskOffloader {
   public void start() {
     this.monitorThread.scheduleAtFixedRate(() -> {
 
-      final double cpuLoad = profiler.getCpuLoad();
-      final Map<TaskExecutor, Long> currTaskCpuTimeMap = profiler.getTaskExecutorCpuTimeMap();
-      final Map<TaskExecutor, Long> deltaMap = calculateCpuTimeDelta(prevTaskCpuTimeMap, currTaskCpuTimeMap);
-      prevTaskCpuTimeMap = currTaskCpuTimeMap;
+      try {
 
-      final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x,y) -> x+y);
+        final double cpuLoad = profiler.getCpuLoad();
+        final Map<TaskExecutor, Long> currTaskCpuTimeMap = profiler.getTaskExecutorCpuTimeMap();
+        final Map<TaskExecutor, Long> deltaMap = calculateCpuTimeDelta(prevTaskCpuTimeMap, currTaskCpuTimeMap);
+        prevTaskCpuTimeMap = currTaskCpuTimeMap;
 
-      // calculate stable cpu time
-      if (cpuLoad >= 0.15 && cpuLoad <= 0.6) {
-        cpuLoadStable += 1;
-        if (cpuLoadStable >= 2) {
+        final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x + y);
 
-          cpuTimeModel.add(cpuLoad, elapsedCpuTimeSum);
-        }
-      } else {
-        cpuLoadStable = 0;
-      }
+        // calculate stable cpu time
+        if (cpuLoad >= 0.15 && cpuLoad <= 0.6) {
+          cpuLoadStable += 1;
+          if (cpuLoadStable >= 2) {
 
-      cpuHighAverage.addValue(cpuLoad);
-      cpuLowAverage.addValue(cpuLoad);
-      final double cpuHighMean = cpuHighAverage.getMean();
-      final double cpuLowMean = cpuLowAverage.getMean();
-
-      final long currTime = System.currentTimeMillis();
-
-      final StatelessTaskStatInfo taskStatInfo = measureTaskStatInfo();
-      LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}",
-        cpuHighMean, cpuLowMean, taskStatInfo.running, threshold);
-
-      if (cpuHighMean > threshold) {
-        final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
-
-        long currCpuTimeSum = elapsedCpuTimeSum;
-        LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
-        for (final TaskExecutor runningTask : taskStatInfo.runningTasks) {
-          final long cpuTimeOfThisTask = deltaMap.get(runningTask);
-
-          LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
-            currCpuTimeSum, runningTask.getId(), cpuTimeOfThisTask, targetCpuTime);
-
-          if (currCpuTimeSum - cpuTimeOfThisTask >= targetCpuTime) {
-            // offload this task!
-            LOG.info("Offloading task {}", runningTask.getId());
-            runningTask.startOffloading(currTime);
-            offloadedExecutors.add(Pair.of(runningTask, currTime));
-            currCpuTimeSum -= cpuTimeOfThisTask;
+            cpuTimeModel.add(cpuLoad, elapsedCpuTimeSum);
           }
+        } else {
+          cpuLoadStable = 0;
         }
-      } else if (cpuLowMean < threshold - 0.2) {
-        if (!offloadedExecutors.isEmpty()) {
+
+        cpuHighAverage.addValue(cpuLoad);
+        cpuLowAverage.addValue(cpuLoad);
+        final double cpuHighMean = cpuHighAverage.getMean();
+        final double cpuLowMean = cpuLowAverage.getMean();
+
+        final long currTime = System.currentTimeMillis();
+
+        final StatelessTaskStatInfo taskStatInfo = measureTaskStatInfo();
+        LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}",
+          cpuHighMean, cpuLowMean, taskStatInfo.running, threshold);
+
+        if (cpuHighMean > threshold) {
           final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
           long currCpuTimeSum = elapsedCpuTimeSum;
-          while (!offloadedExecutors.isEmpty() && currCpuTimeSum < targetCpuTime) {
-            final Pair<TaskExecutor, Long> pair = offloadedExecutors.peek();
-            final TaskExecutor taskExecutor = pair.left();
-            final Long offloadingTime = pair.right();
+          LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
+          for (final TaskExecutor runningTask : taskStatInfo.runningTasks) {
+            final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
-            final long cpuTimeOfThisTask = deltaMap.get(taskExecutor);
+            LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
+              currCpuTimeSum, runningTask.getId(), cpuTimeOfThisTask, targetCpuTime);
 
-            if (currTime - offloadingTime >= slackTime) {
-              LOG.info("Deoffloading task {}, currCpuTime: {}, cpuTimeOfTask: {}",
-                taskExecutor.getId(), currCpuTimeSum, cpuTimeOfThisTask);
-              offloadedExecutors.poll();
-              taskExecutor.endOffloading();
-              currCpuTimeSum += cpuTimeOfThisTask;
+            if (currCpuTimeSum - cpuTimeOfThisTask >= targetCpuTime) {
+              // offload this task!
+              LOG.info("Offloading task {}", runningTask.getId());
+              runningTask.startOffloading(currTime);
+              offloadedExecutors.add(Pair.of(runningTask, currTime));
+              currCpuTimeSum -= cpuTimeOfThisTask;
+            }
+          }
+        } else if (cpuLowMean < threshold - 0.2) {
+          if (!offloadedExecutors.isEmpty()) {
+            final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
+
+            long currCpuTimeSum = elapsedCpuTimeSum;
+            while (!offloadedExecutors.isEmpty() && currCpuTimeSum < targetCpuTime) {
+              final Pair<TaskExecutor, Long> pair = offloadedExecutors.peek();
+              final TaskExecutor taskExecutor = pair.left();
+              final Long offloadingTime = pair.right();
+
+              final long cpuTimeOfThisTask = deltaMap.get(taskExecutor);
+
+              if (currTime - offloadingTime >= slackTime) {
+                LOG.info("Deoffloading task {}, currCpuTime: {}, cpuTimeOfTask: {}",
+                  taskExecutor.getId(), currCpuTimeSum, cpuTimeOfThisTask);
+                offloadedExecutors.poll();
+                taskExecutor.endOffloading();
+                currCpuTimeSum += cpuTimeOfThisTask;
+              }
             }
           }
         }
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     }, r, r, TimeUnit.MILLISECONDS);
   }
