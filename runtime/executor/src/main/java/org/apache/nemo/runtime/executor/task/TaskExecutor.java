@@ -593,6 +593,7 @@ public final class TaskExecutor {
             //metricCollectors.add(Pair.of(omc, outputCollector));
 
             if (parentTaskReader instanceof PipeInputReader) {
+              isStateless = false;
               parentDataFetchers.add(
                 new MultiThreadParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
