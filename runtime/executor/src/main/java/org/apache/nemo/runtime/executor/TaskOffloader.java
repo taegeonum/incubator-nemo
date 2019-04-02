@@ -235,7 +235,7 @@ public final class TaskOffloader {
         if (cpuLoad >= 0.15 && cpuLoad <= 0.6) {
           cpuLoadStable += 1;
           if (cpuLoadStable >= 2) {
-
+            observedCnt += 1;
             cpuTimeModel.add(cpuLoad, elapsedCpuTimeSum);
           }
         } else {
@@ -245,7 +245,7 @@ public final class TaskOffloader {
         cpuHighAverage.addValue(cpuLoad);
         cpuLowAverage.addValue(cpuLoad);
 
-        observedCnt += 1;
+
 
         final double cpuHighMean = cpuHighAverage.getMean();
         final double cpuLowMean = cpuLowAverage.getMean();
