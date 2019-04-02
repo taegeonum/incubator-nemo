@@ -225,7 +225,6 @@ public final class TaskOffloader {
       prevTaskCpuTimeMap = currTaskCpuTimeMap;
 
       final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x,y) -> x+y);
-      LOG.info("Cpu load: {}, elapsedCpuTimeSum: {}", cpuLoad, elapsedCpuTimeSum);
 
       // calculate stable cpu time
       if (cpuLoad >= 0.15 && cpuLoad <= 0.6) {
@@ -245,10 +244,11 @@ public final class TaskOffloader {
 
       final long currTime = System.currentTimeMillis();
 
-      LOG.info("CpuHighMean: {}, CpuLowMean: {}, threshold: {}", cpuHighMean, cpuLowMean, threshold);
+      final StatelessTaskStatInfo taskStatInfo = measureTaskStatInfo();
+      LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}",
+        cpuHighMean, cpuLowMean, taskStatInfo.running, threshold);
 
       if (cpuHighMean > threshold) {
-        final StatelessTaskStatInfo taskStatInfo = measureTaskStatInfo();
         final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
         long currCpuTimeSum = elapsedCpuTimeSum;
