@@ -51,7 +51,7 @@ public final class TaskOffloader {
   private final PolynomialCpuTimeModel cpuTimeModel;
 
   private int observedCnt = 0;
-  private final int observeWindow = 30;
+  private final int observeWindow = 10;
 
   @Inject
   private TaskOffloader(
