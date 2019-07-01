@@ -96,8 +96,8 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       return new TimestampAndValue<>(currTs.getMillis(),
         WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
     } else {
-      LOG.info("Calling kafkaReader.pollRecord");
-      kafkaReader.pollRecord(5);
+      //LOG.info("Calling kafkaReader.pollRecord");
+      kafkaReader.pollRecord(5000);
        try {
         isCurrentAvailable =  reader.advance();
       } catch (IOException e) {
