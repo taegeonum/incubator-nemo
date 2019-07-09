@@ -1,7 +1,5 @@
 package org.apache.nemo.runtime.master;
 
-import com.google.protobuf.ByteString;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -18,8 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 
 public final class JobScaler {
@@ -146,7 +142,8 @@ public final class JobScaler {
           final ControlMessage.LocalScalingDoneMessage localScalingDoneMessage = message.getLocalScalingDoneMsg();
           final String executorId = localScalingDoneMessage.getExecutorId();
 
-          final Map<String, Integer> countMap = prevScalingCountMap.remove(executorId);
+          final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
+          final Map<String, Integer> countMap = prevScalingCountMap.remove(executorRepresenter);
           LOG.info("Receive LocalScalingDone for {}, countMap {}", executorId,
             countMap);
 

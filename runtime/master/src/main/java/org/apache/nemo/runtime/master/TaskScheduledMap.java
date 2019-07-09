@@ -17,13 +17,18 @@ public final class TaskScheduledMap {
   private final ConcurrentMap<ExecutorRepresenter,
     Map<String, List<Task>>> scheduledStageTasks;
 
+  private final Map<String, ExecutorRepresenter> executorIdRepresentorMap;
+
   @Inject
   private TaskScheduledMap() {
     this.scheduledStageTasks = new ConcurrentHashMap<>();
+    this.executorIdRepresentorMap = new ConcurrentHashMap<>();
   }
 
   public void addTask(final ExecutorRepresenter representer, final Task task) {
     scheduledStageTasks.putIfAbsent(representer, new HashMap<>());
+    executorIdRepresentorMap.putIfAbsent(representer.getExecutorId(), representer);
+
     final Map<String, List<Task>> stageTaskMap = scheduledStageTasks.get(representer);
 
     synchronized (stageTaskMap) {
@@ -41,5 +46,9 @@ public final class TaskScheduledMap {
 
   public Map<String, List<Task>> getScheduledStageTasks(final ExecutorRepresenter representer) {
     return scheduledStageTasks.get(representer);
+  }
+
+  public ExecutorRepresenter getExecutorRepresenter(final String executorId) {
+    return executorIdRepresentorMap.get(executorId);
   }
 }
