@@ -51,7 +51,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private final MessageEnvironment messageEnvironment;
 
-  private final ExecutorService scalingService = Executors.newSingleThreadExecutor();
+  private final ExecutorService scalingService = Executors.newCachedThreadPool();
 
   private final String executorId;
 
@@ -274,7 +274,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           break;
         case RequestScalingIn:
           LOG.info("Receive ScalingIn");
-          scaleIn();
+          scalingService.execute(JobScalingHandlerWorker.this::scaleIn);
           break;
         default:
           throw new IllegalMessageException(
