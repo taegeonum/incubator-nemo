@@ -169,10 +169,14 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
         }
       }
     }
+
+    LOG.info("Scale out method done {}", offloadedTasksPerStage);
   }
 
   private void scaleIn() {
     // scale in
+    LOG.info("Offload tasks per stage: {}", offloadedTasksPerStage);
+
     for (final List<TaskExecutor> offloadedTasks : offloadedTasksPerStage) {
       int offcnt = offloadedTasks.size();
       for (final TaskExecutor offloadedTask : offloadedTasks) {
