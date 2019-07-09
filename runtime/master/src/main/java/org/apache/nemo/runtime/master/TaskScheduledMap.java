@@ -28,7 +28,9 @@ public final class TaskScheduledMap {
 
     synchronized (stageTaskMap) {
       final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getTaskId());
-      final List<Task> stageTasks = stageTaskMap.get(stageId);
+      final List<Task> stageTasks = stageTaskMap.getOrDefault(stageId, new ArrayList<>());
+      stageTaskMap.put(stageId, stageTasks);
+
       stageTasks.add(task);
     }
   }
