@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,8 +38,9 @@ public final class JobScaler {
     this.prevScalingCountMap = new HashMap<>();
   }
 
-  public void scalingOut(final int divide) {
+  public void scalingOut(final ControlMessage.ScalingMessage msg) {
 
+    final int divide = msg.getDivide();
     final int prevScalingCount = sumCount();
 
     if (prevScalingCount > 0) {
@@ -50,7 +52,8 @@ public final class JobScaler {
       throw new RuntimeException("Scaling false..." + isScaling.get());
     }
 
-    scalingOutToWorkers(divide);
+    final int query = msg.hasQuery() ? msg.getQuery() : 0;
+    scalingOutToWorkers(divide, query);
   }
 
   private ControlMessage.RequestScalingOutMessage buildRequestScalingoutMessage(
@@ -72,11 +75,57 @@ public final class JobScaler {
     return builder.build();
   }
 
-  private void scalingOutToWorkers(final int divide) {
+
+
+  private List<ControlMessage.TaskLocation> encodeTaskLocationMap() {
+    final List<ControlMessage.TaskLocation> list = new ArrayList<>(taskLocationMap.locationMap.size());
+    for (final Map.Entry<String, TaskLoc> entry : taskLocationMap.locationMap.entrySet()) {
+      list.add(ControlMessage.TaskLocation.newBuilder()
+        .setTaskId(entry.getKey())
+        .setIsVm(entry.getValue() == VM)
+        .build());
+    }
+    return list;
+  }
+
+  private void scalingOutToWorkers(final int divide,
+                                   final int queryNum) {
 
     for (final ExecutorRepresenter representer :
       taskScheduledMap.getScheduledStageTasks().keySet()) {
       final Map<String, List<Task>> tasks = taskScheduledMap.getScheduledStageTasks(representer);
+
+      final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
+
+      for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
+        // if query 5, do not move stage2 tasks
+        if (queryNum == 5) {
+          if (entry.getKey().equals("Stage2")) {
+            LOG.info("Skip stage 2 offloading");
+            continue;
+          }
+        }
+
+        final int countToOffload = entry.getValue().size() - (entry.getValue().size() / divide);
+        final List<String> offloadTask = new ArrayList<>();
+        offloadTaskMap.put(entry.getKey(), offloadTask);
+
+        int offloadedCnt = 0;
+        for (final Task task : entry.getValue()) {
+          if (offloadedCnt < countToOffload) {
+            final TaskLoc loc = taskLocationMap.locationMap.get(task.getTaskId());
+
+            if (loc == VM) {
+              offloadTask.add(task.getTaskId());
+              taskLocationMap.locationMap.put(task.getTaskId(), SF);
+              offloadedCnt += 1;
+            }
+          }
+        }
+      }
+    }
+
+    final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
 
       final Map<String, Integer> countMap = tasks.entrySet()
         .stream()
