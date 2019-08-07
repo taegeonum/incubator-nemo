@@ -390,8 +390,6 @@ public final class TinyTaskOffloader implements Offloader {
         }
       }
       case OTHER_TASK_WAITING: {
-        return true;
-        /*
         // No waiting global offloading sync
         if (globalOffloadDone.getBoolean().get()) {
           return true;
@@ -400,7 +398,6 @@ public final class TinyTaskOffloader implements Offloader {
             globalOffloadDone.getBoolean());
           break;
         }
-        */
       }
     }
 
