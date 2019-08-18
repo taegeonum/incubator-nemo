@@ -148,6 +148,8 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
       }
       // Failed to connect (Not logging the cause here, which is not very useful)
       LOG.error("Failed to connect to relay server {}:{}", address, port);
+      future.cause().printStackTrace();
+      throw new RuntimeException(future.cause());
     });
 
     return connectFuture;

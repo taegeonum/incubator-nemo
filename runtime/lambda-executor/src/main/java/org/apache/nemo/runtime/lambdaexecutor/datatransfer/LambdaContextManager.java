@@ -75,7 +75,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final RelayServerClient relayServerClient,
     final ByteTransfer byteTransfer,
     final OutputWriterFlusher outputWriterFlusher) {
-    LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
+    //LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
     this.channelExecutorService = channelExecutorService;
     this.inputContexts = inputContexts;
     this.outputContexts = outputContexts;
@@ -117,8 +117,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       contextDescriptor.getRuntimeEdgeId(), (int) contextDescriptor.getSrcTaskIndex(), false);
 
     final int transferIndex = taskTransferIndexMap.get(key);
-    LOG.info("Input context for {}/{}, index: {}, isRelayServerChannel: {}",
-      contextDescriptor.getRuntimeEdgeId(), (int) contextDescriptor.getSrcTaskIndex(), transferIndex, isRelayServerChannel);
+    //LOG.info("Input context for {}/{}, index: {}, isRelayServerChannel: {}",
+    //  contextDescriptor.getRuntimeEdgeId(), (int) contextDescriptor.getSrcTaskIndex(), transferIndex, isRelayServerChannel);
 
     return newContext(inputContexts, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
@@ -584,7 +584,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     if (remoteExecutorId == null) {
       remoteExecutorId = executorId;
     } else if (!executorId.equals(remoteExecutorId)) {
-      LOG.warn("Wrong ContextManager: ({} != {}), local {}", executorId, remoteExecutorId, localExecutorId);
+      //LOG.warn("Wrong ContextManager: ({} != {}), local {}", executorId, remoteExecutorId, localExecutorId);
     }
   }
 
