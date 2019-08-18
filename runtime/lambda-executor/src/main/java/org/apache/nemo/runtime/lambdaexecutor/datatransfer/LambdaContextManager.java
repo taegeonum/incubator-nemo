@@ -159,7 +159,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
           Thread.sleep(200);
 
           if (System.currentTimeMillis() - st >= 1000) {
-            LOG.info("Waiting for connection to {}", targetExecutorId);
+            //LOG.info("Waiting for connection to {}", targetExecutorId);
             st = System.currentTimeMillis();
           }
 
@@ -341,7 +341,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   SF,
                   message.getTaskId());
 
-              LOG.info("Send setting message for the connected VM for scaling in... {}", settingMsg);
+              //LOG.info("Send setting message for the connected VM for scaling in... {}", settingMsg);
               vmContextManager.getChannel().write(settingMsg);
 
               final ByteTransferContextSetupMessage ackMessage =
@@ -356,8 +356,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
               inputContext.sendMessage(ackMessage, (m) -> {});
 
-              LOG.info("Setting input channel to VM {}, transferIndex: {}",
-                message.getTaskId(), contextId.getTransferIndex());
+              //LOG.info("Setting input channel to VM {}, transferIndex: {}",
+              //  message.getTaskId(), contextId.getTransferIndex());
 
               inputContext.receiveFromVM(vmContextManager.getChannel());
             });
@@ -400,7 +400,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
               } catch (InterruptedException e) {
                 e.printStackTrace();
               }
-              LOG.info("Waiting output context {}", transferIndex);
+              //LOG.info("Waiting output context {}", transferIndex);
               byteOutputContext = outputContexts.get(transferIndex);
             }
 
@@ -520,7 +520,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final ByteTransferContext.ContextId contextId = new ByteTransferContext.ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
     final T context = contexts.compute(transferIndex, (index, existingContext) -> {
       if (existingContext != null) {
-        LOG.info(String.format("Duplicate ContextId: %s", contextId));
+        //LOG.info(String.format("Duplicate ContextId: %s", contextId));
       }
       return contextGenerator.apply(contextId);
     });
