@@ -300,7 +300,8 @@ public final class OffloadingHandler {
           if (opendChannel.isOpen()) {
             opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
           } else {
-            throw new RuntimeException("Channel is already closed..");
+            LOG.warn("Channel is already closed... dont know why TT");
+            //throw new RuntimeException("Channel is already closed..");
           }
         } catch (InterruptedException e) {
           e.printStackTrace();
@@ -323,7 +324,9 @@ public final class OffloadingHandler {
 
     LOG.info("Finishing channels");
     map.entrySet().forEach(entry -> {
-      entry.getKey().close().awaitUninterruptibly();
+      if (entry.getKey().isOpen()) {
+        entry.getKey().close().awaitUninterruptibly();
+      }
     });
 
     map.clear();
