@@ -62,5 +62,6 @@ public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAd
     cause.printStackTrace();
     channelGroup.remove(ctx);
     ctx.close();
+    throw new RuntimeException("Channel exception ");
   }
 }

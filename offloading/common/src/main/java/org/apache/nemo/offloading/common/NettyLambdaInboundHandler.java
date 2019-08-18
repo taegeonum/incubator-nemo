@@ -43,8 +43,9 @@ public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapte
 
       Thread.sleep(100);
     }
-
   }
+
+
 
   @Override
   public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
@@ -52,6 +53,8 @@ public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapte
     System.out.println("Exception1!: " + cause.toString());
     channelMap.remove(ctx.channel());
     ctx.close();
+
+    throw new RuntimeException("Exception caused haha!!");
     //channelMap.remove(ctx.channel());
   }
 }
