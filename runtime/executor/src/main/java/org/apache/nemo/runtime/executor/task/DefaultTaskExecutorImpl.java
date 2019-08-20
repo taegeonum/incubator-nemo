@@ -632,7 +632,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     irVertexDag.getVertices().forEach(vertex -> {
       if (vertex instanceof OperatorVertex) {
         final OperatorVertex operatorVertex = (OperatorVertex) vertex;
-        final Transform t = transformObjectPool.getTransform(operatorVertex.getTransform());
+        final Transform t = transformObjectPool.getTransform(operatorVertex.getId(), operatorVertex.getTransform());
         operatorVertex.setTransform(t);
       }
     });
