@@ -628,15 +628,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
 
 
-    // Set up transforms here
-    irVertexDag.getVertices().forEach(vertex -> {
-      if (vertex instanceof OperatorVertex) {
-        final OperatorVertex operatorVertex = (OperatorVertex) vertex;
-        final Transform t = transformObjectPool.getTransform(operatorVertex.getId(), operatorVertex.getTransform());
-        operatorVertex.setTransform(t);
-      }
-    });
-
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
@@ -670,8 +661,16 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       }
     });
 
-
     serializedDag = SerializationUtils.serialize(irVertexDag);
+
+    // Set up transforms here
+    irVertexDag.getVertices().forEach(vertex -> {
+      if (vertex instanceof OperatorVertex) {
+        final OperatorVertex operatorVertex = (OperatorVertex) vertex;
+        final Transform t = transformObjectPool.getTransform(operatorVertex.getId(), operatorVertex.getTransform());
+        operatorVertex.setTransform(t);
+      }
+    });
 
     // Build a map for InputWatermarkManager for each operator vertex
     // This variable is used for creating NextIntraTaskOperatorInfo
