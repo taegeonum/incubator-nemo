@@ -20,6 +20,8 @@ package org.apache.nemo.common.ir.vertex;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * IRVertex that transforms input data.
@@ -27,6 +29,7 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
  */
 public class OperatorVertex extends IRVertex {
   private Transform transform;
+  private static final Logger LOG = LoggerFactory.getLogger(OperatorVertex.class.getName());
 
   /**
    * Constructor of OperatorVertex.
@@ -51,8 +54,8 @@ public class OperatorVertex extends IRVertex {
     return new OperatorVertex(this);
   }
 
-
   public void setTransform(final Transform tf) {
+    LOG.info("Set new transform!");
     this.transform = tf;
   }
   /**

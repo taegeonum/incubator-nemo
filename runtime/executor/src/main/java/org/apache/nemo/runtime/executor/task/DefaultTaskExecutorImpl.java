@@ -193,6 +193,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final ExecutorService prepareService;
 
   private final ExecutorGlobalInstances executorGlobalInstances;
+  private final TransformObjectPool transformObjectPool;
 
   /**
    * Constructor.
@@ -227,7 +228,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final RelayServer relayServer,
                                  final TaskLocationMap taskLocationMap,
                                  final ExecutorService prepareService,
-                                 final ExecutorGlobalInstances executorGlobalInstances) {
+                                 final ExecutorGlobalInstances executorGlobalInstances,
+                                 final TransformObjectPool transformObjectPool) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.copyOutgoingEdges = copyOutgoingEdges;
@@ -235,6 +237,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.copyIncomingEdges = copyIncomingEdges;
     this.prepareService = prepareService;
     this.executorGlobalInstances = executorGlobalInstances;
+
+    this.transformObjectPool = transformObjectPool;
 
     this.relayServer = relayServer;
     this.taskLocationMap = taskLocationMap;
@@ -622,6 +626,16 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
     final IntermediateDataIOFactory intermediateDataIOFactory) {
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
+
+
+    // Set up transforms here
+    irVertexDag.getVertices().forEach(vertex -> {
+      if (vertex instanceof OperatorVertex) {
+        final OperatorVertex operatorVertex = (OperatorVertex) vertex;
+        final Transform t = transformObjectPool.getTransform(operatorVertex.getTransform());
+        operatorVertex.setTransform(t);
+      }
+    });
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());

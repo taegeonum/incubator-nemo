@@ -22,7 +22,6 @@ import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.Throttled;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
@@ -144,6 +143,7 @@ public final class Executor {
   final AtomicInteger bursty = new AtomicInteger(0);
 
   private final List<ExecutorThread> executorThreads;
+  private final List<TransformObjectPool> transformObjectPools;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -248,9 +248,11 @@ public final class Executor {
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
 
     this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
+    this.transformObjectPools = new ArrayList<>(evalConf.executorThreadNum);
     for (int i = 0; i < evalConf.executorThreadNum; i++) {
       executorThreads.add(new ExecutorThread(i, executorId));
       executorThreads.get(i).start();
+      transformObjectPools.add(new TransformObjectPool());
     }
   }
 
@@ -383,36 +385,9 @@ public final class Executor {
             e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       });
 
-      final TaskExecutor taskExecutor =
-      new DefaultTaskExecutorImpl(
-        Thread.currentThread().getId(),
-        executorId,
-        byteTransport,
-        persistentConnectionToMasterMap,
-        pipeManagerWorker,
-        task,
-        irDag,
-        copyOutgoingEdges,
-        copyIncomingEdges,
-        taskStateManager,
-        intermediateDataIOFactory,
-        broadcastManagerWorker,
-        metricMessageSender,
-        persistentConnectionToMasterMap,
-        serializerManager,
-        serverlessExecutorProvider,
-        tinyWorkerManager,
-        evalConf,
-        taskInputContextMap,
-        relayServer,
-        taskLocationMap,
-        prepareService,
-        executorGlobalInstances);
-
-      taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
 
 
-      final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
+      final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getTaskId());
       final Pair<AtomicInteger, List<ExecutorThread>> pair =
         stageExecutorThreadMap.getStageExecutorThreadMap().getOrDefault(stageId,
         Pair.of(new AtomicInteger(0), new ArrayList<>(evalConf.executorThreadNum)));
@@ -450,7 +425,37 @@ public final class Executor {
 
       final int numTask = numReceivedTasks.getAndIncrement();
       final int index = numTask % evalConf.executorThreadNum;
-      LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
+      LOG.info("Add Task {} to {} thread of {}", task.getTaskId(), index, executorId);
+
+      final TaskExecutor taskExecutor =
+      new DefaultTaskExecutorImpl(
+        Thread.currentThread().getId(),
+        executorId,
+        byteTransport,
+        persistentConnectionToMasterMap,
+        pipeManagerWorker,
+        task,
+        irDag,
+        copyOutgoingEdges,
+        copyIncomingEdges,
+        taskStateManager,
+        intermediateDataIOFactory,
+        broadcastManagerWorker,
+        metricMessageSender,
+        persistentConnectionToMasterMap,
+        serializerManager,
+        serverlessExecutorProvider,
+        tinyWorkerManager,
+        evalConf,
+        taskInputContextMap,
+        relayServer,
+        taskLocationMap,
+        prepareService,
+        executorGlobalInstances,
+        transformObjectPools.get(index));
+
+      taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
+
       executorThreads.get(index).addNewTask(taskExecutor);
 
       //taskExecutor.execute();
