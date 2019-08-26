@@ -324,6 +324,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       }
 
     } else if (event instanceof ReadyTask) {
+      LOG.info("Receive ready task {}", ((ReadyTask) event).taskId);
       final ReadyTask readyTask = (ReadyTask) event;
 
       for (final Map.Entry<String, TaskLoc> entry : readyTask.taskLocationMap.entrySet()) {

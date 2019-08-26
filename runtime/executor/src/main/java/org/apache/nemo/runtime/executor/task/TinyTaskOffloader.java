@@ -441,7 +441,7 @@ public final class TinyTaskOffloader implements Offloader {
       taskExecutor.setOffloadedTaskTime(0);
 
       readyTask = new ReadyTask(
-        executorId,
+        taskId,
         taskLocationMap.locationMap,
         checkpointMark,
         checkpointMarkCoder,
@@ -451,7 +451,7 @@ public final class TinyTaskOffloader implements Offloader {
         coderMap);
     } else {
       readyTask = new ReadyTask(
-        executorId,
+        taskId,
         taskLocationMap.locationMap,
         null,
         null,
