@@ -313,9 +313,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         executorThread);
 
       taskAssignedMap.put(taskExecutor, executorThread);
-      LOG.info("Pending task {}", task.taskId);
 
-      executorThread.addNewTask(taskExecutor);
+      LOG.info("Pending task {}", task.taskId);
 
       // Emit offloading done
       synchronized (oc) {
@@ -327,12 +326,17 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       LOG.info("Receive ready task {}", ((ReadyTask) event).taskId);
       final ReadyTask readyTask = (ReadyTask) event;
 
+
       for (final Map.Entry<String, TaskLoc> entry : readyTask.taskLocationMap.entrySet()) {
         taskLocMap.put(entry.getKey(), entry.getValue());
       }
 
+
       final OffloadingTaskExecutor taskExecutor = (OffloadingTaskExecutor) findTaskExecutor(readyTask.taskId);
       taskExecutor.start(readyTask);
+
+      final ExecutorThread executorThread = taskAssignedMap.get(taskExecutor);
+      executorThread.addNewTask(taskExecutor);
 
     } else if (event instanceof TaskEndEvent) {
       // TODO
