@@ -158,6 +158,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
   public void prepare() {
     LOG.info("Prepare data fetcher {}", taskId);
     this.iterators.addAll(fetchBlocking());
+    LOG.info("End of Prepare data fetcher {}", taskId);
   }
 
   @Override

@@ -132,6 +132,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
 
     // pipe output writer prepare
+    LOG.info("Pipe output writers: {}", pipeOutputWriters.size());
     pipeOutputWriters.forEach(pipeOutputWriter -> {
       pipeOutputWriter.doInitialize();
     });

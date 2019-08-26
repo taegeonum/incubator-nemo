@@ -155,7 +155,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
       return EmptyElement.getInstance();
     }
 
-    if (!isStarted) {
+    if (!isStarted && readable != null) {
       isStarted = true;
       LOG.info("Reset readable: {} for {}", readable, taskId);
       prepareService.execute(() -> {
