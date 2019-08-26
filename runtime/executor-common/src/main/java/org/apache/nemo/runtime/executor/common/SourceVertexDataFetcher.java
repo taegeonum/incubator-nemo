@@ -125,6 +125,11 @@ public class SourceVertexDataFetcher extends DataFetcher {
     isStarted = false;
   }
 
+  @Override
+  public void prepare() {
+
+  }
+
   public long getPrevWatermarkTimestamp() {
     return prevWatermarkTimestamp;
   }
@@ -232,6 +237,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
     executorGlobalInstances.deregisterWatermarkService((SourceVertex) getDataSource());
     readable.close();
   }
+
 
   @Override
   public boolean isAvailable() {
