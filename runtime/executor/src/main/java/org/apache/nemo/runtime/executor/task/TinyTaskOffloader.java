@@ -308,7 +308,7 @@ public final class TinyTaskOffloader implements Offloader {
     if (tinyTaskWorker.isReady()) {
       LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
       sendTask();
-      LOG.info("Waiting for task ready...");
+      LOG.info("Waiting for task {} ready...", taskId);
       pendingStatus = TaskExecutor.PendingState.TASK_READY_PENDING;
     } else {
       scheduledExecutorService.schedule(this::scheduleWorkerPendingCheck, 100, TimeUnit.MILLISECONDS);

@@ -150,7 +150,7 @@ public final class GBKFinalTransform<K, InputT>
 
     // drop late data
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
-      //LOG.info("Final input process: {}", element);
+      LOG.info("Final input process: {}", getContext().getTaskId());
 
       //LOG.info("Final input!!: {}", element);
       // We can call Beam's DoFnRunner#processElement here,
@@ -262,7 +262,7 @@ public final class GBKFinalTransform<K, InputT>
       return;
     }
 
-    //LOG.info("Final watermark receive at {}:  {}", getContext().getTaskId(), new Instant(watermark.getTimestamp()));
+    LOG.info("Final watermark receive at {}:  {}", getContext().getTaskId(), new Instant(watermark.getTimestamp()));
 
     //LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     checkAndInvokeBundle();
