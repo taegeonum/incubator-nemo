@@ -129,6 +129,8 @@ public final class PipeOutputWriter implements Flushable {
       throw new RuntimeException("Pipe is already closed " + taskId + ", " + watermark);
     }
 
+    LOG.info("Write watermark at {} {}", taskId, watermark.getTimestamp());
+
     rendevousServerClient.sendWatermark(taskId, watermark.getTimestamp());
   }
 
