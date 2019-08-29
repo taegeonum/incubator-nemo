@@ -161,10 +161,12 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     switch (channelStatus) {
       case INPUT_STOP: {
         //  input이 이미 stop이면 restart 기다림.
+        LOG.info("Wait for input restart {}", taskId);
         channelStatus = WAIT_FOR_INPUT_RESTART;
         break;
       }
       case RUNNING: {
+        LOG.info("Output stop {}", taskId);
         channelStatus = ChannelStatus.OUTPUT_STOP;
         executorThread.queue.add(() -> {
           currStatus = Status.PENDING;
@@ -213,10 +215,12 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
           // 왜냐면 이미 stopping한다고 signal이 갔기 때문에 input에서 이를 ack으로 취급함.
           //channelStatus = ChannelStatus.INPUT_STOP;
           // 여기서 wait for input restart
+          LOG.info("Receive input stop after sending output stop {}", taskId);
           channelStatus = WAIT_FOR_INPUT_RESTART;
           break;
         }
         case RUNNING: {
+          LOG.info("Receive input stop.. {}", taskId);
           channelStatus = ChannelStatus.INPUT_STOP;
           executorThread.queue.add(() -> {
             currStatus = Status.PENDING;

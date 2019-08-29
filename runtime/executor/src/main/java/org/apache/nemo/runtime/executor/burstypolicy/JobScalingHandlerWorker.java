@@ -267,6 +267,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
       for (final TaskExecutor offloadedTask : offloadedTasks) {
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(offloadedTask.getId());
 
+        /*
         while (!stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
           // waiting for stage offloading
           LOG.info("Waiting for stage deoffloading {}", stageId);
@@ -277,6 +278,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             throw new RuntimeException(e);
           }
         }
+        */
 
         offcnt -= 1;
         LOG.info("Deoffloading task {}, remaining offload: {}", offloadedTask.getId(), offcnt);
@@ -285,7 +287,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           // do sth
           LOG.info("Deoffloading done for {}", offloadedTask.getId());
           //taskLocationMap.locationMap.put(offloadedTask.getId(), VM);
-          stageOffloadingWorkerManager.endOffloading(stageId);
+          //stageOffloadingWorkerManager.endOffloading(stageId);
         });
       }
     }
