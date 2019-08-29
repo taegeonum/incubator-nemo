@@ -18,19 +18,30 @@ public final class ByteTransferContextSetupMessage {
 
   public enum MessageType {
     CONTROL,
-    //RESTART,
 
+    // 1) For  input stop
     SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
     ACK_FROM_PARENT_STOP_OUTPUT,
-    SETTING_INPUT_CONTEXT, // setting in VM
 
-    SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
-
+    // 2) For output stop
     SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
     ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
+
+    // 3) For input restart
+    SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
+    ACK_FROM_PARENT_RESTART_OUTPUT,
+
+    // 4) For output restart
+    SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
+    ACK_FROM_CHILD_RESTART_OUTPUT,
+
+
+    // 이건 뭐지..
+    SETTING_INPUT_CONTEXT, // setting in VM
+
+
     SETTING_OUTPUT_CONTEXT, // setting in VM
 
-    SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
 
     //STOP_INPUT_FOR_SCALEIN,
     //STOP_OUTPUT_FOR_SCALEIN,

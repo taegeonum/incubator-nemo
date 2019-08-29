@@ -288,7 +288,7 @@ public final class SeepTaskOffloader {
             .desirableMetricForLoad(threshold - 0.05);
 
           // Adjust current cpu time
-          // Minus the pending tasks!
+          // Minus the receiveStopSignalFromChild tasks!
           long currCpuTimeSum = elapsedCpuTimeSum -
             deltaMap.entrySet().stream().filter(entry -> entry.getKey().isOffloadPending())
               .map(entry -> entry.getValue()).reduce(0L, (x,y) -> x+y);

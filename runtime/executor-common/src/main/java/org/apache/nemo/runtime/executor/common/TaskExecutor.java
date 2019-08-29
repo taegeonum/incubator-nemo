@@ -50,10 +50,6 @@ public interface TaskExecutor extends AutoCloseable {
     DEOFFLOAD_PENDING
   }
 
-  default void callTaskOffloadingDone() {
-    // do nothing
-  };
-
   ExecutorThread getExecutorThread();
 
   boolean isSource();

@@ -19,7 +19,7 @@ public final class RendevousClientChannelInitializer extends ChannelInitializer<
   }
 
   @Override
-  protected void initChannel(SocketChannel ch) throws Exception {
+  public void initChannel(SocketChannel ch) throws Exception {
     LOG.info("Registering rendevous channel {}", ch);
 
     ch.pipeline()

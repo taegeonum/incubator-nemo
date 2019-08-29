@@ -61,7 +61,7 @@ public final class BlockTransferThrottler {
       runtimeEdgeIdToNumCurrentConnections.put(runtimeEdgeId, currentOutstandingConnections + 1);
       return CompletableFuture.completedFuture(null);
     } else {
-      // add to pending queue
+      // add to receiveStopSignalFromChild queue
       final CompletableFuture<Void> future = new CompletableFuture<>();
       runtimeEdgeIdToPendingConnections.get(runtimeEdgeId).add(future);
       return future;
@@ -76,7 +76,7 @@ public final class BlockTransferThrottler {
     final Queue<CompletableFuture<Void>> pendingConnections = runtimeEdgeIdToPendingConnections.get(runtimeEdgeId);
     if (pendingConnections.size() == 0) {
       // Just decrease the number of current connections.
-      // Since we have no pending connections, we leave pendingConnections queue untouched.
+      // Since we have no receiveStopSignalFromChild connections, we leave pendingConnections queue untouched.
       final int numCurrentConnections = runtimeEdgeIdToNumCurrentConnections.get(runtimeEdgeId);
       runtimeEdgeIdToNumCurrentConnections.put(runtimeEdgeId, numCurrentConnections - 1);
     } else {

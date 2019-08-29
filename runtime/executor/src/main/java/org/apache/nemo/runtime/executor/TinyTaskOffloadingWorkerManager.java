@@ -95,7 +95,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
            final Pair<Long, TinyTaskWorker> pair = iterator.next();
            final TinyTaskWorker taskWorker = pair.right();
 
-           LOG.info("Worker {}, scheduled: {}, pending: {}, workers size: {}",
+           LOG.info("Worker {}, scheduled: {}, receiveStopSignalFromChild: {}, workers size: {}",
              taskWorker, taskWorker.getNumScheduledTasks(), taskWorker.getNumPendingTasks(), workers.size());
 
            if (taskWorker.isReady()) {
@@ -272,7 +272,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     if (!worker.deleteTask(taskId)) {
       worker.getDeletePending().getAndIncrement();
       deletePendingWorkers.put(taskId, worker);
-      LOG.info("Put task {} to pending ... size: {}, deletePending: {}",
+      LOG.info("Put task {} to receiveStopSignalFromChild ... size: {}, deletePending: {}",
         taskId, deletePendingWorkers.size(), worker.getDeletePending());
 
       return false;

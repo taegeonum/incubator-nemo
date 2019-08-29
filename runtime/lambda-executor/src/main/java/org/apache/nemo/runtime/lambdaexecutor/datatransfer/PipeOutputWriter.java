@@ -141,19 +141,7 @@ public final class PipeOutputWriter implements Flushable {
     final CountDownLatch count = new CountDownLatch(pipes.size());
 
     for (final ByteOutputContext byteOutputContext : pipes) {
-      final ByteTransferContextSetupMessage pendingMsg =
-        new ByteTransferContextSetupMessage(byteOutputContext.getContextId().getInitiatorExecutorId(),
-          byteOutputContext.getContextId().getTransferIndex(),
-          byteOutputContext.getContextId().getDataDirection(),
-          byteOutputContext.getContextDescriptor(),
-          byteOutputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
-          VM,
-          taskId);
-
-      LOG.info("Send finish message at {} {}", taskId, pendingMsg);
-
-      byteOutputContext.sendMessage(pendingMsg, (m) -> {
+      byteOutputContext.sendStopMessage((m) -> {
         count.countDown();
         LOG.info("receive ack from downstream at {}, {}!!", taskId, count.getCount());
       });

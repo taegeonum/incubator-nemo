@@ -145,7 +145,7 @@ public final class TinyTaskWorker {
         throw new RuntimeException("no such task " + taskId + " in the tiny worker");
       }
 
-      // just remove, because it is pending
+      // just remove, because it is receiveStopSignalFromChild
       pendingTasks.remove(index);
       return true;
     }

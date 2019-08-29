@@ -146,10 +146,16 @@ public final class PipeManagerWorker {
       //LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
       //  runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
 
+      final String myStage = ((StageEdge) runtimeEdge).getSrc().getId();
+      final String myTaskId = RuntimeIdManager.generateTaskId(myStage, srcTaskIndex, 0);
+
       // Connect to the executor
       return byteTransfer.newOutputContext(targetExecutorId, descriptor, true,
         executorId.equals(targetExecutorId))
-        .thenApply(context -> context);
+        .thenApply(context -> {
+          context.setTaskId(myTaskId);
+          return context;
+        });
     });
   }
 
@@ -192,10 +198,18 @@ public final class PipeManagerWorker {
           dstTaskIndex,
           getNumOfPipeToWait(runtimeEdge));
 
+
+
+      final String myStage = ((StageEdge) runtimeEdge).getDst().getId();
+      final String myTaskId = RuntimeIdManager.generateTaskId(myStage, dstTaskIndex, 0);
+
       // Connect to the executor
       return byteTransfer.newInputContext(targetExecutorId, descriptor, true)
-        .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-          serializerManager.getSerializer(runtimeEdgeId)));
+        .thenApply(context -> {
+          context.setTaskId(myTaskId);
+          return new DataUtil.InputStreamIterator(context.getInputStreams(),
+            serializerManager.getSerializer(runtimeEdgeId));
+        });
     });
   }
 
@@ -258,6 +272,8 @@ public final class PipeManagerWorker {
         final ByteInputContext byteInputContext = (ByteInputContext) value.left();
         final PipeTransferContextDescriptor descriptor =
           PipeTransferContextDescriptor.decode(byteInputContext.getContextDescriptor());
+
+
 
         // ADD source task-executor id
         taskExecutorIdMap.put(new NemoTriple<>(runtimeEdge.getId(), (int) descriptor.getSrcTaskIndex(), false),

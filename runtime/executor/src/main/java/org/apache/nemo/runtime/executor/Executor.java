@@ -22,7 +22,7 @@ import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.Throttled;
+import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
@@ -43,7 +43,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -55,6 +55,7 @@ import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.burstypolicy.JobScalingHandlerWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
@@ -290,6 +291,18 @@ public final class Executor {
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
       SerializationUtils.deserialize(task.getSerializedIRDag());
 
+    /*
+    task.getTaskIncomingEdges().forEach(runtimeEdge -> {
+      final int index = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
+      final String id = RelayUtils.createId(runtimeEdge.getId(), index, true);
+      LOG.info("Put edgeIndexTaskMap: {} of {}", id, task.getTaskId());
+      edgeIndexTaskMap.edgeIndexTaskMap.put(id, task.getTaskId());
+    });
+    */
+
+    LOG.info("Set task {} loc to VM", task.getTaskId());
+    taskLocationMap.locationMap.put(task.getTaskId(), TaskLoc.VM);
+
     if (!started) {
 
       if (evalConf.enableOffloading) {
@@ -390,6 +403,7 @@ public final class Executor {
       final int numTask = numReceivedTasks.getAndIncrement();
       final int index = numTask % evalConf.executorThreadNum;
       final ExecutorThread executorThread = executorThreads.get(index);
+
 
       final TaskExecutor taskExecutor =
       new DefaultTaskExecutorImpl(

@@ -41,12 +41,11 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
@@ -68,7 +67,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -120,7 +118,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   // key: offloading sink, val:
   //                            - left: watermarks emitted from the offloading header
-  //                            - right: pending watermarks
+  //                            - right: receiveStopSignalFromChild watermarks
   public final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap = new HashMap<>();
 
 
@@ -322,14 +320,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     }
 
     return false;
-  }
-
-  @Override
-  public void callTaskOffloadingDone() {
-    LOG.info("Call task offloading done in task executor {}", taskId);
-    executorThread.queue.add(() -> {
-      offloader.get().callTaskOffloadingDone();
-    });
   }
 
   @Override

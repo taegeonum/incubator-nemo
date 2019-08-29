@@ -364,7 +364,6 @@ public final class OffloadingHandler {
             decoder = (OffloadingDecoder) ois.readObject();
             outputEncoder = (OffloadingEncoder) ois.readObject();
 
-
             System.out.println("OffloadingTransform: " + offloadingTransform);
 
             ois.close();

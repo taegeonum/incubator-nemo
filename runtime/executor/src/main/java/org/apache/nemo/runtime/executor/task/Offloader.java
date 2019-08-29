@@ -25,8 +25,4 @@ public interface Offloader {
 
   public void handleStartOffloadingEvent(TinyTaskWorker worker);
 
-  public default void callTaskOffloadingDone() {
-    // do nothing
-  }
-
 }

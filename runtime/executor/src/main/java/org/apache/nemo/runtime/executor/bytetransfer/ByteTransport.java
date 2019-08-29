@@ -85,7 +85,7 @@ public final class ByteTransport implements AutoCloseable {
    * @param tcpPortProvider       provides an iterator of random tcp ports
    * @param localAddressProvider  provides the local address of the node to bind to
    * @param port                  the listening port; 0 means random assign using {@code tcpPortProvider}
-   * @param serverBacklog         the maximum number of pending connections to the server
+   * @param serverBacklog         the maximum number of receiveStopSignalFromChild connections to the server
    * @param numListeningThreads   the number of listening threads of the server
    * @param numWorkingThreads     the number of working threads of the server
    * @param numClientThreads      the number of client threads

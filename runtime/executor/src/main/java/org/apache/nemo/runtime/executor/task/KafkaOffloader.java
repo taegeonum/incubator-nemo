@@ -325,7 +325,7 @@ public final class KafkaOffloader implements Offloader {
 
 
       if (!runningWorkers.isEmpty()) {
-        throw new RuntimeException("Offload pending should not have running workers!: " + runningWorkers.size());
+        throw new RuntimeException("Offload receiveStopSignalFromChild should not have running workers!: " + runningWorkers.size());
       }
 
     } else {
@@ -454,7 +454,7 @@ public final class KafkaOffloader implements Offloader {
       }
 
       if (splitSources.size() != kafkaOffloadPendingEvents.size()) {
-        throw new RuntimeException("Split num != pending event num: " + splitSources.size() + " , " + kafkaOffloadPendingEvents.size());
+        throw new RuntimeException("Split num != receiveStopSignalFromChild event num: " + splitSources.size() + " , " + kafkaOffloadPendingEvents.size());
       }
 
       // 4. send to serverless
@@ -506,7 +506,7 @@ public final class KafkaOffloader implements Offloader {
           throw new RuntimeException(e);
         }
 
-        LOG.info("Offloading source id: {} for {} write: {} ... pending: {}", event.id, taskId, splitCheckpointMark);
+        LOG.info("Offloading source id: {} for {} write: {} ... receiveStopSignalFromChild: {}", event.id, taskId, splitCheckpointMark);
 
         // put
         offloadedDataFetcherMap.put(event.id, new KafkaOffloadingDataEvent(

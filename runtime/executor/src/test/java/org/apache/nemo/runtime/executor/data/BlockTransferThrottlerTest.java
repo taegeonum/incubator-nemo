@@ -68,7 +68,7 @@ public final class BlockTransferThrottlerTest {
       }
     });
     Thread.sleep(WAIT_TIME);
-    // We must have one pending connection request.
+    // We must have one receiveStopSignalFromChild connection request.
     assertFalse(executorServiceFuture.isDone());
     queue.onTransferFinished(RUNTIME_EDGE_0);
     // The remaining request should be accepted before test timeout.

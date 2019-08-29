@@ -68,7 +68,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private transient RelayServerClient relayServerClient;
   private transient RendevousServerClient rendevousServerClient;
-  private final ConcurrentMap<String, TaskLoc> taskLocMap;
 
   private transient ExecutorService prepareService;
 
@@ -84,6 +83,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final String rendevousServerAddress;
 
   private transient ExecutorService executorStartService;
+  private final TaskLocationMap taskLocationMap;
 
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, InetSocketAddress> executorAddressMap,
@@ -109,7 +109,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.relayServerPort = relayServerPort;
     this.rendevousServerAddress = rendevousServerAddress;
     this.rendevousServerPort = rendevousServerPort;
-    this.taskLocMap = new ConcurrentHashMap<>();
+    this.taskLocationMap = new TaskLocationMap();
     this.relayServerInfo = relayServerInfo;
     //this.pendingTask = new ArrayList<>();
     //this.readyTasks = new ArrayList<>();
@@ -210,13 +210,13 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     final LambdaByteTransportChannelInitializer initializer =
       new LambdaByteTransportChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
-        taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher);
+        taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher, taskLocationMap);
 
     // Relay server channel initializer
     final RelayServerClientChannelInitializer relayServerClientChannelInitializer =
       new RelayServerClientChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
-        taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher);
+        taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher, taskLocationMap);
 
     final EventLoopGroup clientGroup = new NioEventLoopGroup(2, new DefaultThreadFactory("relayClient"));
     final Bootstrap clientBootstrap = new Bootstrap()
@@ -243,7 +243,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     relayServerClientChannelInitializer.setByteTransfer(byteTransfer);
 
     pipeManagerWorker =
-      new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, relayServerClient);
+      new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocationMap, relayServerClient);
 
     intermediateDataIOFactory =
       new IntermediateDataIOFactory(pipeManagerWorker);
@@ -286,7 +286,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       }
     }
 
-    throw new RuntimeException("Cannot find task executor " + taskId);
+    return null;
+    //throw new RuntimeException("Cannot find task executor " + taskId);
   }
 
   @Override
@@ -316,27 +317,41 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       LOG.info("Pending task {}", task.taskId);
 
-      // Emit offloading done
-      synchronized (oc) {
-        oc.emit(new OffloadingDoneEvent(
-          task.taskId));
-      }
 
     } else if (event instanceof ReadyTask) {
       LOG.info("Receive ready task {}", ((ReadyTask) event).taskId);
       final ReadyTask readyTask = (ReadyTask) event;
 
-
+      // TODO: remove this part. we don't need it
       for (final Map.Entry<String, TaskLoc> entry : readyTask.taskLocationMap.entrySet()) {
-        taskLocMap.put(entry.getKey(), entry.getValue());
+        taskLocationMap.locationMap.put(entry.getKey(), entry.getValue());
       }
 
+      OffloadingTaskExecutor taskExecutor;
+      while (true) {
+        taskExecutor = (OffloadingTaskExecutor) findTaskExecutor(readyTask.taskId);
 
-      final OffloadingTaskExecutor taskExecutor = (OffloadingTaskExecutor) findTaskExecutor(readyTask.taskId);
-      taskExecutor.start(readyTask);
+        if (taskExecutor == null) {
+          try {
+            LOG.info("Not find task {}.. waiting for it", readyTask.taskId);
+            Thread.sleep(500);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        } else {
+          taskExecutor.start(readyTask);
+          break;
+        }
+      }
 
       final ExecutorThread executorThread = taskAssignedMap.get(taskExecutor);
       executorThread.addNewTask(taskExecutor);
+
+      // Emit offloading done
+      synchronized (oc) {
+        oc.emit(new OffloadingDoneEvent(
+          readyTask.taskId));
+      }
 
     } else if (event instanceof TaskEndEvent) {
       // TODO

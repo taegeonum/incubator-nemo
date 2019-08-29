@@ -142,7 +142,7 @@ public final class ExecutorThread {
                 sourceTask.handleSourceData();
               } else  {
                 iterator.remove();
-                //LOG.info("Add pending task {}", sourceTask.getId());
+                //LOG.info("Add receiveStopSignalFromChild task {}", sourceTask.getId());
                 pendings.add(sourceTask);
               }
             }

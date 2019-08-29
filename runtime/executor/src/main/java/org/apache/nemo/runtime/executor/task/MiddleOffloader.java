@@ -266,7 +266,7 @@ public final class MiddleOffloader implements Offloader {
 
 
       if (!runningWorkers.isEmpty()) {
-        throw new RuntimeException("Offload pending should not have running workers!: " + runningWorkers.size());
+        throw new RuntimeException("Offload receiveStopSignalFromChild should not have running workers!: " + runningWorkers.size());
       }
 
     } else {

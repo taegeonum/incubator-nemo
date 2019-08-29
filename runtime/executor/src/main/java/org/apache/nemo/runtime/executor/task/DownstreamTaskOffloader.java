@@ -243,7 +243,7 @@ public final class DownstreamTaskOffloader implements Offloader {
 
         LOG.info("Send message {}", pendingMsg);
 
-        byteInputContext.sendMessage(pendingMsg, (m) -> {
+        byteInputContext.sendStopMessage((m) -> {
           // ack handler!
           // this guarantees that we received all events from upstream tasks
 
@@ -262,13 +262,13 @@ public final class DownstreamTaskOffloader implements Offloader {
                 byteInputContext.getContextDescriptor(),
                 byteInputContext.getContextId().isPipe(),
                 ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_DOWNSTREAM_VM);
-            byteInputContext.sendMessage(scaleInMsg, (n) -> {});
+            byteInputContext.sendStopMessage(scaleInMsg, (n) -> {});
             */
 
             LOG.info("Send scalein message");
           }
 
-          //byteInputContext.sendMessage();
+          //byteInputContext.sendStopMessage();
           //throw new RuntimeException("TODO");
         });
       }
@@ -298,7 +298,7 @@ public final class DownstreamTaskOffloader implements Offloader {
 
 
       if (!runningWorkers.isEmpty()) {
-        throw new RuntimeException("Offload pending should not have running workers!: " + runningWorkers.size());
+        throw new RuntimeException("Offload receiveStopSignalFromChild should not have running workers!: " + runningWorkers.size());
       }
 
     } else {
@@ -398,7 +398,7 @@ public final class DownstreamTaskOffloader implements Offloader {
 
         runningWorkers.add(event.offloadingWorker);
 
-        byteInputContext.sendMessage(pendingMsg, (m) -> {
+        byteInputContext.sendStopMessage((m) -> {
           // ack handler!
           // this guarantees that we received all events from upstream tasks
 
@@ -434,12 +434,12 @@ public final class DownstreamTaskOffloader implements Offloader {
             byteInputContext.getContextId().isPipe(),
             ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEOUT_VM,
             "", 1);
-          byteInputContext.sendMessage(scaleoutMsg, (n) -> {});
+          byteInputContext.sendStopMessage(scaleoutMsg, (n) -> {});
           */
 
           LOG.info("Send scaleout message");
 
-          //byteInputContext.sendMessage();
+          //byteInputContext.sendStopMessage();
           //throw new RuntimeException("TODO");
         });
       }

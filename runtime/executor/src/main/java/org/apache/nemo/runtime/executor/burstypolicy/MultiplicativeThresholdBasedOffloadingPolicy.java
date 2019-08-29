@@ -219,7 +219,7 @@ public final class MultiplicativeThresholdBasedOffloadingPolicy implements TaskO
           .desirableMetricForLoad(targetCPuLoad);
 
         // Adjust current cpu time
-        // Minus the pending tasks!
+        // Minus the receiveStopSignalFromChild tasks!
         long currCpuTimeSum = 0;
         // correct
         // jst running worker
@@ -300,7 +300,7 @@ public final class MultiplicativeThresholdBasedOffloadingPolicy implements TaskO
             }
           }
 
-          // add deoffload pending
+          // add deoffload receiveStopSignalFromChild
           final Map<String, AtomicInteger> stageOffloadingCntMap = new HashMap<>();
 
           LOG.info("Try to deoffload... currCpuTimeSum: {}, targetCpuTime: {}", currCpuTimeSum, targetCpuTime);
@@ -347,9 +347,9 @@ public final class MultiplicativeThresholdBasedOffloadingPolicy implements TaskO
                   }
                 }
               } else if (taskExecutor.isOffloadPending()) {
-                LOG.info("Tas {} is offload pending... ", taskExecutor.getId());
+                LOG.info("Tas {} is offload receiveStopSignalFromChild... ", taskExecutor.getId());
                 /*
-                // pending means that it is not offloaded yet.
+                // receiveStopSignalFromChild means that it is not offloaded yet.
                 // close immediately!
                 LOG.info("Immediately deoffloading!");
                 taskExecutor.endOffloading((m) -> {

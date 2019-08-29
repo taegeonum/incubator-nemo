@@ -127,7 +127,7 @@ public final class HandleDataFetcher {
             }
           } catch (final NoSuchElementException e) {
             // No element in current data fetcher, fetch data from next fetcher
-            // move current data fetcher to pending.
+            // move current data fetcher to receiveStopSignalFromChild.
             availableIterator.remove();
             pendingFetchers.add(dataFetcher);
           } catch (final IOException e) {
@@ -140,7 +140,7 @@ public final class HandleDataFetcher {
         final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
 
         if (pollingTime) {
-          // We check pending data every polling interval
+          // We check receiveStopSignalFromChild data every polling interval
           pollingTime = false;
 
           while (pendingIterator.hasNext()) {
@@ -162,7 +162,7 @@ public final class HandleDataFetcher {
               }
 
             } catch (final NoSuchElementException e) {
-              // The current data fetcher is still pending.. try next data fetcher
+              // The current data fetcher is still receiveStopSignalFromChild.. try next data fetcher
             } catch (final IOException e) {
               // IOException means that this task should be retried.
               e.printStackTrace();
@@ -179,7 +179,7 @@ public final class HandleDataFetcher {
         }
 
         // If there are no available fetchers,
-        // Sleep and retry fetching element from pending fetchers every polling interval
+        // Sleep and retry fetching element from receiveStopSignalFromChild fetchers every polling interval
         if (availableFetchers.isEmpty() && !pendingFetchers.isEmpty()) {
           try {
             Thread.sleep(pollingInterval);

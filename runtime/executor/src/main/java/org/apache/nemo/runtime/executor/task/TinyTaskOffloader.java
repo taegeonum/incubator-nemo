@@ -16,7 +16,6 @@ import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.common.OffloadingSerializer;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -28,11 +27,10 @@ import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
-import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
@@ -284,7 +282,7 @@ public final class TinyTaskOffloader implements Offloader {
   @Override
   public synchronized void handleStartOffloadingEvent(final TinyTaskWorker worker) {
 
-    // TODO: 1) Remove available and pending fetchers!!
+    // TODO: 1) Remove available and receiveStopSignalFromChild fetchers!!
     // Stop sources and output emission!!
 
     // Prepare task offloading
@@ -298,21 +296,33 @@ public final class TinyTaskOffloader implements Offloader {
     taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
     pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
 
-    LOG.info("Scheduling worker pending check {}", taskId);
+    LOG.info("Scheduling worker receiveStopSignalFromChild check {}", taskId);
     scheduledExecutorService.schedule(this::scheduleWorkerPendingCheck, 100, TimeUnit.MILLISECONDS);
   }
 
   // 1.
   // 2는 taskIsReady
   private void scheduleWorkerPendingCheck() {
-    if (tinyTaskWorker.isReady()) {
-      LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
-      sendTask();
-      LOG.info("Waiting for task {} ready...", taskId);
-      pendingStatus = TaskExecutor.PendingState.TASK_READY_PENDING;
-    } else {
-      scheduledExecutorService.schedule(this::scheduleWorkerPendingCheck, 100, TimeUnit.MILLISECONDS);
-    }
+    executorThread.queue.add(() -> {
+
+      if (tinyTaskWorker.isReady()) {
+        LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
+        sendTask();
+        LOG.info("Waiting for task {} ready...", taskId);
+
+        for (final DataFetcher dataFetcher : allFetchers) {
+          inputStopPendingFutures.add(dataFetcher.stop(taskId));
+        }
+
+        LOG.info("Waiting for source stop futures in {}", taskId);
+        pendingStatus = TaskExecutor.PendingState.INPUT_PENDING;
+
+        scheduledExecutorService.schedule(this::schedulePendingCheck, 100, TimeUnit.MILLISECONDS);
+      } else {
+        scheduledExecutorService.schedule(this::scheduleWorkerPendingCheck, 100, TimeUnit.MILLISECONDS);
+      }
+
+    });
   }
 
   private boolean hasDataInFetchers() {
@@ -323,31 +333,6 @@ public final class TinyTaskOffloader implements Offloader {
     }
 
     return false;
-  }
-
-
-  // 2. 얘는 offloading done 받으면 trigger됨
-  @Override
-  public void callTaskOffloadingDone() {
-    if (pendingStatus != TaskExecutor.PendingState.TASK_READY_PENDING) {
-      throw new RuntimeException("Task is not ready pending but " + pendingStatus);
-    }
-
-    executorThread.queue.add(() -> {
-      if (tinyTaskWorker.isReady()) {
-        // Source stop!!
-        for (final DataFetcher dataFetcher : allFetchers) {
-          inputStopPendingFutures.add(dataFetcher.stop(taskId));
-        }
-
-        LOG.info("Waiting for source stop futures in {}", taskId);
-        pendingStatus = TaskExecutor.PendingState.INPUT_PENDING;
-
-        scheduledExecutorService.schedule(this::schedulePendingCheck, 100, TimeUnit.MILLISECONDS);
-      } else {
-        throw new RuntimeException("Worker should be ready... " + taskId);
-      }
-    });
   }
 
   // 3. taskIsReady가 trigger함
@@ -371,7 +356,7 @@ public final class TinyTaskOffloader implements Offloader {
       case INPUT_PENDING: {
         if (checkIsAllInputPendingReady()) {
           inputStopPendingFutures.clear();
-          LOG.info("Input pending done {}", taskId);
+          LOG.info("Input receiveStopSignalFromChild done {}", taskId);
           if (!hasDataInFetchers()) {
             LOG.info("End of waiting source stop futures...");
             LOG.info("Close current output contexts in {}", taskId);
@@ -381,7 +366,7 @@ public final class TinyTaskOffloader implements Offloader {
             break;
           }
         } else {
-          //LOG.info("Input pending not done {}", taskId);
+          //LOG.info("Input receiveStopSignalFromChild not done {}", taskId);
           break;
         }
       }

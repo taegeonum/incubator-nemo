@@ -168,7 +168,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
       final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
 
 
-      LOG.info("CPU Load: {}, Elapsed Time: {}, Off pending: {}, Deoff pending: {}, runningTasks: {}, offloaded: {}, " +
+      LOG.info("CPU Load: {}, Elapsed Time: {}, Off receiveStopSignalFromChild: {}, Deoff receiveStopSignalFromChild: {}, runningTasks: {}, offloaded: {}, " +
           "off_pending: {}. deoff_pending: {}"
         , cpuLoad, elapsedCpuTimeSum, offloadingPendingCnt, deoffloadingPendingCnt, taskStatInfo.running,
         taskStatInfo.offloaded, taskStatInfo.offload_pending, taskStatInfo.deoffloaded);
@@ -201,7 +201,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
         //  .desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
 
         // Adjust current cpu time
-        // Minus the pending tasks!
+        // Minus the receiveStopSignalFromChild tasks!
         long currCpuTimeSum = 0;
         // correct
         // jst running worker
@@ -295,7 +295,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
             }
           }
 
-          // add deoffload pending
+          // add deoffload receiveStopSignalFromChild
           final Map<String, AtomicInteger> stageOffloadingCntMap = new HashMap<>();
 
           synchronized (offloadedExecutors) {
@@ -345,7 +345,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
                   }
                 }
               } else if (taskExecutor.isOffloadPending()) {
-                LOG.info("Tas {} is offload pending... ", taskExecutor.getId());
+                LOG.info("Tas {} is offload receiveStopSignalFromChild... ", taskExecutor.getId());
               }
             }
           }

@@ -236,7 +236,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       pendingByteBufMap.get(currTransferIndex).add(body);
     } else {
       if (pendingByteBufMap.containsKey(currTransferIndex)) {
-        LOG.info("Flushing pending bytebuf for transferIndex {}", currTransferIndex);
+        LOG.info("Flushing receiveStopSignalFromChild bytebuf for transferIndex {}", currTransferIndex);
         for (final ByteBuf pendingByte : pendingByteBufMap.remove(currTransferIndex)) {
           inputContext.onByteBuf(pendingByte);
         }

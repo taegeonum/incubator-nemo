@@ -4,10 +4,8 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.offloading.common.OffloadingSerializer;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.common.TaskLoc;
-import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -15,7 +13,6 @@ import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +26,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.apache.nemo.common.TaskLoc.SF;
+import static org.apache.nemo.common.TaskLoc.VM;
 import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
 public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
@@ -205,8 +204,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             task.startOffloading(System.currentTimeMillis(), worker, (m) -> {
               LOG.info("Offloading done for {}", task.getId());
               // TODO: When it is ready, send start message
-              task.callTaskOffloadingDone();
-              //stageOffloadingWorkerManager.endOffloading(stageId);
+              // set the location to sf
+              //taskLocationMap.locationMap.put(task.getId(), SF);
             });
           }
         }
@@ -285,6 +284,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
         offloadedTask.endOffloading((m) -> {
           // do sth
           LOG.info("Deoffloading done for {}", offloadedTask.getId());
+          //taskLocationMap.locationMap.put(offloadedTask.getId(), VM);
           stageOffloadingWorkerManager.endOffloading(stageId);
         });
       }
@@ -314,11 +314,14 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             final List<ControlMessage.TaskLocation> taskLocations = scalingMsg.getTaskLocationList();
 
             // update task location
+
+           /*
             taskLocationMap.locationMap.clear();
             for (final ControlMessage.TaskLocation taskLocation : taskLocations) {
               taskLocationMap.locationMap.put(taskLocation.getTaskId(),
                 taskLocation.getIsVm() ? TaskLoc.VM : TaskLoc.SF);
             }
+            */
 
 
             //LOG.info("Updating task location... {}", taskLocationMap.locationMap);
