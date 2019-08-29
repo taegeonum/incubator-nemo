@@ -29,11 +29,11 @@ public final class ByteTransferContextSetupMessage {
 
     // 3) For input restart
     SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
-    ACK_FROM_PARENT_RESTART_OUTPUT,
+    //ACK_FROM_PARENT_RESTART_OUTPUT,
 
     // 4) For output restart
     SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
-    ACK_FROM_CHILD_RESTART_OUTPUT,
+    //ACK_FROM_CHILD_RESTART_OUTPUT,
 
 
     // 이건 뭐지..

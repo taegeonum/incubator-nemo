@@ -257,6 +257,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     switch (channelStatus) {
       case WAIT_FOR_INPUT_RESTART: {
         // send ack and stop output
+        /*
         final ByteTransferContextSetupMessage message =
           new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
             getContextId().getTransferIndex(),
@@ -266,6 +267,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
             myLocation,
             taskId);
         sendControlFrame(message);
+        */
 
         // ack and stop output
         channelStatus = ChannelStatus.OUTPUT_STOP;
@@ -276,6 +278,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         break;
       }
       case INPUT_STOP: {
+        /*
         final ByteTransferContextSetupMessage message =
           new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
             getContextId().getTransferIndex(),
@@ -286,6 +289,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
             taskId);
 
         sendControlFrame(message);
+        */
 
         channelStatus = ChannelStatus.RUNNING;
         executorThread.queue.add(() -> {
