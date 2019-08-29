@@ -113,6 +113,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     this.sendDataTo = sdt;
     this.relayDst = relayDst;
     this.contextManager = contextManager;
+    this.channel = contextManager.getChannel();
     this.taskLocationMap = taskLocationMap;
   }
 
