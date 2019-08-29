@@ -91,6 +91,9 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
   protected String taskId = null;
 
+  private Channel setupChannel;
+  private TaskLoc setupLocation;
+
   /**
    * Creates a output context.
    *
@@ -161,12 +164,12 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     switch (channelStatus) {
       case INPUT_STOP: {
         //  input이 이미 stop이면 restart 기다림.
-        LOG.info("Wait for input restart {}", taskId);
+        LOG.info("Wait for input restart {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = WAIT_FOR_INPUT_RESTART;
         break;
       }
       case RUNNING: {
-        LOG.info("Output stop {}", taskId);
+        LOG.info("Output stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.OUTPUT_STOP;
         executorThread.queue.add(() -> {
           currStatus = Status.PENDING;
@@ -181,6 +184,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
   @Override
   public void receiveStopAck() {
+    LOG.info("Ack output stop {}/{}", taskId, getContextId().getTransferIndex());
     ackHandler.onNext(1);
   }
 
@@ -215,12 +219,13 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
           // 왜냐면 이미 stopping한다고 signal이 갔기 때문에 input에서 이를 ack으로 취급함.
           //channelStatus = ChannelStatus.INPUT_STOP;
           // 여기서 wait for input restart
-          LOG.info("Receive input stop after sending output stop {}", taskId);
+          LOG.info("Receive input stop after sending output stop {}/{}",
+            taskId, getContextId().getTransferIndex());
           channelStatus = WAIT_FOR_INPUT_RESTART;
           break;
         }
         case RUNNING: {
-          LOG.info("Receive input stop.. {}", taskId);
+          LOG.info("Receive input stop.. {}/{}", taskId, getContextId().getTransferIndex());
           channelStatus = ChannelStatus.INPUT_STOP;
           executorThread.queue.add(() -> {
             currStatus = Status.PENDING;
@@ -260,6 +265,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
     switch (channelStatus) {
       case WAIT_FOR_INPUT_RESTART: {
+        LOG.info("Receive input restart after stopping input.. {}/{}", taskId, getContextId().getTransferIndex());
         // send ack and stop output
         /*
         final ByteTransferContextSetupMessage message =
@@ -282,6 +288,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         break;
       }
       case INPUT_STOP: {
+        LOG.info("Receive input restart.. {}/{}", taskId, getContextId().getTransferIndex());
         /*
         final ByteTransferContextSetupMessage message =
           new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
@@ -318,9 +325,9 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
       throw new RuntimeException("This should not be called in serverless");
     }
 
-    sendDataTo = msg.getLocation();
-    taskLocationMap.locationMap.put(msg.getTaskId(), sendDataTo);
-    channel = c;
+    setupChannel = c;
+    setupLocation = msg.getLocation();
+    taskLocationMap.locationMap.put(msg.getTaskId(), setupLocation);
 
     if (restarted) {
       // TODO: send signal
@@ -336,6 +343,10 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
       LOG.info("Setting up serverless channel");
       // 기존 channel에 restart signal 날림.
       restarted = false;
+
+      sendDataTo = setupLocation;
+      channel = setupChannel;
+
       channelStatus = RUNNING;
       channel.writeAndFlush(message).addListener(getChannelWriteListener());
     } else {
@@ -372,6 +383,9 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
           VM,
           taskId);
+
+      sendDataTo = setupLocation;
+      channel = setupChannel;
 
       // channel에 restart signal 날림.
       channelStatus = RUNNING;

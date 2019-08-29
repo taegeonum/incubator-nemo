@@ -83,6 +83,9 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
   protected String taskId;
 
+  private Channel setupChannel;
+  private TaskLoc setupLocation;
+
   /**
    * Creates an input context.
    * @param remoteExecutorId    id of the remote executor
@@ -152,12 +155,14 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
     switch (channelStatus) {
       case OUTPUT_STOP: {
+        LOG.info("Send stop after receiving output stop.. wait for restart {}/{}", taskId, getContextId().getTransferIndex());
         // output이 stop이면 기다림.
         // output restart 되면 ack으로 생각
         channelStatus = ChannelStatus.WAIT_FOR_OUTPUT_RESTART;
         break;
       }
       case RUNNING: {
+        LOG.info("Send stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.INPUT_STOP;
         sendMessage(getStopMessage());
         break;
@@ -171,12 +176,14 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
     switch (channelStatus) {
       case INPUT_STOP: {
+        LOG.info("Receive output stop after sending input stop {}/{}", taskId, getContextId().getTransferIndex());
         // input stop인데 output을 받았다?
         // ack으로 처리하고 그냥 올림.
         receivePendingAck();
         break;
       }
       case RUNNING: {
+        LOG.info("Receive output stop {}/{}", taskId, getContextId().getTransferIndex());
         taskLocationMap.locationMap.put(taskId, sendDataTo);
         channelStatus = ChannelStatus.OUTPUT_STOP;
 
@@ -217,6 +224,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
   @Override
   public synchronized void receivePendingAck() {
+    LOG.info("Ack from parent stop output {}/{}", taskId, getContextId().getTransferIndex());
     // for guarantee
     taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
 
@@ -236,11 +244,13 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
     switch (channelStatus) {
       case WAIT_FOR_OUTPUT_RESTART: {
+        LOG.info("Receive restart signal waiting for output restart {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.INPUT_STOP;
         sendMessage(getStopMessage());
         break;
       }
       case OUTPUT_STOP: {
+        LOG.info("Receive restart signal {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = RUNNING;
         break;
       }
@@ -271,10 +281,11 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
       throw new RuntimeException("This should not be called in serverless");
     }
 
-    receiveDataFrom = msg.getLocation();
-    taskLocationMap.locationMap.put(msg.getTaskId(), receiveDataFrom);
+    setupChannel = c;
+    setupLocation = msg.getLocation();
 
-    currChannel = c;
+    taskLocationMap.locationMap.put(msg.getTaskId(), msg.getLocation());
+    LOG.info("Setup restart channel {} {}/{}", msg.getLocation(), taskId, getContextId().getTransferIndex());
 
     if (restarted) {
       // TODO: send signal
@@ -291,6 +302,10 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
       LOG.info("Setting up channel");
       // 기존 channel에 restart signal 날림.
       restarted = false;
+
+      currChannel = setupChannel;
+      receiveDataFrom = setupLocation;
+
       channelStatus = RUNNING;
       currChannel.writeAndFlush(restartMsg);
     } else {
@@ -318,6 +333,9 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
           VM,
           taskId);
+
+      currChannel = setupChannel;
+      receiveDataFrom = setupLocation;
 
       channelStatus = RUNNING;
       currChannel.writeAndFlush(restartMsg);
