@@ -143,8 +143,10 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
   private void sendControlFrame(ByteTransferContextSetupMessage message) {
     if (myLocation.equals(SF) && sendDataTo.equals(SF)) {
+      LOG.info("Send message to relay server {} / {} / {}", relayDst, taskId, message);
       channel.writeAndFlush(new RelayControlFrame(relayDst, message));
     } else {
+      LOG.info("Send message to VM {}", message);
       channel.writeAndFlush(message);
     }
   }
