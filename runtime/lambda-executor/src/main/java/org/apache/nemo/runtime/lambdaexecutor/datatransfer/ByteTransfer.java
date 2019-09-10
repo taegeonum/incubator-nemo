@@ -117,6 +117,8 @@ public final class ByteTransfer {
               e.printStackTrace();
             }
           }
+
+          LOG.info("Get Register output context: {}", transferIndex);
           return outputContextMap.get(transferIndex);
         });
       }
