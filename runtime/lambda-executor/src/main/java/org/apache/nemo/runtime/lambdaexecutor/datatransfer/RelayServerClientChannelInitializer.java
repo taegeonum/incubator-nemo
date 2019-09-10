@@ -35,6 +35,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
   final ConcurrentMap<Integer, ByteOutputContext> outputContextMap;;
   private ByteTransfer byteTransfer;
   private final OutputWriterFlusher outputWriterFlusher;
+  private final boolean isVmScaling;
 
   public RelayServerClientChannelInitializer(final ChannelGroup channelGroup,
                                              final ControlFrameEncoder controlFrameEncoder,
@@ -45,7 +46,8 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
                                              final Map<TransferKey, Integer> taskTransferIndexMap,
                                              final ConcurrentMap<Integer, ByteInputContext> inputContextMap,
                                              final ConcurrentMap<Integer, ByteOutputContext> outputContextMap,
-                                             final OutputWriterFlusher outputWriterFlusher) {
+                                             final OutputWriterFlusher outputWriterFlusher,
+                                             final boolean isVmScaling) {
     this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
@@ -57,6 +59,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
     this.inputContextMap = inputContextMap;
     this.outputContextMap = outputContextMap;
     this.outputWriterFlusher = outputWriterFlusher;
+    this.isVmScaling = isVmScaling;
   }
 
   public void setRelayServerClient(final RelayServerClient client) {
@@ -76,7 +79,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
       inputContextMap,
       outputContextMap,
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap, true,
-      relayServerClient, byteTransfer, outputWriterFlusher);
+      relayServerClient, byteTransfer, outputWriterFlusher, isVmScaling);
 
     ch.pipeline()
       // outbound

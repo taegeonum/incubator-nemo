@@ -88,7 +88,7 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
       bos.writeInt(Type.REGISTER_SCALING_ADDRESS.ordinal());
 
       final VmScalingRegister req = (VmScalingRegister) msg;
-      bos.writeUTF(req.executorId);
+      bos.writeUTF(req.taskId);
       bos.writeUTF(req.address);
       bos.writeInt(req.port);
       out.add(bos.buffer());
@@ -98,7 +98,7 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
       bos.writeInt(Type.REQUEST_SCALING_ADDRESS.ordinal());
 
       final VmScalingRequest req = (VmScalingRequest) msg;
-      bos.writeUTF(req.executorId);
+      bos.writeUTF(req.taskId);
       out.add(bos.buffer());
 
     } else if (msg instanceof VmScalingResponse) {
@@ -106,7 +106,7 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
       bos.writeInt(Type.RESPONSE_SCALING_ADDRESS.ordinal());
 
       final VmScalingResponse req = (VmScalingResponse) msg;
-      bos.writeUTF(req.executorId);
+      bos.writeUTF(req.taskId);
       bos.writeUTF(req.address);
       bos.writeInt(req.port);
       out.add(bos.buffer());

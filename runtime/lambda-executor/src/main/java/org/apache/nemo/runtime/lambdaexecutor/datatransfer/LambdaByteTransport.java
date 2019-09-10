@@ -25,10 +25,8 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.ChannelGroupFuture;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +46,8 @@ public final class LambdaByteTransport {//implements AutoCloseable {
   private final EventLoopGroup clientGroup;
   private final Bootstrap clientBootstrap;
   private final Map<String, InetSocketAddress> executorAddressMap;
-  private final Map<String, InetSocketAddress> vmScalingExecutorAddressMap;
+  private final Map<String, InetSocketAddress> vmScalingTaskAddressMap;
+  private final Map<InetSocketAddress, Channel> vmScalingChannelMap;
   private final ChannelGroup channelGroup;
   private final Channel relayServerChannel;
   private final RendevousServerClient rendevousServerClient;
@@ -69,9 +68,10 @@ public final class LambdaByteTransport {//implements AutoCloseable {
     this.rendevousServerClient = rendevousServerClient;
     this.isVmScaling = isVmScaling;
 
-    this.vmScalingExecutorAddressMap = new ConcurrentHashMap<>();
+    this.vmScalingTaskAddressMap = new ConcurrentHashMap<>();
     this.executorAddressMap = executorAddressMap;
     this.channelGroup = channelGroup;
+    this.vmScalingChannelMap = new ConcurrentHashMap<>();
 
     clientGroup = channelImplSelector.newEventLoopGroup(10, new DefaultThreadFactory(CLIENT));
 
@@ -87,6 +87,10 @@ public final class LambdaByteTransport {//implements AutoCloseable {
 
     final ChannelFuture channelFuture = connectToRelayServer(relayServerAddres, relayServerPort);
     this.relayServerChannel = channelFuture.channel();
+  }
+
+  public VmScalingServer getVmScalingServer() {
+    return vmScalingServer;
   }
 
   public Channel getRelayServerChannel() {
@@ -125,28 +129,30 @@ public final class LambdaByteTransport {//implements AutoCloseable {
     return connectFuture;
   }
 
-  ChannelFuture connectTo(final String remoteExecutorId) {
+  ChannelFuture connectTo(final String remoteExecutorId,
+                          final String taskId,
+                          final boolean toScaledVm) {
 
-    if (isVmScaling) {
+    if (toScaledVm) {
       // For vm scaling
-      InetSocketAddress address = vmScalingExecutorAddressMap.get(remoteExecutorId);
+      InetSocketAddress address = vmScalingTaskAddressMap.get(taskId);
       if (address == null) {
-        final Pair<String, Integer> pair = rendevousServerClient.requestVMAddress(remoteExecutorId);
-        vmScalingExecutorAddressMap.put(remoteExecutorId, new InetSocketAddress(pair.left(), pair.right()));
+        final Pair<String, Integer> pair = rendevousServerClient.requestVMAddress(taskId);
+        vmScalingTaskAddressMap.put(taskId, new InetSocketAddress(pair.left(), pair.right()));
       }
 
-      address = vmScalingExecutorAddressMap.get(remoteExecutorId);
-      LOG.info("RemoteExecutorId for scaling {} Address {}", remoteExecutorId, address);
+      address = vmScalingTaskAddressMap.get(taskId);
+      LOG.info("RemoteExecutorId for scaling {} Address {}", taskId, address);
 
       final ChannelFuture connectFuture = clientBootstrap.connect(address);
       connectFuture.addListener(future -> {
         if (future.isSuccess()) {
           // Succeed to connect
-          LOG.info("Connected to remote {}", remoteExecutorId);
+          LOG.info("Connected to remote {}", taskId);
           return;
         }
         // Failed to connect (Not logging the cause here, which is not very useful)
-        LOG.error("Failed to connect to {}", remoteExecutorId);
+        LOG.error("Failed to connect to {}", taskId);
       });
       return connectFuture;
 

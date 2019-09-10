@@ -25,6 +25,7 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
   private final ConcurrentMap<String, Channel> rendevousChannelMap;
   private final ScheduledExecutorService scheduledExecutorService;
   private final WatermarkManager watermarkManager;
+  // key: executorId, taskId
   private final ConcurrentMap<String, Pair<String, Integer>> scalingExecutorAddressMap;
   private final ConcurrentMap<String, List<Channel>> executorRequestChannelMap;
 
@@ -65,19 +66,19 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
       }
 
 
-      for (final String dstExecutor : executorRequestChannelMap.keySet()) {
-        final List<Channel> channels = executorRequestChannelMap.get(dstExecutor);
+      for (final String taskId : executorRequestChannelMap.keySet()) {
+        final List<Channel> channels = executorRequestChannelMap.get(taskId);
 
-        if (!channels.isEmpty() && scalingExecutorAddressMap.containsKey(dstExecutor) ) {
+        if (!channels.isEmpty() && scalingExecutorAddressMap.containsKey(taskId) ) {
           synchronized (channels) {
             //LOG.info("Sending response of {}", dstRequestKey);
 
-            final Pair<String, Integer> address = scalingExecutorAddressMap.get(dstExecutor);
+            final Pair<String, Integer> address = scalingExecutorAddressMap.get(taskId);
             // write
 
             channels.stream().forEach(channel -> {
-              LOG.info("Flush response {}/{} to {}", dstExecutor, address, channel);
-              channel.writeAndFlush(new VmScalingResponse(dstExecutor,
+              LOG.info("Flush response {}/{} to {}", taskId, address, channel);
+              channel.writeAndFlush(new VmScalingResponse(taskId,
                 address.left(), address.right()));
             });
 
@@ -149,20 +150,20 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
       }
       // For VM
       case REGISTER_SCALING_ADDRESS: {
-        final String dstExecutorId = bis.readUTF();
+        final String taskId = bis.readUTF();
         final String address = bis.readUTF();
         final int port = bis.readInt();
 
-        LOG.info("Registering executor {} address {}", dstExecutorId, Pair.of(address, port));
-        scalingExecutorAddressMap.put(dstExecutorId, Pair.of(address, port));
+        LOG.info("Registering executor {} address {}", taskId, Pair.of(address, port));
+        scalingExecutorAddressMap.put(taskId, Pair.of(address, port));
         break;
       }
       case REQUEST_SCALING_ADDRESS: {
-        final String dstExecutor = bis.readUTF();
+        final String taskId = bis.readUTF();
         //LOG.info("Request dst {} from {}", dst, ctx.channel());
 
-        executorRequestChannelMap.putIfAbsent(dstExecutor, new ArrayList<>());
-        final List<Channel> channels = dstRequestChannelMap.get(dstExecutor);
+        executorRequestChannelMap.putIfAbsent(taskId, new ArrayList<>());
+        final List<Channel> channels = executorRequestChannelMap.get(taskId);
 
         synchronized (channels) {
           channels.add(ctx.channel());

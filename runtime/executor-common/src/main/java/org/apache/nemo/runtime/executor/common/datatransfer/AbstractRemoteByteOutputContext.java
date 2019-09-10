@@ -92,6 +92,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
   private final List<Runnable> pendingRunnables = new ArrayList<>();
 
+  private final boolean isVmScaling;
+
   /**
    * Creates a output context.
    *
@@ -106,7 +108,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
                                          final ContextManager contextManager,
                                          final TaskLoc myLocation,
                                          final TaskLoc sdt,
-                                         final String relayDst) {
+                                         final String relayDst,
+                                         final boolean isVmScaling) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.myLocation = myLocation;
     this.sendDataTo = sdt;
@@ -116,6 +119,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
     this.contextManager = contextManager;
     this.channel = contextManager.getChannel();
+    this.isVmScaling = isVmScaling;
     //LOG.info("Channel start dst {} / {}", relayDst, channel.remoteAddress());
   }
 
@@ -141,7 +145,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
   }
 
   private void sendControlFrame(ByteTransferContextSetupMessage message) {
-    if (myLocation.equals(SF) && sendDataTo.equals(SF)) {
+    if (myLocation.equals(SF) && sendDataTo.equals(SF) && !isVmScaling) {
       //LOG.info("Send message to relay server {} / {} / {}", relayDst, taskId, message);
       channel.writeAndFlush(new RelayControlFrame(relayDst, message));
     } else {
@@ -283,7 +287,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
     sendDataTo = msg.getLocation();
 
-    if (!(myLocation.equals(SF) && sendDataTo.equals(SF))) {
+    if (!(myLocation.equals(SF) && sendDataTo.equals(SF) && !isVmScaling)) {
       // SF - SF 일 경우에는 channel이 다르므로 이렇게 받아야함.
       channel = c;
     }
@@ -577,9 +581,14 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         case SF: {
           switch (sendDataTo) {
             case SF: {
-              channel.write(new RelayDataFrame(relayDst,
-                DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream)))
+              if (isVmScaling) {
+               channel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
                 .addListener(getChannelWriteListener());
+              } else {
+                channel.write(new RelayDataFrame(relayDst,
+                  DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream)))
+                  .addListener(getChannelWriteListener());
+              }
               break;
             }
             case VM: {

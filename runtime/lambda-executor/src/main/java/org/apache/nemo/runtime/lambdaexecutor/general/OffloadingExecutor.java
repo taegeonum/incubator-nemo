@@ -218,13 +218,13 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     final LambdaByteTransportChannelInitializer initializer =
       new LambdaByteTransportChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
-        taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher);
+        taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher, isVmScaling);
 
     // Relay server channel initializer
     final RelayServerClientChannelInitializer relayServerClientChannelInitializer =
       new RelayServerClientChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
-        taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher);
+        taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher, isVmScaling);
 
     final EventLoopGroup clientGroup = new NioEventLoopGroup(2, new DefaultThreadFactory("relayClient"));
     final Bootstrap clientBootstrap = new Bootstrap()
@@ -304,6 +304,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     if (event instanceof OffloadingTask) {
       final OffloadingTask task = (OffloadingTask) event;
+
+      if (isVmScaling) {
+        rendevousServerClient.registerVMAddress(
+          task.taskId,
+          byteTransport.getVmScalingServer().getHost(), byteTransport.getVmScalingServer().getPort());
+      }
 
       LOG.info("Start task {}", task.taskId);
 

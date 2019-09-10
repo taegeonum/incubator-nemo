@@ -51,10 +51,10 @@ public final class RendevousClientDecoder extends MessageToMessageDecoder<ByteBu
         break;
       }
       case RESPONSE_SCALING_ADDRESS: {
-        final String executorId = bis.readUTF();
+        final String taskId = bis.readUTF();
         final String address = bis.readUTF();
         final int port = bis.readInt();
-        client.receiveVMAddress(executorId, address, port);
+        client.receiveVMAddress(taskId, address, port);
         break;
       }
       default:

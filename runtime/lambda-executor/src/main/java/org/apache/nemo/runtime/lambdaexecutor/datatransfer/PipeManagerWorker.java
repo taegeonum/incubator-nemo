@@ -190,7 +190,7 @@ public final class PipeManagerWorker {
     switch (loc) {
       case SF: {
         if (isVmScaling) {
-          return byteTransfer.newOutputContext(targetExecutorId, descriptor, true)
+          return byteTransfer.newOutputContext(targetExecutorId, descriptor, true, dstTaskId, true)
             .thenApply(context -> {
               context.setTaskId(myTaskId);
               return context;
@@ -209,7 +209,7 @@ public final class PipeManagerWorker {
         //LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
         //  runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
         // Connect to the executor
-        return byteTransfer.newOutputContext(targetExecutorId, descriptor, true)
+        return byteTransfer.newOutputContext(targetExecutorId, descriptor, true, dstTaskId, false)
           .thenApply(context -> {
             context.setTaskId(myTaskId);
             return context;
@@ -257,7 +257,7 @@ public final class PipeManagerWorker {
 
         if (isVmScaling) {
           // TODO: get the vm address and connecet to the vm server
-          return byteTransfer.newInputContext(srcExecutorId, descriptor, true)
+          return byteTransfer.newInputContext(srcExecutorId, descriptor, true, dstTaskId, true)
             .thenApply(context -> {
               context.setTaskId(myTaskId);
               final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
@@ -287,7 +287,7 @@ public final class PipeManagerWorker {
       }
       case VM: {
         // Connect to the executor
-        return byteTransfer.newInputContext(srcExecutorId, descriptor, true)
+        return byteTransfer.newInputContext(srcExecutorId, descriptor, true, dstTaskId, false)
           .thenApply(context -> {
             context.setTaskId(myTaskId);
             final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);

@@ -57,6 +57,7 @@ public final class VmScalingServer implements AutoCloseable {
 
   private final String localExecutorId;
   private final RendevousServerClient rendevousServerClient;
+  private final String host;
 
   public VmScalingServer(final String localExecutorId,
                          final ChannelInitializer channelInitializer,
@@ -65,7 +66,6 @@ public final class VmScalingServer implements AutoCloseable {
     this.localExecutorId = localExecutorId;
     this.rendevousServerClient = rendevousServerClient;
 
-    final String host;
     try {
       host = getLocalHostLANAddress().getHostAddress();
     } catch (UnknownHostException e) {
@@ -112,7 +112,7 @@ public final class VmScalingServer implements AutoCloseable {
     serverListeningChannel = listeningChannel;
 
     // TODO: Register to rendevous server
-    rendevousServerClient.registerVMAddress(localExecutorId, host, bindingPort);
+    //rendevousServerClient.registerVMAddress(localExecutorId, host, bindingPort);
 
     if (listeningChannel == null) {
       serverListeningGroup.shutdownGracefully();
@@ -122,6 +122,14 @@ public final class VmScalingServer implements AutoCloseable {
       LOG.info("ByteTransport server in {} is listening at {}", localExecutorId, listeningChannel.localAddress());
       throw new RuntimeException("Listening channel is null");
     }
+  }
+
+  public String getHost() {
+    return host;
+  }
+
+  public int getPort() {
+    return bindingPort;
   }
 
   public void setExecutorAddressMap(final Map<String, Pair<String, Integer>> map) {

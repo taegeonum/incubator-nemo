@@ -56,6 +56,7 @@ public final class LambdaRemoteByteInputContext extends AbstractRemoteByteInputC
   private static final Logger LOG = LoggerFactory.getLogger(LambdaRemoteByteInputContext.class.getName());
 
   private final RelayServerClient relayServerClient;
+  private final boolean isVmScaling;
 
   /**
    * Creates an input context.
@@ -70,9 +71,11 @@ public final class LambdaRemoteByteInputContext extends AbstractRemoteByteInputC
                                       final ContextManager contextManager,
                                       final ScheduledExecutorService ackService,
                                       final boolean isSfChannel,
-                                      final RelayServerClient relayServerClient) {
-    super(remoteExecutorId, contextId, contextDescriptor, contextManager, ackService, SF, isSfChannel ? SF : VM);
+                                      final RelayServerClient relayServerClient,
+                                      final boolean isVmScaling) {
+    super(remoteExecutorId, contextId, contextDescriptor, contextManager, ackService, SF, isSfChannel ? SF : VM, isVmScaling);
     this.relayServerClient = relayServerClient;
+    this.isVmScaling = isVmScaling;
   }
 
   @Override
@@ -96,7 +99,7 @@ public final class LambdaRemoteByteInputContext extends AbstractRemoteByteInputC
   }
 
   @Override
-  protected void setupInputChannelToParentVM(TaskLoc sendDataTo) {
+  protected void setupInputChannelToParentVM(ByteTransferContextSetupMessage msg, TaskLoc sendDataTo) {
 
     final ContextId contextId = getContextId();
     final byte[] contextDescriptor = getContextDescriptor();
@@ -105,9 +108,27 @@ public final class LambdaRemoteByteInputContext extends AbstractRemoteByteInputC
     switch (sendDataTo) {
       case SF: {
         // connect to relay server
-        final Channel relayServerChannel = relayServerClient.getRelayServerChannel(contextId.getInitiatorExecutorId());
-        //LOG.info("Connect to my relay server {}/{}", localExecutorId, relayServerChannel);
-        relayServerClient.registerTask(relayServerChannel, cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true);
+        if (isVmScaling) {
+          ((LambdaContextManager)contextManager).connectToVm(contextId.getInitiatorExecutorId(), (vmContextManager) -> {
+            // We send ack to the vm channel to initialize it !!!
+            final ByteTransferContextSetupMessage settingMsg =
+              new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
+                contextId.getTransferIndex(),
+                contextId.getDataDirection(),
+                contextDescriptor,
+                contextId.isPipe(),
+                ByteTransferContextSetupMessage.MessageType.SETTING_OUTPUT_CONTEXT,
+                SF,
+                taskExecutor.getId());
+
+            //LOG.info("Send setting message for the connected VM for scaling in... {}", settingMsg);
+            vmContextManager.getChannel().write(settingMsg);
+          }, msg.getTaskId(), true);
+        } else {
+          final Channel relayServerChannel = relayServerClient.getRelayServerChannel(contextId.getInitiatorExecutorId());
+          //LOG.info("Connect to my relay server {}/{}", localExecutorId, relayServerChannel);
+          relayServerClient.registerTask(relayServerChannel, cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true);
+        }
         break;
       }
       case VM: {
@@ -125,7 +146,7 @@ public final class LambdaRemoteByteInputContext extends AbstractRemoteByteInputC
 
           //LOG.info("Send setting message for the connected VM for scaling in... {}", settingMsg);
           vmContextManager.getChannel().write(settingMsg);
-        });
+        }, msg.getTaskId(), false);
         break;
       }
     }

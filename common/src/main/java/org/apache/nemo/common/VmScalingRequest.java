@@ -2,9 +2,9 @@ package org.apache.nemo.common;
 
 public class VmScalingRequest {
 
-  public final String executorId;
+  public final String taskId;
 
-  public VmScalingRequest(final String executorId) {
-    this.executorId = executorId;
+  public VmScalingRequest(final String taskId) {
+    this.taskId = taskId;
   }
 }

@@ -74,6 +74,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
   final ConcurrentMap<Integer, ByteOutputContext> outputContextMap;
   private ByteTransfer byteTransfer;
   private final OutputWriterFlusher outputWriterFlusher;
+  private final boolean isVmScaling;
 
   public LambdaByteTransportChannelInitializer(final ChannelGroup channelGroup,
                                                final ControlFrameEncoder controlFrameEncoder,
@@ -84,7 +85,8 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
                                                final Map<TransferKey, Integer> taskTransferIndexMap,
                                                final ConcurrentMap<Integer, ByteInputContext> inputContextMap,
                                                final ConcurrentMap<Integer, ByteOutputContext> outputContextMap,
-                                               final OutputWriterFlusher outputWriterFlusher) {
+                                               final OutputWriterFlusher outputWriterFlusher,
+                                               final boolean isVmScaling) {
     this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
@@ -96,6 +98,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
     this.inputContextMap = inputContextMap;
     this.outputContextMap = outputContextMap;
     this.outputWriterFlusher = outputWriterFlusher;
+    this.isVmScaling = isVmScaling;
   }
 
   public void setByteTransfer(final ByteTransfer bt) {
@@ -114,7 +117,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
       inputContextMap,
       outputContextMap,
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap,
-      false, relayServerClient, byteTransfer, outputWriterFlusher);
+      false, relayServerClient, byteTransfer, outputWriterFlusher, isVmScaling);
 
     System.out.println("Init channel " + ch);
 

@@ -50,7 +50,7 @@ public final class RemoteByteOutputContext extends AbstractRemoteByteOutputConte
                                  final ContextId contextId,
                                  final byte[] contextDescriptor,
                                  final ContextManager contextManager) {
-    super(remoteExecutorId, contextId, contextDescriptor, contextManager, VM, VM, "");
+    super(remoteExecutorId, contextId, contextDescriptor, contextManager, VM, VM, "", false);
     this.vmChannel = contextManager.getChannel();
   }
 

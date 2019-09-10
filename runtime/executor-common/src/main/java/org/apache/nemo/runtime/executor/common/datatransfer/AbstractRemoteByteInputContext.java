@@ -83,6 +83,8 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
   private Channel setupChannel;
   private TaskLoc setupLocation;
 
+  private final boolean isVmScaling;
+
   /**
    * Creates an input context.
    * @param remoteExecutorId    id of the remote executor
@@ -96,13 +98,15 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
                                         final ContextManager contextManager,
                                         final ScheduledExecutorService ackService,
                                         final TaskLoc location,
-                                        final TaskLoc receiveDataFrom) {
+                                        final TaskLoc receiveDataFrom,
+                                        final boolean isVmScaling) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.ackService = ackService;
     this.currChannel = contextManager.getChannel();
     this.myLocation = location;
     this.contextManager = contextManager;
     this.receiveDataFrom = receiveDataFrom;
+    this.isVmScaling = isVmScaling;
   }
 
   public <T> IteratorWithNumBytes<T> getInputIterator(
@@ -139,7 +143,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
   }
 
   protected abstract ByteTransferContextSetupMessage getStopMessage();
-  protected abstract void setupInputChannelToParentVM(TaskLoc sendDataTo);
+  protected abstract void setupInputChannelToParentVM(ByteTransferContextSetupMessage msg, TaskLoc sendDataTo);
   protected abstract void sendMessageToRelay(ByteTransferContextSetupMessage msg);
 
   @Override
@@ -174,7 +178,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
         //  msg.getTaskId());
         // input stop인데 output을 받았다?
         receivePendingAck();
-        setupInputChannelToParentVM(sendDataTo);
+        setupInputChannelToParentVM(msg, sendDataTo);
         break;
       }
       case RUNNING: {
@@ -194,7 +198,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
             myLocation,
             taskId);
 
-        setupInputChannelToParentVM(sendDataTo);
+        setupInputChannelToParentVM(msg, sendDataTo);
         sendMessage(ackMessage);
         break;
       }
@@ -209,7 +213,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
    * We should send message differently according to the location
    */
   private void sendMessage(ByteTransferContextSetupMessage message) {
-    if (myLocation.equals(SF) && receiveDataFrom.equals(SF)) {
+    if (myLocation.equals(SF) && receiveDataFrom.equals(SF) && !isVmScaling) {
       sendMessageToRelay(message);
     } else {
       currChannel.writeAndFlush(message);
@@ -236,7 +240,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
     receiveDataFrom = msg.getLocation();
 
-    if (!(myLocation.equals(SF) && receiveDataFrom.equals(SF))) {
+    if (!(myLocation.equals(SF) && receiveDataFrom.equals(SF) && !isVmScaling)) {
       // SF - SF 일 경우에는 channel이 다르므로 이렇게 받아야함.
       currChannel = channel;
     }

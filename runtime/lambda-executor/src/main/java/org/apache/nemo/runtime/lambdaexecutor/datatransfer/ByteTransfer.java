@@ -63,9 +63,11 @@ public final class ByteTransfer {
    */
   public CompletableFuture<ByteInputContext> newInputContext(final String executorId,
                                                              final PipeTransferContextDescriptor contextDescriptor,
-                                                             final boolean isPipe) {
+                                                             final boolean isPipe,
+                                                             final String taskId,
+                                                             final boolean toScaledvm) {
     //LOG.info("New remote input context: {}", executorId);
-    return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
+    return connectTo(executorId, taskId, toScaledvm).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
   /**
@@ -77,15 +79,19 @@ public final class ByteTransfer {
    */
   public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
                                                                final PipeTransferContextDescriptor contextDescriptor,
-                                                               final boolean isPipe) {
+                                                               final boolean isPipe,
+                                                               final String taskId,
+                                                               final boolean toScaledVm) {
     //LOG.info("New output context: {}", executorId);
-    return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
+    return connectTo(executorId, taskId, toScaledVm).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
   }
 
   /**
    * @param remoteExecutorId id of the remote executor
    */
-  public CompletableFuture<ContextManager> connectTo(final String remoteExecutorId) {
+  public CompletableFuture<ContextManager> connectTo(final String remoteExecutorId,
+                                                     final String taskId,
+                                                     final boolean toScaledVm) {
     final CompletableFuture<ContextManager> completableFuture = new CompletableFuture<>();
     final ChannelFuture channelFuture;
     try {
@@ -95,7 +101,7 @@ public final class ByteTransfer {
           //LOG.info("Cached channel of {}/{}", remoteExecutorId, executorId);
           return cachedChannelFuture;
         } else {
-          final ChannelFuture future = byteTransport.connectTo(executorId);
+          final ChannelFuture future = byteTransport.connectTo(executorId, taskId, toScaledVm);
           future.channel().closeFuture().addListener(f -> executorIdToChannelFutureMap.remove(executorId, future));
           return future;
         }

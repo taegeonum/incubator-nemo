@@ -62,7 +62,7 @@ public final class StreamRemoteByteInputContext extends AbstractRemoteByteInputC
                                       final ScheduledExecutorService ackService,
                                       final RelayServer relayServer) {
     super(remoteExecutorId, contextId, contextDescriptor,
-      contextManager, ackService, VM, VM);
+      contextManager, ackService, VM, VM, false);
 
     this.relayServer = relayServer;
     this.vmChannel  = contextManager.getChannel();
@@ -86,7 +86,7 @@ public final class StreamRemoteByteInputContext extends AbstractRemoteByteInputC
   }
 
   @Override
-  protected void setupInputChannelToParentVM(TaskLoc sendDataTo) {
+  protected void setupInputChannelToParentVM(ByteTransferContextSetupMessage msg, TaskLoc sendDataTo) {
     final ContextId contextId = getContextId();
     final byte[] contextDescriptor = getContextDescriptor();
 

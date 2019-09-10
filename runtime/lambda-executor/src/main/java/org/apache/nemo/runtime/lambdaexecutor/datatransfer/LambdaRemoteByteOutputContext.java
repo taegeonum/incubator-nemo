@@ -37,6 +37,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
   private static final Logger LOG = LoggerFactory.getLogger(LambdaRemoteByteOutputContext.class.getName());
 
   private final RelayServerClient relayServerClient;
+  private final boolean isVmScaling;
+
   /**
    * Creates a output context.
    *
@@ -51,12 +53,14 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
                                        final ContextManager contextManager,
                                        final String relayDst,
                                        final TaskLoc sendDataTo,
-                                       final RelayServerClient relayServerClient) {
+                                       final RelayServerClient relayServerClient,
+                                       final boolean isVmScaling) {
     super(remoteExecutorId, contextId, contextDescriptor,
-      contextManager, SF, sendDataTo, relayDst);
+      contextManager, SF, sendDataTo, relayDst, isVmScaling);
     //LOG.info("RelayDst {} for remoteExecutor: {}, channel {}", relayDst, remoteExecutorId,
     //  relayChannel);
     this.relayServerClient = relayServerClient;
+    this.isVmScaling = isVmScaling;
   }
 
   @Override
@@ -66,18 +70,35 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
 
     switch (sendDataTo) {
       case SF: {
-        final String relayServerAddress = msg.getRelayServerAddress();
-        final int relayServerPort = msg.getRelayServerPort();
-        //LOG.info("Connecting to relay server for input {}/{}, transferIndex: {}",
-        //  relayServerAddress, relayServerPort, transferIndex);
+        if (isVmScaling) {
+          cm.connectToVm(msg.getInitiatorExecutorId(), (vmContextManager) -> {
+            // We send ack to the vm channel to initialize it !!!
+            final ByteTransferContextSetupMessage ackMessage =
+              new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
+                getContextId().getTransferIndex(),
+                getContextId().getDataDirection(),
+                getContextDescriptor(),
+                getContextId().isPipe(),
+                ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
+                SF,
+                taskId);
+            LOG.info("Send init message for the connected VM for scaling in... {} to {}", taskId, msg.getTaskId());
+            vmContextManager.getChannel().write(ackMessage);
+          }, msg.getTaskId(), true);
+        } else {
+          final String relayServerAddress = msg.getRelayServerAddress();
+          final int relayServerPort = msg.getRelayServerPort();
+          //LOG.info("Connecting to relay server for input {}/{}, transferIndex: {}",
+          //  relayServerAddress, relayServerPort, transferIndex);
 
-        cm.connectToRelay(relayServerAddress, relayServerPort, (relayServerChannel) -> {
-          // 내 채널에  destination 등록!!
-          final Channel myRelayServer = relayServerClient.getRelayServerChannel(getLocalExecutorId());
-          //LOG.info("Connect to my relay server for child stop {}/{}", localExecutorId, myRelayServer);
-          LOG.info("Send init message for the connected relay server for scaling in... {} to {}", taskId, msg.getTaskId());
-          relayServerClient.registerTask(myRelayServer, cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
-        });
+          cm.connectToRelay(relayServerAddress, relayServerPort, (relayServerChannel) -> {
+            // 내 채널에  destination 등록!!
+            final Channel myRelayServer = relayServerClient.getRelayServerChannel(getLocalExecutorId());
+            //LOG.info("Connect to my relay server for child stop {}/{}", localExecutorId, myRelayServer);
+            LOG.info("Send init message for the connected relay server for scaling in... {} to {}", taskId, msg.getTaskId());
+            relayServerClient.registerTask(myRelayServer, cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
+          });
+        }
         break;
       }
       case VM: {
@@ -94,7 +115,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
               taskId);
           LOG.info("Send init message for the connected VM for scaling in... {} to {}", taskId, msg.getTaskId());
           vmContextManager.getChannel().write(ackMessage);
-        });
+        }, msg.getTaskId(), false);
 
         break;
       }

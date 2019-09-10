@@ -61,6 +61,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   private final RelayServerClient relayServerClient;
   private final ByteTransfer byteTransfer;
   private final OutputWriterFlusher outputWriterFlusher;
+  private final boolean isVmScaling;
 
   public LambdaContextManager(
     final ExecutorService channelExecutorService,
@@ -74,7 +75,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final boolean isRelayServerChannel,
     final RelayServerClient relayServerClient,
     final ByteTransfer byteTransfer,
-    final OutputWriterFlusher outputWriterFlusher) {
+    final OutputWriterFlusher outputWriterFlusher,
+    final boolean isVmScaling) {
     //LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
     this.channelExecutorService = channelExecutorService;
     this.inputContexts = inputContexts;
@@ -88,6 +90,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     this.relayServerClient = relayServerClient;
     this.byteTransfer = byteTransfer;
     this.outputWriterFlusher = outputWriterFlusher;
+    this.isVmScaling = isVmScaling;
 
     //LOG.info("Transfer index map: {}", taskTransferIndexMap);
   }
@@ -125,7 +128,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
       contextId -> {
         final LambdaRemoteByteInputContext ic = new LambdaRemoteByteInputContext(executorId, contextId, contextDescriptor.encode(), this,
-          ackScheduledService.ackService, isRelayServerChannel, relayServerClient);
+          ackScheduledService.ackService, isRelayServerChannel, relayServerClient, isVmScaling);
         return ic;
       },
       executorId, isPipe, relayDst, true);
@@ -150,9 +153,11 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   }
 
   public void connectToVm(final String targetExecutorId,
-                          final EventHandler<ContextManager> eventHandler) {
+                          final EventHandler<ContextManager> eventHandler,
+                          final String taskId,
+                          final boolean toScaledVm) {
     channelExecutorService.execute(() -> {
-      final CompletableFuture<ContextManager> future = byteTransfer.connectTo(targetExecutorId);
+      final CompletableFuture<ContextManager> future = byteTransfer.connectTo(targetExecutorId, taskId, toScaledVm);
       long st = System.currentTimeMillis();
       while (!future.isDone()) {
         try {
@@ -387,14 +392,14 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor,
-          this, relayDst, SF, relayServerClient),
+          this, relayDst, SF, relayServerClient, isVmScaling),
         executorId, isPipe, relayDst, false);
     } else {
       return newContext(outputContexts, transferIndex,
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor,
-          this, relayDst, VM, relayServerClient),
+          this, relayDst, VM, relayServerClient, isVmScaling),
         executorId, isPipe, relayDst, false);
     }
   }
