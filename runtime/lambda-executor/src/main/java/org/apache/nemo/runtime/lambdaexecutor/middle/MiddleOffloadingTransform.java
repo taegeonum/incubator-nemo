@@ -203,7 +203,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
 
      // byteTransport = new LambdaByteTransport(
      //   executorId, selector, initializer, executorAddressMap);
-      final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
+      final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId, null, null);
      // final PipeManagerWorker pipeManagerWorker =
      //   new PipeManagerWorker(executorId, byteTransfer, dstTaskIndexTargetExecutorMap);
      // intermediateDataIOFactory =

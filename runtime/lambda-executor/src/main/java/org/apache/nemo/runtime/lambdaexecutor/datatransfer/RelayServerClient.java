@@ -216,8 +216,6 @@ public final class RelayServerClient {
     return completableFuture;
   }
 
-
-
   public ChannelFuture connectToRelayServer(final String address, final int port) {
 
     final Pair<String, Integer> key = Pair.of(address, port);

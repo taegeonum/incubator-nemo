@@ -246,7 +246,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       executorId, selector, initializer, executorAddressMap, channelGroup,
       relayServerAddress, relayServerPort, rendevousServerClient, isVmScaling);
 
-    final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
+    final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId, outputContexts, taskTransferIndexMap);
 
     initializer.setByteTransfer(byteTransfer);
     relayServerClientChannelInitializer.setByteTransfer(byteTransfer);

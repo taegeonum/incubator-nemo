@@ -244,18 +244,31 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         break;
       }
       case SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT: {
-        channelExecutorService.execute(() -> {
-          ByteOutputContext outputContext = outputContexts.get(transferIndex);
-          while (outputContext == null) {
-            outputContext = outputContexts.get(transferIndex);
-            try {
-              Thread.sleep(500);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-          }
+
+        if (isVmScaling && sendDataTo.equals(SF)) {
+          // create a new output context!!
+          LOG.info("Register output context {}", transferIndex);
+          final ByteOutputContext outputContext = new LambdaRemoteByteOutputContext(
+            remoteExecutorId, contextId, contextDescriptor, this, "??", sendDataTo, relayServerClient, isVmScaling);
+          outputContexts.put(transferIndex, outputContext);
           outputContext.receiveRestartSignalFromChild(channel, message);
-        });
+
+        } else {
+
+          channelExecutorService.execute(() -> {
+            ByteOutputContext outputContext = outputContexts.get(transferIndex);
+            while (outputContext == null) {
+              outputContext = outputContexts.get(transferIndex);
+              try {
+                Thread.sleep(500);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            }
+            outputContext.receiveRestartSignalFromChild(channel, message);
+          });
+
+        }
 
         break;
       }

@@ -190,6 +190,7 @@ public final class PipeManagerWorker {
     switch (loc) {
       case SF: {
         if (isVmScaling) {
+          // Waiting for input context
           return byteTransfer.newOutputContext(targetExecutorId, descriptor, true, dstTaskId, true)
             .thenApply(context -> {
               context.setTaskId(myTaskId);

@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -42,16 +43,22 @@ public final class ByteTransfer {
     new ConcurrentHashMap<>();
   private final String localExecutorId;
   private final VMScalingClientTransport clientTransport;
+  private final Map<Integer, ByteOutputContext> outputContextMap;
+  private final Map<TransferKey, Integer> taskTransferIndexMap;
 
   /**
    * Creates a byte transfer.
    * @param byteTransport provides channels to other executors
    */
   public ByteTransfer(final LambdaByteTransport byteTransport,
-                      final String localExecutorId) {
+                      final String localExecutorId,
+                      final Map<Integer, ByteOutputContext> outputContextMap,
+                      final Map<TransferKey, Integer> taskTransferIndexMap) {
     this.byteTransport = byteTransport;
     this.localExecutorId = localExecutorId;
     this.clientTransport = new VMScalingClientTransport();
+    this.outputContextMap = outputContextMap;
+    this.taskTransferIndexMap = taskTransferIndexMap;
   }
 
 
@@ -66,7 +73,7 @@ public final class ByteTransfer {
                                                              final boolean isPipe,
                                                              final String taskId,
                                                              final boolean toScaledvm) {
-    LOG.info("New remote input context: {} / {}", executorId, toScaledvm);
+    LOG.info("New remote input context: {} / {} / {}", executorId, toScaledvm, contextDescriptor);
     return connectTo(executorId, taskId, toScaledvm).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
@@ -82,8 +89,33 @@ public final class ByteTransfer {
                                                                final boolean isPipe,
                                                                final String taskId,
                                                                final boolean toScaledVm) {
-    //LOG.info("New output context: {}", executorId);
-    return connectTo(executorId, taskId, toScaledVm).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
+
+    if (toScaledVm) {
+
+      final TransferKey key =  new TransferKey(contextDescriptor.getRuntimeEdgeId(),
+        (int) contextDescriptor.getSrcTaskIndex(), (int) contextDescriptor.getDstTaskIndex(), true);
+
+      final int transferIndex = taskTransferIndexMap.get(key);
+
+      if (outputContextMap.containsKey(transferIndex)) {
+        return CompletableFuture.completedFuture(outputContextMap.get(transferIndex));
+      } else {
+        LOG.info("Waiting for new output context: {} / {}", executorId, transferIndex);
+        return CompletableFuture.supplyAsync(() -> {
+          while (!outputContextMap.containsKey(transferIndex)) {
+            try {
+              Thread.sleep(1000);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+          return outputContextMap.get(transferIndex);
+        });
+      }
+
+    } else {
+      return connectTo(executorId, taskId, toScaledVm).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
+    }
   }
 
   /**
