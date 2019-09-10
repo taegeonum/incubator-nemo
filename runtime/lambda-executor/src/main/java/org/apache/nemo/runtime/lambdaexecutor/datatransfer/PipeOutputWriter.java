@@ -225,10 +225,11 @@ public final class PipeOutputWriter implements Flushable {
     }
 
     final List<ByteOutputContext> contexts = new ArrayList<>(byteOutputContexts.size());
+    final List<CompletableFuture<ByteOutputContext>> copiedContexts = new ArrayList<>(byteOutputContexts);
 
-    while (!byteOutputContexts.isEmpty()) {
+    while (!copiedContexts.isEmpty()) {
 
-      final Iterator<CompletableFuture<ByteOutputContext>> iterator = byteOutputContexts.iterator();
+      final Iterator<CompletableFuture<ByteOutputContext>> iterator = copiedContexts.iterator();
 
       while (iterator.hasNext()) {
         final CompletableFuture<ByteOutputContext> future = iterator.next();
