@@ -73,7 +73,7 @@ public final class ByteTransfer {
                                                              final boolean isPipe,
                                                              final String taskId,
                                                              final boolean toScaledvm) {
-    LOG.info("New remote input context: {} / {} / {}", executorId, toScaledvm, contextDescriptor);
+    LOG.info("New remote input context: {} / {} / {} / {}", executorId, taskId, toScaledvm, contextDescriptor);
     return connectTo(executorId, taskId, toScaledvm).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
