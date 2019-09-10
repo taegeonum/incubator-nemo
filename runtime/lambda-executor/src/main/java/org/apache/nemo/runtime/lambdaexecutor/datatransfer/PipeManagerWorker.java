@@ -237,7 +237,6 @@ public final class PipeManagerWorker {
     final String dstTaskId = RuntimeIdManager.generateTaskId(srcStage, srcTaskIndex, 0);
     final TaskLoc loc = taskLocationMap.get(dstTaskId);
 
-    LOG.info("Call read {}, {}, {}, {}, isvmScaling {}", srcTaskIndex, runtimeEdge.getId(), dstTaskIndex, loc, isVmScaling);
 
     // Descriptor
     final PipeTransferContextDescriptor descriptor =
@@ -253,6 +252,8 @@ public final class PipeManagerWorker {
 
     final String myStage = ((StageEdge) runtimeEdge).getDst().getId();
     final String myTaskId = RuntimeIdManager.generateTaskId(myStage, dstTaskIndex, 0);
+
+    LOG.info("Creating input context in my {} / to {} / isVmScaling: {}", myTaskId, dstTaskId, isVmScaling);
 
     switch (loc) {
       case SF: {

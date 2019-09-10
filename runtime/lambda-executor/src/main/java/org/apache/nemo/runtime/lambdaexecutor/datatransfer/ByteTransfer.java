@@ -105,6 +105,7 @@ public final class ByteTransfer {
       final int transferIndex = taskTransferIndexMap.get(key);
 
       if (outputContextMap.containsKey(transferIndex)) {
+        LOG.info("Cached output context {} / {} / {}", executorId, taskId, transferIndex);
         return CompletableFuture.completedFuture(outputContextMap.get(transferIndex));
       } else {
         LOG.info("Waiting for new output context: {} / {} / {}", executorId, taskId, transferIndex);

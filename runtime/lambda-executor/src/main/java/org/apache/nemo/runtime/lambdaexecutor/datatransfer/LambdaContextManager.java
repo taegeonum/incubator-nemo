@@ -381,6 +381,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         channel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(context.getChannelWriteListener());
       }
     } else {
+      LOG.info("Send control message to {} / {}", transferIndex, message);
       channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
     }
     return context;

@@ -153,6 +153,7 @@ public final class LambdaByteTransport {//implements AutoCloseable {
         }
         // Failed to connect (Not logging the cause here, which is not very useful)
         LOG.error("Failed to connect to {}", taskId);
+        throw new RuntimeException("Failed to connect to " + taskId);
       });
       return connectFuture;
 
