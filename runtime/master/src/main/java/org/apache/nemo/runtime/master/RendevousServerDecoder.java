@@ -160,7 +160,7 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
       }
       case REQUEST_SCALING_ADDRESS: {
         final String taskId = bis.readUTF();
-        //LOG.info("Request dst {} from {}", dst, ctx.channel());
+        LOG.info("Requesting executor {} from {}", taskId, ctx.channel());
 
         executorRequestChannelMap.putIfAbsent(taskId, new ArrayList<>());
         final List<Channel> channels = executorRequestChannelMap.get(taskId);
