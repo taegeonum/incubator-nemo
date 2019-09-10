@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import io.netty.channel.ChannelFuture;
 import io.netty.util.concurrent.Future;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +74,13 @@ public final class ByteTransfer {
                                                              final boolean isPipe,
                                                              final String taskId,
                                                              final boolean toScaledvm) {
-    LOG.info("New remote input context: {} / {} / {} / {}", executorId, taskId, toScaledvm, contextDescriptor);
+    final TransferKey key =  new TransferKey(contextDescriptor.getRuntimeEdgeId(),
+      (int) contextDescriptor.getSrcTaskIndex(), (int) contextDescriptor.getDstTaskIndex(), false);
+
+    final int transferIndex = taskTransferIndexMap.get(key);
+
+    LOG.info("New remote input context: {} / {}/{} / {} / {}", executorId, taskId, transferIndex, toScaledvm);
+
     return connectTo(executorId, taskId, toScaledvm).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
