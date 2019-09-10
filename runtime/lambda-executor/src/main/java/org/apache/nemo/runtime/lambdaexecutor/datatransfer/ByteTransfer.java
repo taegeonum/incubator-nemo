@@ -66,7 +66,7 @@ public final class ByteTransfer {
                                                              final boolean isPipe,
                                                              final String taskId,
                                                              final boolean toScaledvm) {
-    //LOG.info("New remote input context: {}", executorId);
+    LOG.info("New remote input context: {} / {}", executorId, toScaledvm);
     return connectTo(executorId, taskId, toScaledvm).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
@@ -94,24 +94,48 @@ public final class ByteTransfer {
                                                      final boolean toScaledVm) {
     final CompletableFuture<ContextManager> completableFuture = new CompletableFuture<>();
     final ChannelFuture channelFuture;
-    try {
-      channelFuture = executorIdToChannelFutureMap.compute(remoteExecutorId, (executorId, cachedChannelFuture) -> {
-        if (cachedChannelFuture != null
+
+    if (toScaledVm) {
+      try {
+        channelFuture = executorIdToChannelFutureMap.compute(taskId, (tid, cachedChannelFuture) -> {
+          if (cachedChannelFuture != null
             && (cachedChannelFuture.channel().isOpen() || cachedChannelFuture.channel().isActive())) {
-          //LOG.info("Cached channel of {}/{}", remoteExecutorId, executorId);
-          return cachedChannelFuture;
-        } else {
-          final ChannelFuture future = byteTransport.connectTo(executorId, taskId, toScaledVm);
-          future.channel().closeFuture().addListener(f -> executorIdToChannelFutureMap.remove(executorId, future));
-          return future;
-        }
-      });
-    } catch (final RuntimeException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-      //completableFuture.completeExceptionally(e);
-      //return completableFuture;
+            //LOG.info("Cached channel of {}/{}", remoteExecutorId, executorId);
+            return cachedChannelFuture;
+          } else {
+            final ChannelFuture future = byteTransport.connectTo(remoteExecutorId, taskId, toScaledVm);
+            future.channel().closeFuture().addListener(f -> executorIdToChannelFutureMap.remove(tid, future));
+            return future;
+          }
+        });
+      } catch (final RuntimeException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+        //completableFuture.completeExceptionally(e);
+        //return completableFuture;
+      }
+    } else {
+
+      try {
+        channelFuture = executorIdToChannelFutureMap.compute(remoteExecutorId, (executorId, cachedChannelFuture) -> {
+          if (cachedChannelFuture != null
+            && (cachedChannelFuture.channel().isOpen() || cachedChannelFuture.channel().isActive())) {
+            //LOG.info("Cached channel of {}/{}", remoteExecutorId, executorId);
+            return cachedChannelFuture;
+          } else {
+            final ChannelFuture future = byteTransport.connectTo(executorId, taskId, toScaledVm);
+            future.channel().closeFuture().addListener(f -> executorIdToChannelFutureMap.remove(executorId, future));
+            return future;
+          }
+        });
+      } catch (final RuntimeException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+        //completableFuture.completeExceptionally(e);
+        //return completableFuture;
+      }
     }
+
     channelFuture.addListener(future -> {
       if (future.isSuccess()) {
         completableFuture.complete(channelFuture.channel().pipeline().get(ContextManager.class));
@@ -122,7 +146,11 @@ public final class ByteTransfer {
         completableFuture.complete(channelAndContextManagerMap.get(future));
         */
       } else {
-        executorIdToChannelFutureMap.remove(remoteExecutorId, channelFuture);
+        if (toScaledVm) {
+          executorIdToChannelFutureMap.remove(taskId, channelFuture);
+        } else {
+          executorIdToChannelFutureMap.remove(remoteExecutorId, channelFuture);
+        }
         completableFuture.completeExceptionally(future.cause());
       }
     });

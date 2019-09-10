@@ -236,7 +236,8 @@ public final class PipeManagerWorker {
     final String dstTaskId = RuntimeIdManager.generateTaskId(srcStage, srcTaskIndex, 0);
     final TaskLoc loc = taskLocationMap.get(dstTaskId);
 
-    //LOG.info("Call read {}, {}, {}, {}", srcTaskIndex, runtimeEdge.getId(), dstTaskIndex, loc);
+    LOG.info("Call read {}, {}, {}, {}, isvmScaling {}", srcTaskIndex, runtimeEdge.getId(), dstTaskIndex, loc, isVmScaling);
+
     // Descriptor
     final PipeTransferContextDescriptor descriptor =
       new PipeTransferContextDescriptor(
@@ -259,6 +260,7 @@ public final class PipeManagerWorker {
           // TODO: get the vm address and connecet to the vm server
           return byteTransfer.newInputContext(srcExecutorId, descriptor, true, dstTaskId, true)
             .thenApply(context -> {
+              LOG.info("Add vm scaling input context {}", context);
               context.setTaskId(myTaskId);
               final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
               byteInputContextMap.putIfAbsent(key, new HashSet<>());
