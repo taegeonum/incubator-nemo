@@ -318,9 +318,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       LOG.info("Receive task {}, assign it to executor-{}", task.taskId, executorIndex);
 
-      prepareService.execute(() -> {
-        final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
-          task,
+
+      final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
+        task,
           serializerMap,
           intermediateDataIOFactory,
           oc,
@@ -329,16 +329,15 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
           rendevousServerClient,
           executorThread);
 
-        taskAssignedMap.put(taskExecutor, executorThread);
+      taskAssignedMap.put(taskExecutor, executorThread);
 
-        LOG.info("Pending task {}", task.taskId);
+      LOG.info("Pending task {}", task.taskId);
 
-        // Emit offloading done
-        synchronized (oc) {
-          oc.emit(new OffloadingDoneEvent(
-            task.taskId));
-        }
-      });
+      // Emit offloading done
+      synchronized (oc) {
+        oc.emit(new OffloadingDoneEvent(
+          task.taskId));
+      }
     } else if (event instanceof ReadyTask) {
       LOG.info("Receive ready task {}", ((ReadyTask) event).taskId);
       final ReadyTask readyTask = (ReadyTask) event;
@@ -351,11 +350,13 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       LOG.info("TaskLocMap: {}", taskLocMap);
 
 
-      final OffloadingTaskExecutor taskExecutor = (OffloadingTaskExecutor) findTaskExecutor(readyTask.taskId);
-      taskExecutor.start(readyTask);
+      prepareService.execute(() -> {
+        final OffloadingTaskExecutor taskExecutor = (OffloadingTaskExecutor) findTaskExecutor(readyTask.taskId);
+        taskExecutor.start(readyTask);
 
-      final ExecutorThread executorThread = taskAssignedMap.get(taskExecutor);
-      executorThread.addNewTask(taskExecutor);
+        final ExecutorThread executorThread = taskAssignedMap.get(taskExecutor);
+        executorThread.addNewTask(taskExecutor);
+      });
 
     } else if (event instanceof TaskEndEvent) {
       // TODO
