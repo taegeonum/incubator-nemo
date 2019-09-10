@@ -543,7 +543,8 @@ public final class Executor {
             msg.getRendevousAddress(),
             msg.getRendevousPort(),
             executorId,
-            m);
+            m,
+            evalConf.offloadingType.equals("vm"));
 
           tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
             offloadingWorkerFactory,

@@ -62,6 +62,9 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
   private final ConcurrentMap<String, Long> taskInputWatermarkRequestTime;
   private final ConcurrentMap<String, Object> taskLockMap;
 
+  // For VM scaling
+  private final Map<String, Pair<String, Integer>> vmScalingExecutorAddressMap = new ConcurrentHashMap<>();
+
   public RendevousServerClient(final String myRendevousServerAddress,
                                final int myRendevousServerPort) {
 
@@ -168,6 +171,48 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
       }
     }
   }
+
+  /****************************************************
+   * For VM Scaling  Start
+   ***************************************************/
+
+  public Pair<String, Integer> requestVMAddress(final String executorId) {
+
+    if (vmScalingExecutorAddressMap.containsKey(executorId)) {
+      //LOG.info("End of Requesting address {} ", dst);
+      return vmScalingExecutorAddressMap.get(executorId);
+    }
+
+    LOG.info("Requesting vm address for {}", executorId);
+
+    channel.writeAndFlush(new VmScalingRequest(executorId));
+
+    while (!vmScalingExecutorAddressMap.containsKey(executorId)) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    LOG.info("End of Requesting vm address {}/{} ", executorId, vmScalingExecutorAddressMap.get(executorId));
+    return vmScalingExecutorAddressMap.get(executorId);
+  }
+
+  public void registerVMAddress(final String executorId, final String address, final int port) {
+    LOG.info("Register and send VM scaling address {}: {}/{}", executorId, address, port);
+    channel.writeAndFlush(new VmScalingRegister(executorId, address, port));
+  }
+
+  public void receiveVMAddress(final String executorId, final String address, final int port) {
+    LOG.info("Receive VM scaling address {}: {}/{}", executorId, address, port);
+    vmScalingExecutorAddressMap.put(executorId, Pair.of(address, port));
+  }
+
+
+  /****************************************************
+   * For VM Scaling  End
+   ****************************************************/
 
   public void close() {
     final Future clientGroupCloseFuture = clientGroup.shutdownGracefully();

@@ -61,19 +61,22 @@ public final class PipeManagerWorker {
 
   private final Map<String, TaskLoc> taskLocationMap;
   private final RelayServerClient relayServerClient;
+  private final boolean isVmScaling;
 
   public PipeManagerWorker(final String executorId,
                            final ByteTransfer byteTransfer,
                            final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap,
                            final Map<String, Serializer> serializerMap,
                            final Map<String, TaskLoc> taskLocationMap,
-                           final RelayServerClient relayServerClient) {
+                           final RelayServerClient relayServerClient,
+                           final boolean isVmScaling) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
     this.taskExecutorIdMap = taskExecutorIdMap;
     this.serializerMap = serializerMap;
     this.taskLocationMap = taskLocationMap;
     this.relayServerClient = relayServerClient;
+    this.isVmScaling = isVmScaling;
   }
 
 
@@ -186,12 +189,20 @@ public final class PipeManagerWorker {
 
     switch (loc) {
       case SF: {
-        // Connect to the relay server!
-        return relayServerClient.newOutputContext(executorId, targetExecutorId, descriptor)
-          .thenApply(context -> {
-            context.setTaskId(myTaskId);
-            return context;
-          });
+        if (isVmScaling) {
+          return byteTransfer.newOutputContext(targetExecutorId, descriptor, true)
+            .thenApply(context -> {
+              context.setTaskId(myTaskId);
+              return context;
+            });
+        } else {
+          // Connect to the relay server!
+          return relayServerClient.newOutputContext(executorId, targetExecutorId, descriptor)
+            .thenApply(context -> {
+              context.setTaskId(myTaskId);
+              return context;
+            });
+        }
       }
       case VM: {
         // The executor is in VM, just connects to the VM server
@@ -220,6 +231,7 @@ public final class PipeManagerWorker {
       new NemoTriple(runtimeEdge.getId(), srcTaskIndex, false));
 
 
+
     final String srcStage = ((StageEdge) runtimeEdge).getSrc().getId();
     final String dstTaskId = RuntimeIdManager.generateTaskId(srcStage, srcTaskIndex, 0);
     final TaskLoc loc = taskLocationMap.get(dstTaskId);
@@ -242,22 +254,38 @@ public final class PipeManagerWorker {
 
     switch (loc) {
       case SF: {
-        // Connect to the relay server!
-        return relayServerClient.newInputContext(srcExecutorId, executorId, descriptor)
-          .thenApply(context -> {
-            context.setTaskId(myTaskId);
-            final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
-            byteInputContextMap.putIfAbsent(key, new HashSet<>());
-            final Set<ByteInputContext> contexts = byteInputContextMap.get(key);
-            synchronized (contexts) {
-              contexts.add(context);
-            }
-            return ((LambdaRemoteByteInputContext) context).getInputIterator(
-              serializerMap.get(runtimeEdgeId), taskExecutor, dataFetcher);
-          });
+
+        if (isVmScaling) {
+          // TODO: get the vm address and connecet to the vm server
+          return byteTransfer.newInputContext(srcExecutorId, descriptor, true)
+            .thenApply(context -> {
+              context.setTaskId(myTaskId);
+              final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
+              byteInputContextMap.putIfAbsent(key, new HashSet<>());
+              final Set<ByteInputContext> contexts = byteInputContextMap.get(key);
+              synchronized (contexts) {
+                contexts.add(context);
+              }
+              return ((LambdaRemoteByteInputContext) context).getInputIterator(
+                serializerMap.get(runtimeEdgeId), taskExecutor, dataFetcher);
+            });
+        } else {
+          // Connect to the relay server!
+          return relayServerClient.newInputContext(srcExecutorId, executorId, descriptor)
+            .thenApply(context -> {
+              context.setTaskId(myTaskId);
+              final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
+              byteInputContextMap.putIfAbsent(key, new HashSet<>());
+              final Set<ByteInputContext> contexts = byteInputContextMap.get(key);
+              synchronized (contexts) {
+                contexts.add(context);
+              }
+              return ((LambdaRemoteByteInputContext) context).getInputIterator(
+                serializerMap.get(runtimeEdgeId), taskExecutor, dataFetcher);
+            });
+        }
       }
       case VM: {
-
         // Connect to the executor
         return byteTransfer.newInputContext(srcExecutorId, descriptor, true)
           .thenApply(context -> {

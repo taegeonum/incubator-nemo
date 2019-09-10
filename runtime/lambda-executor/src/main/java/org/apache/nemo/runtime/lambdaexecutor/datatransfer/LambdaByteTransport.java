@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
@@ -47,8 +48,12 @@ public final class LambdaByteTransport {//implements AutoCloseable {
   private final EventLoopGroup clientGroup;
   private final Bootstrap clientBootstrap;
   private final Map<String, InetSocketAddress> executorAddressMap;
+  private final Map<String, InetSocketAddress> vmScalingExecutorAddressMap;
   private final ChannelGroup channelGroup;
   private final Channel relayServerChannel;
+  private final RendevousServerClient rendevousServerClient;
+  private final boolean isVmScaling;
+  private VmScalingServer vmScalingServer;
 
   public LambdaByteTransport(
       final String localExecutorId,
@@ -57,8 +62,14 @@ public final class LambdaByteTransport {//implements AutoCloseable {
       final Map<String, InetSocketAddress> executorAddressMap,
       final ChannelGroup channelGroup,
       final String relayServerAddres,
-      final int relayServerPort) {
+      final int relayServerPort,
+      final RendevousServerClient rendevousServerClient,
+      final boolean isVmScaling) {
 
+    this.rendevousServerClient = rendevousServerClient;
+    this.isVmScaling = isVmScaling;
+
+    this.vmScalingExecutorAddressMap = new ConcurrentHashMap<>();
     this.executorAddressMap = executorAddressMap;
     this.channelGroup = channelGroup;
 
@@ -69,6 +80,10 @@ public final class LambdaByteTransport {//implements AutoCloseable {
         .channel(channelImplSelector.getChannelClass())
         .handler(channelInitializer)
         .option(ChannelOption.SO_REUSEADDR, true);
+
+    if (isVmScaling) {
+      vmScalingServer = new VmScalingServer(localExecutorId, channelInitializer, rendevousServerClient);
+    }
 
     final ChannelFuture channelFuture = connectToRelayServer(relayServerAddres, relayServerPort);
     this.relayServerChannel = channelFuture.channel();
@@ -88,6 +103,10 @@ public final class LambdaByteTransport {//implements AutoCloseable {
     final Future clientGroupCloseFuture = clientGroup.shutdownGracefully();
     channelGroupCloseFuture.awaitUninterruptibly();
     clientGroupCloseFuture.awaitUninterruptibly();
+
+    if (vmScalingServer != null) {
+      vmScalingServer.close();
+    }
   }
 
   public ChannelFuture connectToRelayServer(final String address, final int port) {
@@ -108,20 +127,45 @@ public final class LambdaByteTransport {//implements AutoCloseable {
 
   ChannelFuture connectTo(final String remoteExecutorId) {
 
-    final InetSocketAddress address = executorAddressMap.get(remoteExecutorId);
-    LOG.info("RemoteExecutorId {} Address {}", remoteExecutorId, address);
-
-    final ChannelFuture connectFuture = clientBootstrap.connect(address);
-    connectFuture.addListener(future -> {
-      if (future.isSuccess()) {
-        // Succeed to connect
-        LOG.info("Connected to remote {}", remoteExecutorId);
-        return;
+    if (isVmScaling) {
+      // For vm scaling
+      InetSocketAddress address = vmScalingExecutorAddressMap.get(remoteExecutorId);
+      if (address == null) {
+        final Pair<String, Integer> pair = rendevousServerClient.requestVMAddress(remoteExecutorId);
+        vmScalingExecutorAddressMap.put(remoteExecutorId, new InetSocketAddress(pair.left(), pair.right()));
       }
-      // Failed to connect (Not logging the cause here, which is not very useful)
-      LOG.error("Failed to connect to {}", remoteExecutorId);
-    });
-    return connectFuture;
+
+      address = vmScalingExecutorAddressMap.get(remoteExecutorId);
+      LOG.info("RemoteExecutorId for scaling {} Address {}", remoteExecutorId, address);
+
+      final ChannelFuture connectFuture = clientBootstrap.connect(address);
+      connectFuture.addListener(future -> {
+        if (future.isSuccess()) {
+          // Succeed to connect
+          LOG.info("Connected to remote {}", remoteExecutorId);
+          return;
+        }
+        // Failed to connect (Not logging the cause here, which is not very useful)
+        LOG.error("Failed to connect to {}", remoteExecutorId);
+      });
+      return connectFuture;
+
+    } else {
+      final InetSocketAddress address = executorAddressMap.get(remoteExecutorId);
+      LOG.info("RemoteExecutorId {} Address {}", remoteExecutorId, address);
+
+      final ChannelFuture connectFuture = clientBootstrap.connect(address);
+      connectFuture.addListener(future -> {
+        if (future.isSuccess()) {
+          // Succeed to connect
+          LOG.info("Connected to remote {}", remoteExecutorId);
+          return;
+        }
+        // Failed to connect (Not logging the cause here, which is not very useful)
+        LOG.error("Failed to connect to {}", remoteExecutorId);
+      });
+      return connectFuture;
+    }
   }
 
   public ChannelGroup getChannelGroup() {

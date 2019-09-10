@@ -5,9 +5,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
-import org.apache.nemo.common.RendevousMessageEncoder;
-import org.apache.nemo.common.RendevousResponse;
-import org.apache.nemo.common.WatermarkResponse;
+import org.apache.nemo.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,15 +25,21 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
   private final ConcurrentMap<String, Channel> rendevousChannelMap;
   private final ScheduledExecutorService scheduledExecutorService;
   private final WatermarkManager watermarkManager;
+  private final ConcurrentMap<String, Pair<String, Integer>> scalingExecutorAddressMap;
+  private final ConcurrentMap<String, List<Channel>> executorRequestChannelMap;
 
   public RendevousServerDecoder(final ConcurrentMap<String, List<Channel>> dstRequestChannelMap,
                                 final ConcurrentMap<String, Channel> rendevousChannelMap,
                                 final ScheduledExecutorService scheduledExecutorService,
-                                final WatermarkManager watermarkManager) {
+                                final WatermarkManager watermarkManager,
+                                final ConcurrentMap<String, Pair<String, Integer>> scalingExecutorAddressMap,
+                                final ConcurrentMap<String, List<Channel>> executorRequestChannelMap) {
     this.dstRequestChannelMap = dstRequestChannelMap;
     this.rendevousChannelMap = rendevousChannelMap;
     this.scheduledExecutorService = scheduledExecutorService;
     this.watermarkManager = watermarkManager;
+    this.scalingExecutorAddressMap = scalingExecutorAddressMap;
+    this.executorRequestChannelMap = executorRequestChannelMap;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
 
@@ -59,7 +63,29 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
           }
         }
       }
-    }, 1000, 1000, TimeUnit.MILLISECONDS);
+
+
+      for (final String dstExecutor : executorRequestChannelMap.keySet()) {
+        final List<Channel> channels = executorRequestChannelMap.get(dstExecutor);
+
+        if (!channels.isEmpty() && scalingExecutorAddressMap.containsKey(dstExecutor) ) {
+          synchronized (channels) {
+            //LOG.info("Sending response of {}", dstRequestKey);
+
+            final Pair<String, Integer> address = scalingExecutorAddressMap.get(dstExecutor);
+            // write
+
+            channels.stream().forEach(channel -> {
+              LOG.info("Flush response {}/{} to {}", dstExecutor, address, channel);
+              channel.writeAndFlush(new VmScalingResponse(dstExecutor,
+                address.left(), address.right()));
+            });
+
+            channels.clear();
+          }
+        }
+      }
+    }, 300, 300, TimeUnit.MILLISECONDS);
 
   }
 
@@ -119,6 +145,28 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
         //LOG.info("Watermark manager input watermark {}, {}", stageId, watermark);
         final WatermarkResponse watermarkResponse = new WatermarkResponse(taskId, watermark);
         ctx.channel().writeAndFlush(watermarkResponse);
+        break;
+      }
+      // For VM
+      case REGISTER_SCALING_ADDRESS: {
+        final String dstExecutorId = bis.readUTF();
+        final String address = bis.readUTF();
+        final int port = bis.readInt();
+
+        LOG.info("Registering executor {} address {}", dstExecutorId, Pair.of(address, port));
+        scalingExecutorAddressMap.put(dstExecutorId, Pair.of(address, port));
+        break;
+      }
+      case REQUEST_SCALING_ADDRESS: {
+        final String dstExecutor = bis.readUTF();
+        //LOG.info("Request dst {} from {}", dst, ctx.channel());
+
+        executorRequestChannelMap.putIfAbsent(dstExecutor, new ArrayList<>());
+        final List<Channel> channels = dstRequestChannelMap.get(dstExecutor);
+
+        synchronized (channels) {
+          channels.add(ctx.channel());
+        }
         break;
       }
       default:

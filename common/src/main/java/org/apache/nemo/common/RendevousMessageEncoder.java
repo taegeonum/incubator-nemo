@@ -17,7 +17,12 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
     REGISTER,
     WATERMARK_REQUEST,
     WATERMARK_RESPONSE,
-    WATERMARK_SEND
+    WATERMARK_SEND,
+
+    // For VM
+    REGISTER_SCALING_ADDRESS,
+    REQUEST_SCALING_ADDRESS,
+    RESPONSE_SCALING_ADDRESS,
   }
 
   public RendevousMessageEncoder() {
@@ -77,6 +82,33 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
       final WatermarkResponse req = (WatermarkResponse) msg;
       bos.writeUTF(req.taskId);
       bos.writeLong(req.watermark);
+      out.add(bos.buffer());
+    } else if (msg instanceof VmScalingRegister) {
+
+      bos.writeInt(Type.REGISTER_SCALING_ADDRESS.ordinal());
+
+      final VmScalingRegister req = (VmScalingRegister) msg;
+      bos.writeUTF(req.executorId);
+      bos.writeUTF(req.address);
+      bos.writeInt(req.port);
+      out.add(bos.buffer());
+
+    } else if (msg instanceof VmScalingRequest) {
+
+      bos.writeInt(Type.REQUEST_SCALING_ADDRESS.ordinal());
+
+      final VmScalingRequest req = (VmScalingRequest) msg;
+      bos.writeUTF(req.executorId);
+      out.add(bos.buffer());
+
+    } else if (msg instanceof VmScalingResponse) {
+
+      bos.writeInt(Type.RESPONSE_SCALING_ADDRESS.ordinal());
+
+      final VmScalingResponse req = (VmScalingResponse) msg;
+      bos.writeUTF(req.executorId);
+      bos.writeUTF(req.address);
+      bos.writeInt(req.port);
       out.add(bos.buffer());
 
     } else {

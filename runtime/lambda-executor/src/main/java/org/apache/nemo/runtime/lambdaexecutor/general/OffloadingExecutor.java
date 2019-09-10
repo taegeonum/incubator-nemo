@@ -85,6 +85,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private transient ExecutorService executorStartService;
 
+  private final boolean isVmScaling;
+
+
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
@@ -95,7 +98,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final String rendevousServerAddress,
                             final int rendevousServerPort,
                             final String executorId,
-                            final Map<String, Pair<String, Integer>> relayServerInfo) {
+                            final Map<String, Pair<String, Integer>> relayServerInfo,
+                            final boolean isVmScaling) {
     this.executorThreadNum = executorThreadNum;
     this.channels = new ConcurrentHashMap<>();
     this.executorId = executorId;
@@ -111,9 +115,11 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.rendevousServerPort = rendevousServerPort;
     this.taskLocMap = new ConcurrentHashMap<>();
     this.relayServerInfo = relayServerInfo;
+    this.isVmScaling = isVmScaling;
     //this.pendingTask = new ArrayList<>();
     //this.readyTasks = new ArrayList<>();
   }
+
   /**
    * Extracts task index from a task ID.
    *
@@ -237,7 +243,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     relayServerClientChannelInitializer.setRelayServerClient(relayServerClient);
 
     byteTransport = new LambdaByteTransport(
-      executorId, selector, initializer, executorAddressMap, channelGroup, relayServerAddress, relayServerPort);
+      executorId, selector, initializer, executorAddressMap, channelGroup,
+      relayServerAddress, relayServerPort, rendevousServerClient, isVmScaling);
 
     final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
 
@@ -245,7 +252,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     relayServerClientChannelInitializer.setByteTransfer(byteTransfer);
 
     pipeManagerWorker =
-      new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, relayServerClient);
+      new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap,
+        serializerMap, taskLocMap, relayServerClient, isVmScaling);
 
     intermediateDataIOFactory =
       new IntermediateDataIOFactory(pipeManagerWorker);

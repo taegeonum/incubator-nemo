@@ -35,11 +35,12 @@ public final class RendevousClientDecoder extends MessageToMessageDecoder<ByteBu
     final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
 
     switch (type) {
-      case RESPONSE:
+      case RESPONSE: {
         final String dst = bis.readUTF();
         final String address = bis.readUTF();
         client.registerResponse(new RendevousResponse(dst, address));
         break;
+      }
       case REQUEST:
         throw new RuntimeException("Unsupported");
       case WATERMARK_RESPONSE: {
@@ -47,6 +48,13 @@ public final class RendevousClientDecoder extends MessageToMessageDecoder<ByteBu
         final String  stageId = bis.readUTF();
         final long watermark = bis.readLong();
         client.registerWatermark(stageId, watermark);
+        break;
+      }
+      case RESPONSE_SCALING_ADDRESS: {
+        final String executorId = bis.readUTF();
+        final String address = bis.readUTF();
+        final int port = bis.readInt();
+        client.receiveVMAddress(executorId, address, port);
         break;
       }
       default:

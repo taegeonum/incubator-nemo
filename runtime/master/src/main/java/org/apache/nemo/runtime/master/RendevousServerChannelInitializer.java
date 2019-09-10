@@ -5,6 +5,7 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RendevousMessageEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,8 @@ public final class RendevousServerChannelInitializer extends ChannelInitializer<
   private final ConcurrentMap<String, List<Channel>> channelListMap;
   private final ScheduledExecutorService scheduledExecutorService;
   private final WatermarkManager watermarkManager;
+  private final ConcurrentMap<String, Pair<String, Integer>> scalingExecutorAddressMap;
+  private final ConcurrentMap<String, List<Channel>> executorRequestChannelMap;
 
   public RendevousServerChannelInitializer(
     final ConcurrentMap<String, Channel> rendevousChannelMap,
@@ -30,6 +33,8 @@ public final class RendevousServerChannelInitializer extends ChannelInitializer<
     this.scheduledExecutorService = Executors.newScheduledThreadPool(5);
     this.channelListMap = new ConcurrentHashMap<>();
     this.watermarkManager = watermarkManager;
+    this.scalingExecutorAddressMap = new ConcurrentHashMap<>();
+    this.executorRequestChannelMap = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -42,6 +47,7 @@ public final class RendevousServerChannelInitializer extends ChannelInitializer<
         Integer.MAX_VALUE, 0, 4, 0, 4))
       .addLast("frameEncoder", new LengthFieldPrepender(4))
       .addLast(new RendevousMessageEncoder())
-      .addLast(new RendevousServerDecoder(channelListMap, rendevousChannelMap, scheduledExecutorService, watermarkManager));
+      .addLast(new RendevousServerDecoder(channelListMap, rendevousChannelMap,
+        scheduledExecutorService, watermarkManager, scalingExecutorAddressMap, executorRequestChannelMap));
   }
 }
