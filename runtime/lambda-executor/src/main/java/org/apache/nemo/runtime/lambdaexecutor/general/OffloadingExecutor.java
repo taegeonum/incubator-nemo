@@ -318,26 +318,27 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       LOG.info("Receive task {}, assign it to executor-{}", task.taskId, executorIndex);
 
-      final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
-        task,
-        serializerMap,
-        intermediateDataIOFactory,
-        oc,
-        prepareService,
-        executorGlobalInstances,
-        rendevousServerClient,
-        executorThread);
+      prepareService.execute(() -> {
+        final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
+          task,
+          serializerMap,
+          intermediateDataIOFactory,
+          oc,
+          prepareService,
+          executorGlobalInstances,
+          rendevousServerClient,
+          executorThread);
 
-      taskAssignedMap.put(taskExecutor, executorThread);
+        taskAssignedMap.put(taskExecutor, executorThread);
 
-      LOG.info("Pending task {}", task.taskId);
+        LOG.info("Pending task {}", task.taskId);
 
-      // Emit offloading done
-      synchronized (oc) {
-        oc.emit(new OffloadingDoneEvent(
-          task.taskId));
-      }
-
+        // Emit offloading done
+        synchronized (oc) {
+          oc.emit(new OffloadingDoneEvent(
+            task.taskId));
+        }
+      });
     } else if (event instanceof ReadyTask) {
       LOG.info("Receive ready task {}", ((ReadyTask) event).taskId);
       final ReadyTask readyTask = (ReadyTask) event;
