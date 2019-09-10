@@ -135,9 +135,16 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
     // pipe output writer prepare
     LOG.info("Pipe output writers: {}", pipeOutputWriters.size());
+    final CountDownLatch latch = new CountDownLatch(pipeOutputWriters.size());
     pipeOutputWriters.forEach(pipeOutputWriter -> {
-      pipeOutputWriter.doInitialize();
+      pipeOutputWriter.doInitialize(latch);
     });
+
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
 
     reverseTopologicallySorted.forEach(irVertex -> {
       final Transform transform;

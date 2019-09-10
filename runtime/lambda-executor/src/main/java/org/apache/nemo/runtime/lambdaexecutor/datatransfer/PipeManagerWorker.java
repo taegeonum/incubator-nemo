@@ -253,7 +253,7 @@ public final class PipeManagerWorker {
     final String myStage = ((StageEdge) runtimeEdge).getDst().getId();
     final String myTaskId = RuntimeIdManager.generateTaskId(myStage, dstTaskIndex, 0);
 
-    LOG.info("Creating input context in my {} / to {} / isVmScaling: {}", myTaskId, dstTaskId, isVmScaling);
+    LOG.info("Creating input context in my {} / to {} / isVmScaling: {}, loc {}", myTaskId, dstTaskId, isVmScaling, loc);
 
     switch (loc) {
       case SF: {

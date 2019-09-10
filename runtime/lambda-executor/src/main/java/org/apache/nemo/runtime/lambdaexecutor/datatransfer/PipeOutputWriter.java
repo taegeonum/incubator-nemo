@@ -37,6 +37,7 @@ import java.io.Flushable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.apache.nemo.common.TaskLoc.VM;
@@ -197,7 +198,7 @@ public final class PipeOutputWriter implements Flushable {
     */
   }
 
-  public void doInitialize() {
+  public void doInitialize(final CountDownLatch latch) {
     LOG.info("Start - doInitialize() {}/{}", taskId, runtimeEdge);
     initialized = true;
 
@@ -223,25 +224,37 @@ public final class PipeOutputWriter implements Flushable {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
 
-    pipes = byteOutputContexts.stream()
-      .map(byteOutputContext -> {
-        try {
-          final ByteOutputContext context = byteOutputContext.get();
-          pipeAndStreamMap.put(context, context.newOutputStream(executorThread));
-          //LOG.info("Context {}", context);
-          return context;
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }).collect(Collectors.toList());
+    final List<ByteOutputContext> contexts = new ArrayList<>(byteOutputContexts.size());
 
+    while (!byteOutputContexts.isEmpty()) {
+
+      final Iterator<CompletableFuture<ByteOutputContext>> iterator = byteOutputContexts.iterator();
+
+      while (iterator.hasNext()) {
+        final CompletableFuture<ByteOutputContext> future = iterator.next();
+        if (future.isDone()) {
+          try {
+            final ByteOutputContext context = future.get();
+            contexts.add(context);
+            pipeAndStreamMap.put(context, context.newOutputStream(executorThread));
+            iterator.remove();
+          } catch (final Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+        }
+      }
+
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    pipes = contexts;
+
+    latch.countDown();
 
     /*
     final List<ByteOutputContext> boc = new ArrayList<>(byteOutputContexts.size());
