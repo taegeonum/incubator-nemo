@@ -100,7 +100,7 @@ public final class ByteTransfer {
       if (outputContextMap.containsKey(transferIndex)) {
         return CompletableFuture.completedFuture(outputContextMap.get(transferIndex));
       } else {
-        LOG.info("Waiting for new output context: {} / {}", executorId, transferIndex);
+        LOG.info("Waiting for new output context: {} / {} / {}", executorId, taskId, transferIndex);
         return CompletableFuture.supplyAsync(() -> {
           while (!outputContextMap.containsKey(transferIndex)) {
             try {
