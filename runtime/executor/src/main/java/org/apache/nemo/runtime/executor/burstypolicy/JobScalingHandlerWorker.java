@@ -65,6 +65,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private final ExecutorThreads executorThreads;
 
+  private final EvalConf evalConf;
+
   @Inject
   private JobScalingHandlerWorker(
     @Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -97,6 +99,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
     messageEnvironment.setupListener(SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScalingDecisionHandler());
+
+    this.evalConf = evalConf;
   }
 
   public void setTinyWorkerManager(final TinyTaskOffloadingWorkerManager m) {
@@ -207,8 +211,12 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             final int offloadNum = offloadNumMap.getOrDefault(stageId, 0);
             offloadNumMap.put(stageId, offloadNum + 1);
 
-            //final TinyTaskWorker worker = tinyWorkerManager.prepareSendTask();
-            final TinyTaskWorker worker = tinyWorkerManager.createWorker();
+            final TinyTaskWorker worker;
+            if (evalConf.offloadingType.equals("vm")) {
+              worker = tinyWorkerManager.prepareSendTask();
+            } else {
+              worker = tinyWorkerManager.createWorker();
+            }
 
             LOG.info("Offloading {}, cnt: {}, remainingOffloadTask: {}", task.getId(), offloadNum,
               remainingOffloadTasks.getRemainingCnt());

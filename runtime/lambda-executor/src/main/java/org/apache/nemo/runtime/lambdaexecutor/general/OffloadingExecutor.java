@@ -300,7 +300,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   }
 
   @Override
-  public void onData(Object event) {
+  public synchronized void onData(Object event) {
 
     if (event instanceof OffloadingTask) {
       final OffloadingTask task = (OffloadingTask) event;
