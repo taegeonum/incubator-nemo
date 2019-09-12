@@ -38,6 +38,7 @@ public final class Task implements Serializable {
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private final byte[] serializedIRDag;
   private final Map<String, Readable> irVertexIdToReadable;
+  private final boolean isStateless;
 
   /**
    * Constructor.
@@ -61,9 +62,32 @@ public final class Task implements Serializable {
     this.taskId = taskId;
     this.executionProperties = executionProperties;
     this.serializedIRDag = serializedIRDag;
+    this.isStateless = false;
     this.taskIncomingEdges = taskIncomingEdges;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.irVertexIdToReadable = irVertexIdToReadable;
+  }
+
+  public Task(final String planId,
+              final String taskId,
+              final ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
+              final byte[] serializedIRDag,
+              final boolean isStateless,
+              final List<StageEdge> taskIncomingEdges,
+              final List<StageEdge> taskOutgoingEdges,
+              final Map<String, Readable> irVertexIdToReadable) {
+    this.planId = planId;
+    this.taskId = taskId;
+    this.executionProperties = executionProperties;
+    this.serializedIRDag = serializedIRDag;
+    this.isStateless = isStateless;
+    this.taskIncomingEdges = taskIncomingEdges;
+    this.taskOutgoingEdges = taskOutgoingEdges;
+    this.irVertexIdToReadable = irVertexIdToReadable;
+  }
+
+  public boolean getIsStateless() {
+    return isStateless;
   }
 
   /**

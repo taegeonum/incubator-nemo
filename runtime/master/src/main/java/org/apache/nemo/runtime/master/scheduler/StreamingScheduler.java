@@ -123,6 +123,7 @@ public final class StreamingScheduler implements Scheduler {
           taskId,
           stageToSchedule.getExecutionProperties(),
           stageToSchedule.getSerializedIRDAG(),
+          stageToSchedule.getIsStateless(),
           stageIncomingEdges,
           stageOutgoingEdges,
           vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId))))

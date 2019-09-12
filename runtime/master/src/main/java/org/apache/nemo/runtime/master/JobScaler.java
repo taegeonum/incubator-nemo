@@ -241,25 +241,18 @@ public final class JobScaler {
       final Map<String, List<Task>> tasks = taskScheduledMap.getScheduledStageTasks(representer);
       final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
 
+      int countToOffload = 0;
       for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
-        // if query 5, do not move stage2 tasks
+        countToOffload += (int) (entry.getValue().size() - (entry.getValue().size() / divide));
+      }
 
-        /*
-        if (queryNum == 5) {
-          if (entry.getKey().equals("Stage3")) {
-            LOG.info("Skip stage 3 offloading");
-            continue;
-          }
-        }
-        */
-
-        final int countToOffload = (int) (entry.getValue().size() - (entry.getValue().size() / divide));
+      for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
         final List<String> offloadTask = new ArrayList<>();
         offloadTaskMap.put(entry.getKey(), offloadTask);
 
         int offloadedCnt = 0;
         for (final Task task : entry.getValue()) {
-          if (offloadedCnt < countToOffload) {
+          if (offloadedCnt < countToOffload && task.getIsStateless()) {
             final TaskLoc loc = taskLocationMap.locationMap.get(task.getTaskId());
 
             if (loc == VM) {

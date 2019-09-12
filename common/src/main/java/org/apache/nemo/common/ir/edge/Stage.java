@@ -44,8 +44,10 @@ public final class Stage extends Vertex {
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final byte[] serializedIRDag;
   private final List<Map<String, Readable>> vertexIdToReadables;
+  private final boolean isStateless;
 
   private ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
+
 
   /**
    * Constructor.
@@ -67,6 +69,20 @@ public final class Stage extends Vertex {
     this.serializedIRDag = SerializationUtils.serialize(irDag);
     this.executionProperties = executionProperties;
     this.vertexIdToReadables = vertexIdToReadables;
+    this.isStateless = checkStateless(irDag);
+  }
+
+  private boolean checkStateless(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
+    for (final IRVertex irVertex : irDag.getVertices()) {
+      if (irVertex.isStateful) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public boolean getIsStateless() {
+    return isStateless;
   }
 
   /**
