@@ -215,6 +215,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public void restart() {
+    /*
     executorGlobalInstances.registerWatermarkService((SourceVertex) getDataSource(), () -> {
       if (isPrepared && globalPrepared.get()) {
         final long watermarkTimestamp = readable.readWatermark();
@@ -226,6 +227,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
     });
     //finishedAck = false;
     isFinishd = false;
+    */
   }
 
   public final long getBoundedSourceReadTime() {
