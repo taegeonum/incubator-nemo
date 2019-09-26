@@ -455,7 +455,7 @@ public final class TinyTaskOffloader implements Offloader {
 
       final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = unboundedSource.getCheckpointMarkCoder();
 
-      //LOG.info("Send checkpoint mark at task {}: {}", taskId, checkpointMark);
+      LOG.info("Send checkpoint mark at task {}: {}", taskId, checkpointMark);
       //LOG.info("Sending location map at {}: {}", taskId, taskLocationMap.locationMap);
 
       taskExecutor.setOffloadedTaskTime(0);
