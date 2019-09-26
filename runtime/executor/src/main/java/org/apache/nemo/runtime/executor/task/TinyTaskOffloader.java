@@ -88,6 +88,8 @@ public final class TinyTaskOffloader implements Offloader {
   private final ScheduledExecutorService scheduledExecutorService;
   private final ScalingOutCounter scalingOutCounter;
 
+  private KafkaCheckpointMark prevCheckpointMark;
+
   public TinyTaskOffloader(final String executorId,
                            final TaskExecutor taskExecutor,
                            final EvalConf evalConf,
@@ -168,17 +170,18 @@ public final class TinyTaskOffloader implements Offloader {
     LOG.info("Source vertex datafetchers: {}", sourceVertexDataFetchers);
 
     final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
-    final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
+    //final KafkaCheckpointMark :w
+    // = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
     final UnboundedSource oSource = readable.getUnboundedSource();
 
     LOG.info("Recompute from the checkpoint mark for source {} in VM: {} at task {}, sourceVertices: {}"
-      , id, checkpointMark, taskId, sourceVertexDataFetchers.size());
+      , id, prevCheckpointMark, taskId, sourceVertexDataFetchers.size());
 
 
     LOG.info("Prepare source !!! {}", oSource);
 
     final UnboundedSourceReadable newReadable =
-      new UnboundedSourceReadable(oSource, null, checkpointMark);
+      new UnboundedSourceReadable(oSource, null, prevCheckpointMark);
 
     sourceVertexDataFetcher.setReadable(newReadable);
 
@@ -448,6 +451,8 @@ public final class TinyTaskOffloader implements Offloader {
       final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
       final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
       final KafkaUnboundedSource unboundedSource = (KafkaUnboundedSource) readable.getUnboundedSource();
+
+      prevCheckpointMark = checkpointMark;
 
       final long prevWatermarkTimestamp = sourceVertexDataFetcher.getPrevWatermarkTimestamp();
 

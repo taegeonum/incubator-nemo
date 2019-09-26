@@ -231,9 +231,9 @@ public final class JobScaler {
     scalingIn();
     //TODO: waiting scaling in
     LOG.info("Waiting isScalingIn");
-    watermarkManager.resetWatermarks(checkpointWatermarks);
     while (isScalingIn.get()) {
       try {
+        watermarkManager.resetWatermarks(checkpointWatermarks);
         Thread.sleep(500);
       } catch (InterruptedException e) {
         e.printStackTrace();
