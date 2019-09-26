@@ -171,7 +171,7 @@ public final class TinyTaskOffloader implements Offloader {
 
     final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
     //final KafkaCheckpointMark :w
-    // = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
+    // j= (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
     final UnboundedSource oSource = readable.getUnboundedSource();
 
     LOG.info("Recompute from the checkpoint mark for source {} in VM: {} at task {}, sourceVertices: {}"
@@ -185,7 +185,7 @@ public final class TinyTaskOffloader implements Offloader {
 
     sourceVertexDataFetcher.setReadable(newReadable);
 
-    // set state
+    // set stat
     // do not recover state
     /*
      if (output.stateMap != null) {
