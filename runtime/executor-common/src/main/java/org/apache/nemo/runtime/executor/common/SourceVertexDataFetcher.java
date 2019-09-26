@@ -64,6 +64,8 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private final AtomicBoolean globalPrepared;
 
+  private boolean restarted = false;
+
   public SourceVertexDataFetcher(final SourceVertex dataSource,
                                  final RuntimeEdge edge,
                                  final Readable r,
@@ -177,6 +179,11 @@ public class SourceVertexDataFetcher extends DataFetcher {
     if (readable.isFinished()) {
       return Finishmark.getInstance();
     } else {
+
+      if (restarted) {
+        return EmptyElement.getInstance();
+      }
+
       final long start = System.currentTimeMillis();
       final Object element = retrieveElement();
       boundedSourceReadTime += System.currentTimeMillis() - start;
@@ -219,6 +226,9 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public void restart() {
+    restarted = true;
+    isFinishd = false;
+
     /*
     prevWatermarkTimestamp = 0;
     executorGlobalInstances.registerWatermarkService((SourceVertex) getDataSource(), () -> {
@@ -231,7 +241,6 @@ public class SourceVertexDataFetcher extends DataFetcher {
       }
     });
     //finishedAck = false;
-    isFinishd = false;
     */
   }
 
