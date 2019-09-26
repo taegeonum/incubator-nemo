@@ -243,7 +243,12 @@ public final class JobScaler {
     }
   }
 
+  long proactiveStart = 0;
+
   public void proactive(final ControlMessage.ScalingMessage msg) {
+
+    proactiveStart = System.currentTimeMillis();
+
     scalingIn();
     //TODO: waiting scaling in
     LOG.info("Waiting isScalingIn");
@@ -571,6 +576,8 @@ public final class JobScaler {
   private void scalingOutBasedOnKeys(final double divide) {
     final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
 
+    int totalKeys = 0;
+
     for (final ExecutorRepresenter representer :
       taskScheduledMap.getScheduledStageTasks().keySet()) {
 
@@ -600,6 +607,7 @@ public final class JobScaler {
           LOG.info("Offloading {}, key {}, Executor {}", taskStatInfo.getTaskId(), taskStatInfo.getNumKeys(), representer.getExecutorId());
 
           if (loc == VM) {
+            totalKeys += taskStatInfo.getNumKeys();
             offloadTask.add(taskStatInfo.getTaskId());
             taskLocationMap.locationMap.put(taskStatInfo.getTaskId(), SF);
             offloadedCnt += 1;
@@ -607,6 +615,8 @@ public final class JobScaler {
         }
       }
     }
+
+    LOG.info("Total number of keys {}", totalKeys);
 
     final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
 
@@ -819,6 +829,7 @@ public final class JobScaler {
               if (cnt == 0) {
                 scalingDoneTime = System.currentTimeMillis();
                 if (isScaling.compareAndSet(true, false)) {
+                  LOG.info("Proactive overhead {}", System.currentTimeMillis() - proactiveStart);
                   //sendScalingOutDoneToAllWorkers();
                 }
               }
