@@ -164,14 +164,16 @@ public final class TinyTaskOffloader implements Offloader {
     }
 
     final int id = output.id;
-    final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) output.checkpointMark;
-    LOG.info("Receive checkpoint mark for source {} in VM: {} at task {}, sourceVertices: {}"
-      , id, checkpointMark, taskId, sourceVertexDataFetchers.size());
 
     LOG.info("Source vertex datafetchers: {}", sourceVertexDataFetchers);
 
     final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
+    final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
     final UnboundedSource oSource = readable.getUnboundedSource();
+
+    LOG.info("Recompute from the checkpoint mark for source {} in VM: {} at task {}, sourceVertices: {}"
+      , id, checkpointMark, taskId, sourceVertexDataFetchers.size());
+
 
     LOG.info("Prepare source !!! {}", oSource);
 
@@ -181,6 +183,8 @@ public final class TinyTaskOffloader implements Offloader {
     sourceVertexDataFetcher.setReadable(newReadable);
 
     // set state
+    // do not recover state
+    /*
      if (output.stateMap != null) {
       for (final String key : output.stateMap.keySet()) {
         LOG.info("Reset state for operator {}", key);
@@ -189,6 +193,7 @@ public final class TinyTaskOffloader implements Offloader {
         transform.setState(output.stateMap.get(key));
       }
     }
+    */
 
     outputWriters.forEach(writer -> {
       LOG.info("Restarting writer {}", writer);
@@ -210,6 +215,7 @@ public final class TinyTaskOffloader implements Offloader {
       throw new RuntimeException("Invalid status: " + taskStatus);
     }
 
+    /* do not recovery state
     if (output.stateMap != null) {
       for (final String key : output.stateMap.keySet()) {
         LOG.info("Set state for operator {}", key);
@@ -218,6 +224,7 @@ public final class TinyTaskOffloader implements Offloader {
         transform.setState(output.stateMap.get(key));
       }
     }
+    */
 
     // restart input context!
     LOG.info("Restart input context  at {}!!!", output.taskId);

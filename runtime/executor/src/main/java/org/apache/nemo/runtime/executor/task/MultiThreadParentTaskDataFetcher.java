@@ -144,6 +144,10 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     });
   }
 
+  public void resetWatermark(final long watermark) {
+    prevWatermarkTimestamp = watermark;
+  }
+
   @Override
   public boolean hasData() {
     boolean ret = false;

@@ -125,6 +125,10 @@ public class SourceVertexDataFetcher extends DataFetcher {
     isStarted = false;
   }
 
+  public void resetWatermark(final long watermark) {
+    prevWatermarkTimestamp = watermark;
+  }
+
   @Override
   public void prepare() {
 

@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.master;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.Stage;
@@ -57,6 +58,13 @@ public final class WatermarkManager {
     }
   }
 
+  public Pair<Map<String, Long>, Map<String, Long>> checkointWatermarks() {
+    final Map<String, Long> inputWatermarks = new HashMap<>(stageInputWatermarkMap);
+    final Map<String, Long> outputWatermarks = new HashMap<>(stageOutputWatermarkMap);
+
+    return Pair.of(inputWatermarks, outputWatermarks);
+  }
+
   public void updateWatermark(final String taskId, final long watermark) {
     final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
@@ -94,6 +102,15 @@ public final class WatermarkManager {
           inputWatermarkUpdateRequiredMap.put(child.getId(), true);
         }
       });
+    }
+  }
+
+  public void resetWatermarks(final Pair<Map<String, Long>, Map<String, Long>> pair) {
+    stageInputWatermarkMap.putAll(pair.left());
+    stageOutputWatermarkMap.putAll(pair.right());
+
+    for (StageWatermarkTracker tracker : stageWatermarkTrackerMap.values()) {
+      tracker.resetWatermark(0L);
     }
   }
 
@@ -175,6 +192,14 @@ public final class WatermarkManager {
 
       for (int i = 0; i < numTasks; i++) {
         watermarks.add(Long.MIN_VALUE);
+      }
+    }
+
+    private synchronized void resetWatermark(final long reset) {
+      currMinWatermark = 0L;
+      minWatermarkIndex = 0;
+      for (int i = 0; i < watermarks.size(); i++) {
+        watermarks.set(i, 0L);
       }
     }
 

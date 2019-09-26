@@ -83,11 +83,16 @@ public final class JobScaler {
 
   private final TaskOffloadingManager taskOffloadingManager;
 
+  private final WatermarkManager watermarkManager;
+
+  private Pair<Map<String, Long>, Map<String, Long>> checkpointWatermarks;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
                     final TaskLocationMap taskLocationMap,
-                    final TaskOffloadingManager taskOffloadingManager) {
+                    final TaskOffloadingManager taskOffloadingManager,
+                    final WatermarkManager watermarkManager) {
     messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
     this.taskScheduledMap = taskScheduledMap;
@@ -95,6 +100,7 @@ public final class JobScaler {
     this.executorTaskStatMap = new HashMap<>();
     this.executorCpuUseMap = new HashMap<>();
     this.taskLocationMap = taskLocationMap;
+    this.watermarkManager = watermarkManager;
     this.executorService = Executors.newCachedThreadPool();
 
     this.taskOffloadingManager = taskOffloadingManager;
@@ -215,6 +221,28 @@ public final class JobScaler {
     }, 1, 1, TimeUnit.SECONDS);
   }
 
+  public void checkpointRestart(final ControlMessage.ScalingMessage msg) {
+    if (checkpointWatermarks == null) {
+      throw new RuntimeException("Watermark is not checkpointed");
+    }
+
+    LOG.info("Checkpoint and replay!!");
+
+    scalingIn();
+    //TODO: waiting scaling in
+    LOG.info("Waiting isScalingIn");
+    watermarkManager.resetWatermarks(checkpointWatermarks);
+    while (isScalingIn.get()) {
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    LOG.info("Waiting done isScalingIn");
+    scalingOutBasedOnKeys(prevDivide);
+  }
 
   public void broadcastInfo(final ControlMessage.ScalingMessage msg) {
 
@@ -819,6 +847,8 @@ public final class JobScaler {
               if (cnt == 0) {
                 scalingDoneTime = System.currentTimeMillis();
                 if (isScaling.compareAndSet(true, false)) {
+                  LOG.info("Watermark checkpoint");
+                  checkpointWatermarks = watermarkManager.checkointWatermarks();
                   //sendScalingOutDoneToAllWorkers();
                 }
               }
