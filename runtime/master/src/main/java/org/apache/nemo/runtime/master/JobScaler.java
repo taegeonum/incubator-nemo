@@ -261,6 +261,7 @@ public final class JobScaler {
     }
     LOG.info("Waiting done isScalingIn");
     scalingOutBasedOnKeys(prevDivide);
+    isScaling.set(true);
   }
 
   public void scalingOut(final ControlMessage.ScalingMessage msg) {
@@ -828,8 +829,8 @@ public final class JobScaler {
               final int cnt = scalingExecutorCnt.decrementAndGet();
               if (cnt == 0) {
                 scalingDoneTime = System.currentTimeMillis();
+                LOG.info("Proactive overhead {}", System.currentTimeMillis() - proactiveStart);
                 if (isScaling.compareAndSet(true, false)) {
-                  LOG.info("Proactive overhead {}", System.currentTimeMillis() - proactiveStart);
                   //sendScalingOutDoneToAllWorkers();
                 }
               }
