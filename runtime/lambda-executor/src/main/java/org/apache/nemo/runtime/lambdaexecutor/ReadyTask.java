@@ -32,7 +32,7 @@ public final class ReadyTask {
   public final Map<String, GBKFinalState> stateMap;
   public final Map<String, Coder<GBKFinalState>> stateCoderMap;
   public final long prevWatermarkTimestamp;
-  public ByteBuf stateByteBuf = null;
+  public byte[] stateByteArr = null;
 
   public ReadyTask(final String taskId,
                    final Map<String, TaskLoc> taskLocationMap,
@@ -58,7 +58,7 @@ public final class ReadyTask {
                    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
                    final long prevWatermarkTimestamp,
                    final UnboundedSource unboundedSource,
-                   final ByteBuf byteBuf) {
+                   final byte[] stateByteArr) {
     this.taskId = taskId;
     this.taskLocationMap = taskLocationMap;
     this.checkpointMark = checkpointMark;
@@ -67,7 +67,7 @@ public final class ReadyTask {
     this.unboundedSource = unboundedSource;
     this.stateMap = null;
     this.stateCoderMap = null;
-    this.stateByteBuf = byteBuf;
+    this.stateByteArr = stateByteArr;
   }
 
   public ByteBuf encode() {
@@ -92,9 +92,8 @@ public final class ReadyTask {
         dos.writeBoolean(false);
       }
 
-      if (stateByteBuf != null) {
-        byteBuf.writeBytes(stateByteBuf);
-        stateByteBuf.release();
+      if (stateByteArr != null) {
+        byteBuf.writeBytes(stateByteArr);
       } else {
         if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
           dos.writeInt(stateMap.size());

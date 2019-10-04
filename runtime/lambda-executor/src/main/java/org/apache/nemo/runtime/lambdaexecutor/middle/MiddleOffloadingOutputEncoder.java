@@ -8,6 +8,7 @@ import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
 import org.apache.nemo.runtime.executor.common.OffloadingDoneEvent;
@@ -16,6 +17,7 @@ import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.ThpEvent;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
+import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +38,7 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
 
   @Override
   public void encode(Object data, OutputStream outputStream) throws IOException {
+
 
     if (data instanceof OffloadingResultTimestampEvent) {
       final OffloadingResultTimestampEvent element = (OffloadingResultTimestampEvent) data;
@@ -93,6 +96,8 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       LOG.info("End of encoding state output {}", output.taskId);
 
     } else if (data instanceof StateOutput) {
+      final FSTConfiguration conf = FSTSingleton.getInstance();
+
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(STATE_OUTPUT);
       final StateOutput output = (StateOutput) data;
@@ -106,7 +111,7 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
          for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
            final Coder<GBKFinalState> stateCoder = output.stateCoderMap.get(entry.getKey());
            bados.writeUTF(entry.getKey());
-           SerializationUtils.serialize(stateCoder, bados);
+           conf.encodeToStream(bados, stateCoder);
            stateCoder.encode(entry.getValue(), bados);
          }
       } else {
@@ -116,7 +121,9 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       bados.close();
       final byte[] arr = bos.toByteArray();
       dos.writeInt(arr.length);
-      outputStream.write(arr);
+      dos.write(arr);
+
+      LOG.info("State output encoding length: {}", arr.length);
 
     } else if (data instanceof OffloadingDoneEvent) {
       final DataOutputStream dos = new DataOutputStream(outputStream);

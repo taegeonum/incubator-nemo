@@ -1,6 +1,8 @@
 package org.apache.nemo.runtime.lambdaexecutor.middle;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
@@ -114,10 +116,9 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
 
           dis.read(arr);
 
-          final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer(len);
-          byteBuf.writeBytes(arr);
+          LOG.info("State output decoding length: {}", len);
 
-          return Pair.of(taskId, new UnSerializedStateOutput(taskId, byteBuf));
+          return Pair.of(taskId, new UnSerializedStateOutput(taskId, arr));
 
           /*
           final int mapSize = dis.readInt();

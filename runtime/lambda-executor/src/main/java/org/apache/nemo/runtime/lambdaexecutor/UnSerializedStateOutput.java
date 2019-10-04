@@ -5,10 +5,10 @@ import io.netty.buffer.ByteBuf;
 public class UnSerializedStateOutput {
 
   public String taskId;
-  public final ByteBuf byteBuf;
+  public final byte[] byteBuf;
 
   public UnSerializedStateOutput(final String taskId,
-                                 final ByteBuf byteBuf) {
+                                 final byte[] byteBuf) {
     this.taskId = taskId;
     this.byteBuf = byteBuf;
   }

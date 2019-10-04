@@ -90,7 +90,7 @@ public final class TinyTaskOffloader implements Offloader {
   private final ScheduledExecutorService scheduledExecutorService;
   private final ScalingOutCounter scalingOutCounter;
 
-  private final Map<String, ByteBuf> proactiveTaskStatMap = new ConcurrentHashMap<>();
+  private final Map<String, byte[]> proactiveTaskStatMap = new ConcurrentHashMap<>();
 
   public TinyTaskOffloader(final String executorId,
                            final TaskExecutor taskExecutor,
