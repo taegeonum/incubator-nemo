@@ -149,6 +149,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
     //LOG.info("Send message to remote: {}", message);
 
     switch (channelStatus) {
+      case INPUT_STOP:
       case OUTPUT_STOP: {
         //LOG.info("Send stop after receiving output stop.. wait for restart {}/{}", taskId, getContextId().getTransferIndex());
         // output이 stop이면 그냥  ack.
@@ -169,6 +170,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
   public synchronized void receiveStopSignalFromParent(final ByteTransferContextSetupMessage msg, final TaskLoc sendDataTo) {
 
     switch (channelStatus) {
+      case OUTPUT_STOP:
       case INPUT_STOP: {
         //LOG.info("Receive output stop after sending input stop {}/{} from {}", taskId, getContextId().getTransferIndex(),
         //  msg.getTaskId());
