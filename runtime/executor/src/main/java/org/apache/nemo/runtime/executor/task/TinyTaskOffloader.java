@@ -468,6 +468,8 @@ public final class TinyTaskOffloader implements Offloader {
         new HashMap<>());
     } else {
 
+      LOG.info("Send proactive ready task {}", taskId);
+
       if (proactiveTaskStatMap.containsKey(taskId)) {
         readyTask = new ReadyTask(
           taskId,

@@ -7,6 +7,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
@@ -87,7 +88,8 @@ public final class JobScaler {
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
                     final TaskLocationMap taskLocationMap,
-                    final TaskOffloadingManager taskOffloadingManager) {
+                    final TaskOffloadingManager taskOffloadingManager,
+                    final EvalConf evalConf) {
     messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
     this.taskScheduledMap = taskScheduledMap;
@@ -150,7 +152,7 @@ public final class JobScaler {
 
             // 60초 이후에 scaling
             LOG.info("skpCnt: {}, inputRates {}, scalingThp {}", skipCnt, inputRates.size(), scalingThp);
-            if (skipCnt > 30) {
+            if (skipCnt > 30 && evalConf.autoscaling) {
               if (inputRates.size() == WINDOW_SIZE) {
                 final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
                 //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
