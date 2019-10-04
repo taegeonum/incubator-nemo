@@ -171,6 +171,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         ackHandler.onNext(1);
         break;
       }
+      case OUTPUT_STOP:
       case RUNNING: {
         //LOG.info("Output stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.OUTPUT_STOP;
@@ -230,6 +231,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
     synchronized (writeLock) {
       switch (channelStatus) {
+        case INPUT_STOP:
         case OUTPUT_STOP: {
           // it means that we already send the ack (OS)
           // 왜냐면 이미 stopping한다고 signal이 갔기 때문에 input에서 이를 ack으로 취급함.
