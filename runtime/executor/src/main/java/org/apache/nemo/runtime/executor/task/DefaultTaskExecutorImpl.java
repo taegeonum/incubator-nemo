@@ -61,10 +61,7 @@ import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
-import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
-import org.apache.nemo.runtime.lambdaexecutor.Triple;
+import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
@@ -1027,6 +1024,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
       if (offloader.isPresent()) {
         offloader.get().handleStateOutput((StateOutput) data);
+      }
+      endOffloadingHandler.onNext(1);
+
+    } else if (data instanceof UnSerializedStateOutput) {
+      if (offloader.isPresent()) {
+        ((TinyTaskOffloader)offloader.get())
+          .handleUnserializedOutput((UnSerializedStateOutput) data);
       }
       endOffloadingHandler.onNext(1);
 

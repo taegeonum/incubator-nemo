@@ -1,5 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor.middle;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
@@ -107,6 +109,17 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
         case STATE_OUTPUT: {
           final String  taskId = dis.readUTF();
 
+          final int len = dis.readInt();
+          final byte[] arr = new byte[len];
+
+          dis.read(arr);
+
+          final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer(len);
+          byteBuf.writeBytes(arr);
+
+          return Pair.of(taskId, new UnSerializedStateOutput(taskId, byteBuf));
+
+          /*
           final int mapSize = dis.readInt();
           final Map<String, GBKFinalState> stateMap = new HashMap<>();
           final Map<String, Coder<GBKFinalState>> stateCoderMap = new HashMap<>();
@@ -119,6 +132,7 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
           }
 
           return Pair.of(taskId, new StateOutput(taskId, stateMap, stateCoderMap));
+          */
         }
         case OFFLOADING_DONE: {
           final String taskId = dis.readUTF();

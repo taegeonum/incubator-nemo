@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.task;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.beam.sdk.io.kafka.KafkaCheckpointMark;
@@ -30,6 +31,7 @@ import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
+import org.apache.nemo.runtime.lambdaexecutor.UnSerializedStateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
@@ -87,6 +89,8 @@ public final class TinyTaskOffloader implements Offloader {
   private final ExecutorThread executorThread;
   private final ScheduledExecutorService scheduledExecutorService;
   private final ScalingOutCounter scalingOutCounter;
+
+  private final Map<String, ByteBuf> proactiveTaskStatMap = new ConcurrentHashMap<>();
 
   public TinyTaskOffloader(final String executorId,
                            final TaskExecutor taskExecutor,
@@ -201,6 +205,12 @@ public final class TinyTaskOffloader implements Offloader {
 
     kafkaOffloadingOutputs.clear();
 
+    taskStatus.set(TaskExecutor.Status.RUNNING);
+  }
+
+  public void handleUnserializedOutput(UnSerializedStateOutput output) {
+    LOG.info("Handle unserailized output of {}", output.taskId);
+    proactiveTaskStatMap.put(output.taskId, output.byteBuf);
     taskStatus.set(TaskExecutor.Status.RUNNING);
   }
 
@@ -429,12 +439,6 @@ public final class TinyTaskOffloader implements Offloader {
     // Send ready signal and other data
     // offloading done message 받은다음에 ready task 보내야함.
 
-    final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
-      stateAndCoderMap = getStateAndCoderMap();
-
-    final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
-    final Map<String, Coder<GBKFinalState>> coderMap = stateAndCoderMap.right();
-
     final ReadyTask readyTask;
 
     if (sourceVertexDataFetcher != null) {
@@ -460,18 +464,37 @@ public final class TinyTaskOffloader implements Offloader {
         checkpointMarkCoder,
         prevWatermarkTimestamp,
         unboundedSource,
-        stateMap,
-        coderMap);
+        new HashMap<>(),
+        new HashMap<>());
     } else {
-      readyTask = new ReadyTask(
-        taskId,
-        taskLocationMap.locationMap,
-        null,
-        null,
-        -1,
-        null,
-        stateMap,
-        coderMap);
+
+      if (proactiveTaskStatMap.containsKey(taskId)) {
+        readyTask = new ReadyTask(
+          taskId,
+          taskLocationMap.locationMap,
+          null,
+          null,
+          -1,
+          null,
+          proactiveTaskStatMap.get(taskId));
+      } else {
+
+        final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
+          stateAndCoderMap = getStateAndCoderMap();
+
+        final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
+        final Map<String, Coder<GBKFinalState>> coderMap = stateAndCoderMap.right();
+
+        readyTask = new ReadyTask(
+          taskId,
+          taskLocationMap.locationMap,
+          null,
+          null,
+          -1,
+          null,
+          stateMap,
+          coderMap);
+      }
     }
 
 

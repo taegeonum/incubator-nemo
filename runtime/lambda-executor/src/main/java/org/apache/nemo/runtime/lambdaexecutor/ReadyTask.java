@@ -32,6 +32,7 @@ public final class ReadyTask {
   public final Map<String, GBKFinalState> stateMap;
   public final Map<String, Coder<GBKFinalState>> stateCoderMap;
   public final long prevWatermarkTimestamp;
+  public ByteBuf stateByteBuf = null;
 
   public ReadyTask(final String taskId,
                    final Map<String, TaskLoc> taskLocationMap,
@@ -49,6 +50,24 @@ public final class ReadyTask {
     this.unboundedSource = unboundedSource;
     this.stateMap = stateMap;
     this.stateCoderMap = stateCoderMap;
+  }
+
+  public ReadyTask(final String taskId,
+                   final Map<String, TaskLoc> taskLocationMap,
+                   final UnboundedSource.CheckpointMark checkpointMark,
+                   final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
+                   final long prevWatermarkTimestamp,
+                   final UnboundedSource unboundedSource,
+                   final ByteBuf byteBuf) {
+    this.taskId = taskId;
+    this.taskLocationMap = taskLocationMap;
+    this.checkpointMark = checkpointMark;
+    this.prevWatermarkTimestamp = prevWatermarkTimestamp;
+    this.checkpointMarkCoder = checkpointMarkCoder;
+    this.unboundedSource = unboundedSource;
+    this.stateMap = null;
+    this.stateCoderMap = null;
+    this.stateByteBuf = byteBuf;
   }
 
   public ByteBuf encode() {
@@ -73,16 +92,21 @@ public final class ReadyTask {
         dos.writeBoolean(false);
       }
 
-      if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
-        dos.writeInt(stateMap.size());
-        for (final Map.Entry<String, GBKFinalState> vertexIdAndState : stateMap.entrySet()) {
-          dos.writeUTF(vertexIdAndState.getKey());
-          conf.encodeToStream(bos, stateCoderMap.get(vertexIdAndState.getKey()));
-          stateCoderMap.get(vertexIdAndState.getKey()).encode(vertexIdAndState.getValue(), bos);
-        }
-
+      if (stateByteBuf != null) {
+        byteBuf.writeBytes(stateByteBuf);
+        stateByteBuf.release();
       } else {
-        dos.writeInt(0);
+        if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
+          dos.writeInt(stateMap.size());
+          for (final Map.Entry<String, GBKFinalState> vertexIdAndState : stateMap.entrySet()) {
+            dos.writeUTF(vertexIdAndState.getKey());
+            conf.encodeToStream(bos, stateCoderMap.get(vertexIdAndState.getKey()));
+            stateCoderMap.get(vertexIdAndState.getKey()).encode(vertexIdAndState.getValue(), bos);
+          }
+
+        } else {
+          dos.writeInt(0);
+        }
       }
 
       LOG.info("Encoding state done for {}, size: {}", taskId, byteBuf.readableBytes());

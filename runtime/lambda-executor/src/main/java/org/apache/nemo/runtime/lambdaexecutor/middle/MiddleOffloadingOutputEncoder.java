@@ -1,5 +1,8 @@
 package org.apache.nemo.runtime.lambdaexecutor.middle;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
@@ -16,6 +19,7 @@ import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -94,17 +98,26 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       final StateOutput output = (StateOutput) data;
       dos.writeUTF(output.taskId);
 
+      final ByteArrayOutputStream bos = new ByteArrayOutputStream(100);
+      final DataOutputStream bados = new DataOutputStream(bos);
+
       if (output.stateMap != null && !output.stateMap.isEmpty()) {
-        dos.writeInt(output.stateMap.size());
+        bados.writeInt(output.stateMap.size());
          for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
            final Coder<GBKFinalState> stateCoder = output.stateCoderMap.get(entry.getKey());
-           dos.writeUTF(entry.getKey());
-           SerializationUtils.serialize(stateCoder, outputStream);
-           stateCoder.encode(entry.getValue(), outputStream);
+           bados.writeUTF(entry.getKey());
+           SerializationUtils.serialize(stateCoder, bados);
+           stateCoder.encode(entry.getValue(), bados);
          }
       } else {
-        dos.writeInt(0);
+        bados.writeInt(0);
       }
+
+      bados.close();
+      final byte[] arr = bos.toByteArray();
+      dos.writeInt(arr.length);
+      outputStream.write(arr);
+
     } else if (data instanceof OffloadingDoneEvent) {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(OFFLOADING_DONE);
