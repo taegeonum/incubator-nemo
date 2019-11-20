@@ -63,6 +63,21 @@ public final class ExecutorRegistry {
     }
   }
 
+  public int getNumRunningExecutors() {
+    return getRunningExecutors().size();
+  }
+
+  synchronized void removeExecutor(final String executorId) {
+    if (!executors.containsKey(executorId)) {
+      throw new IllegalArgumentException("Executor does not exist: " + executorId);
+    } else {
+      final Pair<ExecutorRepresenter, ExecutorState> p = executors.remove(executorId);
+      if (!p.right().equals(ExecutorState.TERMINATED)) {
+        throw new IllegalArgumentException("Executor " + executorId + " is not terminated but " + p.right());
+      }
+    }
+  }
+
   public synchronized void viewExecutors(final Consumer<Set<ExecutorRepresenter>> consumer) {
     consumer.accept(getRunningExecutors());
   }

@@ -572,6 +572,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
         case Throttling: {
           LOG.info("Start Throttleing");
 
+
           scheduledExecutorService.schedule(() -> {
             stageExecutorThreadMap.getStageExecutorThreadMap().values().stream()
               .map(pair -> pair.right())
@@ -581,8 +582,11 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
               });
           }, 10, TimeUnit.MILLISECONDS);
 
-          // sf worker에게도 전달.
-          tinyWorkerManager.sendThrottle();
+
+          if (tinyWorkerManager != null) {
+            // sf worker에게도 전달.
+            tinyWorkerManager.sendThrottle();
+          }
 
           scheduledExecutorService.schedule(() -> {
             LOG.info("End of Throttleing");

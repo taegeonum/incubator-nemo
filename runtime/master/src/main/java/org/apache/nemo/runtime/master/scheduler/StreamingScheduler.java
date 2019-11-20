@@ -190,8 +190,11 @@ public final class StreamingScheduler implements Scheduler {
 
   @Override
   public void onExecutorRemoved(final String executorId) {
+    executorRegistry.removeExecutor(executorId);
+
+    LOG.info("Executor is removed {}", executorId);
+
     // TODO #226: StreamingScheduler Fault Tolerance
-    throw new UnsupportedOperationException();
   }
 
   @Override

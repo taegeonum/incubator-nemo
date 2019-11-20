@@ -66,7 +66,6 @@ final class TaskDispatcher {
   private final SchedulingConstraintRegistry schedulingConstraintRegistry;
   private final SchedulingPolicy schedulingPolicy;
   private final TaskScheduledMap taskScheduledMap;
-  private final RendevousServer rendevousServer;
 
   @Inject
   private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
@@ -74,8 +73,7 @@ final class TaskDispatcher {
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry,
                          final PlanStateManager planStateManager,
-                         final TaskScheduledMap taskScheduledMap,
-                         final RendevousServer rendevousServer) {
+                         final TaskScheduledMap taskScheduledMap) {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.dispatcherThread = Executors.newSingleThreadExecutor(runnable ->
         new Thread(runnable, "TaskDispatcher thread"));
@@ -86,7 +84,6 @@ final class TaskDispatcher {
     this.schedulingPolicy = schedulingPolicy;
     this.schedulingConstraintRegistry = schedulingConstraintRegistry;
     this.taskScheduledMap = taskScheduledMap;
-    this.rendevousServer = rendevousServer;
   }
 
   /**
@@ -145,27 +142,8 @@ final class TaskDispatcher {
 
 
   private void initialSetup() {
-      // send global message
-      while (!taskScheduledMap.isAllExecutorAddressReceived()) {
-        LOG.info("Waiting executor address info...");
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      final List<ControlMessage.LocalExecutorAddressInfoMessage> entries1 =
-        taskScheduledMap.getExecutorAddressMap().entrySet()
-          .stream().map(entry -> {
-          return ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
-            .setExecutorId(entry.getKey())
-            .setAddress(entry.getValue().left())
-            .setPort(entry.getValue().right())
-            .build();
-        }).collect(Collectors.toList());
-
       // send global executor address map
+    /*
       executorRegistry.viewExecutors(executors -> {
 
         int index = 0;
@@ -201,45 +179,7 @@ final class TaskDispatcher {
           index += 1;
         }
       });
-
-      // send global message
-      while (!taskScheduledMap.isAllRelayServerInfoReceived()) {
-        LOG.info("Waiting relay server info...");
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      final List<ControlMessage.LocalRelayServerInfoMessage> entries =
-        taskScheduledMap.getExecutorRelayServerInfoMap().entrySet()
-          .stream().map(entry -> {
-          return ControlMessage.LocalRelayServerInfoMessage.newBuilder()
-            .setExecutorId(entry.getKey())
-            .setAddress(entry.getValue().left())
-            .setPort(entry.getValue().right())
-            .build();
-        }).collect(Collectors.toList());
-
-      // send global info
-      executorRegistry.viewExecutors(executors -> {
-        for (final ExecutorRepresenter executor : executors) {
-          LOG.info("Send global relay info to executor {}", executor.getExecutorId());
-
-          final long id = RuntimeIdManager.generateMessageId();
-          executor.sendControlMessage(ControlMessage.Message.newBuilder()
-            .setId(id)
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.GlobalRelayServerInfo)
-            .setGlobalRelayServerInfoMsg(ControlMessage.GlobalRelayServerInfoMessage.newBuilder()
-              .addAllInfos(entries)
-              .setRendevousAddress(rendevousServer.getPublicAddress())
-              .setRendevousPort(rendevousServer.getPort())
-              .build())
-            .build());
-        }
-      });
+      */
   }
 
   private void doScheduleTaskList() {

@@ -122,7 +122,6 @@ public final class Executor {
   private final ByteTransport byteTransport;
   private final PipeManagerWorker pipeManagerWorker;
 
-  private ScheduledExecutorService scheduledExecutorService;
   private final ExecutorService taskEventExecutorService;
 
   private final StageExecutorThreadMap stageExecutorThreadMap;
@@ -147,13 +146,17 @@ public final class Executor {
   final AtomicInteger bursty = new AtomicInteger(0);
 
 
-  private RendevousServerClient rendevousServerClient;
+  private final RendevousServerClient rendevousServerClient;
 
   private final ExecutorThreads executorThreads;
 
   private final ScalingOutCounter scalingOutCounter;
 
   private final SFTaskMetrics sfTaskMetrics;
+
+  private final String rendevousAddress;
+  private final int rendevousPort;
+
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -169,7 +172,6 @@ public final class Executor {
                    //final CpuBottleneckDetector bottleneckDetector,
                    final OffloadingWorkerFactory offloadingWorkerFactory,
                    final EvalConf evalConf,
-                   final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper,
                    final TaskInputContextMap taskInputContextMap,
@@ -181,7 +183,10 @@ public final class Executor {
                    final ExecutorThreads executorThreads,
                    final ExecutorMetrics executorMetrics,
                    final ScalingOutCounter scalingOutCounter,
-                   final SFTaskMetrics sfTaskMetrics) {
+                   final SFTaskMetrics sfTaskMetrics,
+                   @Parameter(JobConf.RendevousServerAddress.class) final String rendevousAddress,
+                   @Parameter(JobConf.RendevousServerPort.class) final int rendevousPort,
+                   final ExecutorToMasterMetricSender executorToMasterMetricSender) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
@@ -208,126 +213,29 @@ public final class Executor {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.taskOffloader = taskOffloader;
     this.metricMessageSender = metricMessageSender;
-    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-
     this.scalingOutCounter = scalingOutCounter;
-
+    this.rendevousAddress = rendevousAddress;
+    this.rendevousPort = rendevousPort;
     this.sfTaskMetrics = sfTaskMetrics;
-
-    scheduledExecutorService.scheduleAtFixedRate(() -> {
-      final double load = profiler.getCpuLoad();
-      LOG.info("Cpu load: {}", load);
-
-      /*
-      if (isThrottleTime(load)) {
-        // Send input
-        if (!Throttled.getInstance().getThrottled()) {
-          LOG.info("Set throttled true : load {}", load);
-          Throttled.getInstance().setThrottle(true);
-        }
-      }
-
-      if (isUnthrottleTime(load)) {
-        if (Throttled.getInstance().getThrottled()) {
-          LOG.info("Set throttled false: load {}", load);
-          Throttled.getInstance().setThrottle(false);
-        }
-      }
-      */
-
-      // Send task stats
-      final Set<TaskExecutor> taskExecutors = taskExecutorMapWrapper.getTaskExecutorMap().keySet();
-
-      final List<ControlMessage.TaskStatInfo> taskStatInfos = taskExecutors.stream().map(taskExecutor -> {
-
-        final String taskId = taskExecutor.getId();
-
-        if (taskLocationMap.locationMap.get(taskId) == SF) {
-          // get metric from SF
-          if (sfTaskMetrics.sfTaskMetrics.containsKey(taskId)) {
-            final TaskMetrics.RetrievedMetrics metric = sfTaskMetrics.sfTaskMetrics.get(taskId);
-            return ControlMessage.TaskStatInfo.newBuilder()
-              .setNumKeys(metric.numKeys)
-              .setTaskId(taskExecutor.getId())
-              .setInputElements(metric.inputElement)
-              .setOutputElements(metric.outputElement)
-              .setComputation(metric.computation)
-              .build();
-          } else {
-            // 걍 기존 metric 보내줌
-            final TaskMetrics.RetrievedMetrics retrievedMetrics =
-              taskExecutor.getTaskMetrics().retrieve(taskExecutor.getNumKeys());
-            return ControlMessage.TaskStatInfo.newBuilder()
-              .setNumKeys(taskExecutor.getNumKeys())
-              .setTaskId(taskExecutor.getId())
-              .setInputElements(retrievedMetrics.inputElement)
-              .setOutputElements(retrievedMetrics.outputElement)
-              .setComputation(retrievedMetrics.computation)
-              .build();
-          }
-        } else {
-          final TaskMetrics.RetrievedMetrics retrievedMetrics =
-            taskExecutor.getTaskMetrics().retrieve(taskExecutor.getNumKeys());
-          return ControlMessage.TaskStatInfo.newBuilder()
-            .setNumKeys(taskExecutor.getNumKeys())
-            .setTaskId(taskExecutor.getId())
-            .setInputElements(retrievedMetrics.inputElement)
-            .setOutputElements(retrievedMetrics.outputElement)
-            .setComputation(retrievedMetrics.computation)
-            .build();
-        }
-      }).collect(Collectors.toList());
-
-
-      final long sfComputation =
-        taskStatInfos.stream().filter(taskStatInfo -> {
-        return taskLocationMap.locationMap.get(taskStatInfo.getTaskId()) == SF;
-      }).map(taskStatInfo -> taskStatInfo.getComputation())
-        .reduce(0L, (x, y) -> x + y);
-
-      final long vmComputation =
-        Math.max(700000,
-        taskStatInfos.stream().filter(taskStatInfo -> {
-        return taskLocationMap.locationMap.get(taskStatInfo.getTaskId()) == VM;
-      }).map(taskStatInfo -> taskStatInfo.getComputation())
-        .reduce(0L, (x, y) -> x + y));
-
-      final double sfCpuLoad = ((sfComputation  / (double)vmComputation) * Math.max(0.1, (load - 0.2))) / 1.8;
-
-      //final double sfCpuLoad = sfTaskMetrics.cpuLoadMap.values().stream().reduce(0.0, (x, y) -> x + y);
-
-      LOG.info("VM cpu use: {}, SF cpu use: {}", load, sfCpuLoad);
-
-      persistentConnectionToMasterMap.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
-        .send(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.TaskStatSignal)
-          .setTaskStatMsg(ControlMessage.TaskStatMessage.newBuilder()
-            .setExecutorId(executorId)
-            .addAllTaskStats(taskStatInfos)
-            .setCpuUse(load)
-            .setSfCpuUse(sfCpuLoad)
-            .build())
-          .build());
-
-    }, 1, 1, TimeUnit.SECONDS);
-
+    // master에 있는 rendevous server에 연결하는 client
+    // for watermark tracking
+    this.rendevousServerClient = new RendevousServerClient(rendevousAddress, rendevousPort);
 
     // relayServer address/port 보내기!!
-    LOG.info("Sending local relay server info: {}/{}/{}",
-      executorId, relayServer.getPublicAddress(), relayServer.getPort());
+    LOG.info("Sending executor local info {}", executorId);
 
     persistentConnectionToMasterMap
       .getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
       ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
         .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-        .setType(ControlMessage.MessageType.LocalRelayServerInfo)
-        .setLocalRelayServerInfoMsg(ControlMessage.LocalRelayServerInfoMessage.newBuilder()
+        .setType(ControlMessage.MessageType.ExecutorInitInfo)
+        .setExecutorInitInfoMsg(ControlMessage.ExecutorInitInfoMessage.newBuilder()
           .setExecutorId(executorId)
-          .setAddress(relayServer.getPublicAddress())
-          .setPort(relayServer.getPort())
+          .setExecutorAddress(byteTransport.getPublicAddress())
+          .setExecutorPort(byteTransport.getBindingPort())
+          .setRelayServerAddress(relayServer.getPublicAddress())
+          .setRelayServerPort(relayServer.getPort())
           .build())
         .build());
 
@@ -337,11 +245,8 @@ public final class Executor {
     this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
-
     this.stageExecutorThreadMap = stageExecutorThreadMap;
-
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
-
   }
 
   private boolean isThrottleTime(final double cpuLoad) {
@@ -582,45 +487,38 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-        case GlobalExecutorAddressInfo: {
-          final ControlMessage.GlobalExecutorAddressInfoMessage msg = message.getGlobalExecutorAddressInfoMsg();
-
+        case GlobalExecutorSyncInfo: {
+          final ControlMessage.GlobalExecutorSyncInitMessage msg = message.getGlobalExecutorSyncInitMsg();
           final Map<String, Pair<String, Integer>> m =
             msg.getInfosList()
               .stream()
-              .collect(Collectors.toMap(ControlMessage.LocalExecutorAddressInfoMessage::getExecutorId,
+              .collect(Collectors.toMap(ControlMessage.ExecutorInitInfoMessage::getExecutorId,
                 entry -> {
-                  return Pair.of(entry.getAddress(), entry.getPort());
+                  return Pair.of(entry.getExecutorAddress(), entry.getExecutorPort());
                 }));
 
           LOG.info("{} Setting global executor address server info {}", executorId, m);
 
           byteTransport.setExecutorAddressMap(m);
 
+          /*
           if (offloadingWorkerFactory instanceof VMOffloadingWorkerFactory) {
             LOG.info("Set vm addresses");
             final VMOffloadingWorkerFactory vmOffloadingWorkerFactory = (VMOffloadingWorkerFactory) offloadingWorkerFactory;
             vmOffloadingWorkerFactory.setVMAddressAndIds(msg.getVmAddressesList(), msg.getVmIdsList());
           }
+          */
 
-          break;
-        }
-        case GlobalRelayServerInfo:
-
-          final ControlMessage.GlobalRelayServerInfoMessage msg = message.getGlobalRelayServerInfoMsg();
-
-          final Map<String, Pair<String, Integer>> m =
+          final Map<String, Pair<String, Integer>> m2 =
             msg.getInfosList()
               .stream()
-              .collect(Collectors.toMap(ControlMessage.LocalRelayServerInfoMessage::getExecutorId,
+              .collect(Collectors.toMap(ControlMessage.ExecutorInitInfoMessage::getExecutorId,
                 entry -> {
-                  return Pair.of(entry.getAddress(), entry.getPort());
+                  return Pair.of(entry.getRelayServerAddress(), entry.getRelayServerPort());
                 }));
 
 
-          rendevousServerClient = new RendevousServerClient(msg.getRendevousAddress(), msg.getRendevousPort());
-
-          LOG.info("{} Setting global relay server info {}", executorId, m);
+          LOG.info("{} Setting global relay server info {}", executorId, m2);
 
           final OffloadingTransform lambdaExecutor = new OffloadingExecutor(
             evalConf.offExecutorThreadNum,
@@ -630,10 +528,10 @@ public final class Executor {
             taskTransferIndexMap.getMap(),
             relayServer.getPublicAddress(),
             relayServer.getPort(),
-            msg.getRendevousAddress(),
-            msg.getRendevousPort(),
+            rendevousAddress,
+            rendevousPort,
             executorId,
-            m);
+            m2);
 
           tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
             offloadingWorkerFactory,
@@ -642,8 +540,8 @@ public final class Executor {
             sfTaskMetrics);
 
           jobScalingHandlerWorker.setTinyWorkerManager(tinyWorkerManager);
-
           break;
+        }
         case ScheduleTask:
           final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
           final Task task =

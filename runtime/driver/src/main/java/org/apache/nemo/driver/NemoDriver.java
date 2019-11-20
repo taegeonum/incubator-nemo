@@ -230,6 +230,16 @@ public final class NemoDriver {
    */
   private void startSchedulingUserDAG(final String dagString) {
     runnerThread.execute(() -> {
+
+      while (!runtimeMaster.isInitialSetupFinished()) {
+        try {
+          LOG.info("Waiting master initial setup...");
+          Thread.sleep(500);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
       userApplicationRunner.run(dagString);
       // send driver notification that user application is done.
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()

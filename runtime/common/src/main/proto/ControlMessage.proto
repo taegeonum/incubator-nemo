@@ -93,11 +93,17 @@ enum MessageType {
     LocalScalingReadyDone = 24; // worker -> master
     GlobalScalingReadyDone = 25; // master -> worker
     //RequestScalingIn = 26; // master -> worker
-    LocalRelayServerInfo = 27; // worker -> master
-    GlobalRelayServerInfo = 28; // master -> worker
 
-    LocalExecutorAddressInfo = 29; // worker -> master
-    GlobalExecutorAddressInfo = 30; // master -> worker
+    //LocalRelayServerInfo = 27; // worker -> master
+    //GlobalRelayServerInfo = 28; // master -> worker
+
+    ExecutorInitInfo = 26;
+    GlobalExecutorSyncInfo = 27;
+
+
+    //LocalExecutorAddressInfo = 29; // worker -> master
+    //GlobalExecutorAddressInfo = 30; // master -> worker
+
 
     // Stat
     TaskStatSignal = 31; // worker -> master
@@ -105,6 +111,10 @@ enum MessageType {
     BroadcastInfo = 32; // master -> worker
 
     Throttling = 33;
+
+
+    AddExecutorAddressInfo = 34; // master -> worker
+    RemoveExecutorAddressInfo = 35; // master -> worker
 
 }
 
@@ -137,10 +147,12 @@ message Message {
     optional RequestScalingMessage requestScalingMsg = 26;
     optional LocalScalingDoneMessage localScalingDoneMsg = 27;
     optional GlobalScalingDoneMessage globalScalingDoneMsg = 28;
-    optional LocalRelayServerInfoMessage localRelayServerInfoMsg = 29;
-    optional GlobalRelayServerInfoMessage globalRelayServerInfoMsg = 30;
-    optional LocalExecutorAddressInfoMessage localExecutorAddressInfoMsg = 31;
-    optional GlobalExecutorAddressInfoMessage globalExecutorAddressInfoMsg = 32;
+    //optional LocalRelayServerInfoMessage localRelayServerInfoMsg = 29;
+    //optional GlobalRelayServerInfoMessage globalRelayServerInfoMsg = 30;
+    optional ExecutorInitInfoMessage executorInitInfoMsg = 29;
+    optional GlobalExecutorSyncInitMessage globalExecutorSyncInitMsg = 30;
+    //optional LocalExecutorAddressInfoMessage localExecutorAddressInfoMsg = 31;
+    //optional GlobalExecutorAddressInfoMessage globalExecutorAddressInfoMsg = 32;
 
     optional TaskStatMessage taskStatMsg = 33;
 
@@ -399,20 +411,40 @@ message LocalRelayServerInfoMessage {
   required int32 port = 3;
 }
 
+/*
 message GlobalRelayServerInfoMessage {
   repeated LocalRelayServerInfoMessage infos = 1;
   required string rendevousAddress = 2;
   required int32 rendevousPort = 3;
 }
+*/
 
+/*
 message LocalExecutorAddressInfoMessage {
   required string executorId = 1;
   required string address = 2;
   required int32 port = 3;
 }
+*/
 
+message ExecutorInitInfoMessage {
+  required string executorId = 1;
+  required string relayServerAddress = 2;
+  required int32 relayServerPort = 3;
+  required string executorAddress = 4;
+  required int32 executorPort = 5;
+}
+
+message GlobalExecutorSyncInitMessage {
+  repeated ExecutorInitInfoMessage infos = 1;
+  //repeated string vmAddresses = 4;
+  //repeated string vmIds = 5;
+}
+
+/*
 message GlobalExecutorAddressInfoMessage {
   repeated LocalExecutorAddressInfoMessage infos = 1;
   repeated string vmAddresses = 2;
   repeated string vmIds = 3;
 }
+*/

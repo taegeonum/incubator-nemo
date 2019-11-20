@@ -135,6 +135,10 @@ public final class ContainerManager {
     }
   }
 
+  public ResourceSpecification getResourceSpecOfARunningExecutor() {
+    return new ArrayList<>(evaluatorIdToResourceSpec.values()).get(0); // just get the first one.
+  }
+
   /**
    * Take the necessary actions in container manager once a container a is allocated.
    * @param executorId of the executor to launch on this container.

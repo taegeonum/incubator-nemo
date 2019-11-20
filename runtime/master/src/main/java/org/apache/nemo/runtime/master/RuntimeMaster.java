@@ -38,6 +38,7 @@ import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
+import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -48,6 +49,8 @@ import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHandler;
@@ -62,7 +65,9 @@ import java.nio.file.Paths;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.common.state.TaskState.State.COMPLETE;
 import static org.apache.nemo.runtime.common.state.TaskState.State.ON_HOLD;
@@ -107,6 +112,8 @@ public final class RuntimeMaster {
   private final String dbPassword;
   private final Set<IRVertex> irVertices;
   private final AtomicInteger resourceRequestCount;
+  private final AtomicBoolean resourceRequested = new AtomicBoolean(false);
+
   private CountDownLatch metricCountDownLatch;
   // REST API server for web metric visualization ui.
   private final Server metricServer;
@@ -114,7 +121,13 @@ public final class RuntimeMaster {
 
   private final ServerlessContainerWarmer warmer;
 
-  private final TaskScheduledMap taskScheduledMap;
+  private final ExecutorRegistry executorRegistry;
+
+  private final AtomicInteger totalNumContainers = new AtomicInteger(0);
+
+  private final Map<String, ControlMessage.ExecutorInitInfoMessage> globalExecutorMsg = new HashMap<>();
+
+  private final RendevousServer rendevousServer;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -127,6 +140,8 @@ public final class RuntimeMaster {
                         final ServerlessContainerWarmer warmer,
                         final EvalConf evalConf,
                         final PlanStateManager planStateManager,
+                        final ExecutorRegistry executorRegistry,
+                        final RendevousServer rendevousServer,
                         @Parameter(JobConf.JobId.class) final String jobId,
                         @Parameter(JobConf.DBAddress.class) final String dbAddress,
                         @Parameter(JobConf.DBId.class) final String dbId,
@@ -139,7 +154,7 @@ public final class RuntimeMaster {
     this.runtimeMasterThread =
         Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
 
-    this.taskScheduledMap = taskScheduledMap;
+    this.executorRegistry = executorRegistry;
 
     // Check for speculative execution every second.
     this.speculativeTaskCloningThread = Executors
@@ -171,6 +186,13 @@ public final class RuntimeMaster {
     this.planStateManager = planStateManager;
     this.warmer = warmer;
     this.warmer.start(evalConf.poolSize);
+    this.rendevousServer = rendevousServer;
+
+  }
+
+  public void createNewExecutors(final int num) {
+    containerManager
+      .requestContainer(num, containerManager.getResourceSpecOfARunningExecutor());
   }
 
   /**
@@ -224,6 +246,11 @@ public final class RuntimeMaster {
    */
   public Pair<PlanStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
                                                                   final int maxScheduleAttempt) {
+
+    if (!isInitialSetupFinished()) {
+      throw new RuntimeException("Master initial setup is not finished.." + resourceRequested + ", " + resourceRequestCount);
+    }
+
     final Callable<Pair<PlanStateManager, ScheduledExecutorService>> planExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
@@ -239,6 +266,10 @@ public final class RuntimeMaster {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public boolean isInitialSetupFinished() {
+    return resourceRequested.get() && resourceRequestCount.get() == 0;
   }
 
   /**
@@ -285,6 +316,9 @@ public final class RuntimeMaster {
    * @param resourceSpecificationString the resource specification.
    */
   public void requestContainer(final String resourceSpecificationString) {
+
+    resourceRequested.set(true);
+
     final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
       try {
         final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
@@ -297,9 +331,13 @@ public final class RuntimeMaster {
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
           final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
           resourceRequestCount.getAndAdd(executorNum);
+          totalNumContainers.addAndGet(executorNum);
           containerManager.requestContainer(executorNum, new ResourceSpecification(type, capacity, memory, poisonSec));
         }
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
+
+        LOG.info("Total # of containers: {}", totalNumContainers);
+
       } catch (final Exception e) {
         throw new ContainerException(e);
       }
@@ -323,8 +361,17 @@ public final class RuntimeMaster {
   public void onContainerAllocated(final String executorId,
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
+    // bind runtime master information conf
+    final String rendevousServerAddress = rendevousServer.getPublicAddress();
+    final int port = rendevousServer.getPort();
+    final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
+      .bindNamedParameter(JobConf.RendevousServerAddress.class, rendevousServerAddress)
+      .bindNamedParameter(JobConf.RendevousServerPort.class, port + "")
+      .build();
+
     runtimeMasterThread.execute(() ->
-      containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
+      containerManager.onContainerAllocated(executorId, allocatedEvaluator,
+        Configurations.merge(conf, executorConfiguration)));
   }
 
   /**
@@ -337,8 +384,41 @@ public final class RuntimeMaster {
     final Callable<Boolean> processExecutorLaunchedEvent = () -> {
       final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
       if (executor.isPresent()) {
+        LOG.info("Executor added {}", executor.get().getExecutorId());
         scheduler.onExecutorAdded(executor.get());
-        return (resourceRequestCount.decrementAndGet() == 0);
+        final boolean launched = resourceRequestCount.decrementAndGet() == 0;
+
+        LOG.info("Global executor msg size: {}, numRnningExecutors: {}", globalExecutorMsg.size(),
+          executorRegistry.getNumRunningExecutors());
+
+        if (globalExecutorMsg.size() == executorRegistry.getNumRunningExecutors()) {
+          // the master received all init info
+          // then broadcast the info to all executors
+          // TODO: previously running executors should receive different info
+
+          final List<ControlMessage.ExecutorInitInfoMessage> entries =
+            globalExecutorMsg.entrySet()
+              .stream().map(entry -> {
+              return entry.getValue();
+            }).collect(Collectors.toList());
+
+          executorRegistry.viewExecutors(executors -> {
+            for (final ExecutorRepresenter e : executors) {
+              LOG.info("Send global info to executor {}", e.getExecutorId());
+              final long id = RuntimeIdManager.generateMessageId();
+              e.sendControlMessage(ControlMessage.Message.newBuilder()
+                .setId(id)
+                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+                .setType(ControlMessage.MessageType.GlobalExecutorSyncInfo)
+                .setGlobalExecutorSyncInitMsg(ControlMessage.GlobalExecutorSyncInitMessage.newBuilder()
+                  .addAllInfos(entries)
+                  .build())
+                .build());
+            }
+          });
+        }
+
+        return launched;
       } else {
         return false;
       }
@@ -454,20 +534,15 @@ public final class RuntimeMaster {
       case MetricFlushed:
         metricCountDownLatch.countDown();
         break;
-      case LocalRelayServerInfo: {
-        final ControlMessage.LocalRelayServerInfoMessage msg = message.getLocalRelayServerInfoMsg();
+      case ExecutorInitInfo: {
+        final ControlMessage.ExecutorInitInfoMessage msg = message.getExecutorInitInfoMsg();
 
-        LOG.info("Receive local relay server info for {}", msg.getExecutorId());
-        taskScheduledMap.setRelayServerInfo(msg.getExecutorId(),
-          msg.getAddress(), msg.getPort());
-        break;
-      }
-      case LocalExecutorAddressInfo: {
-        final ControlMessage.LocalExecutorAddressInfoMessage msg = message.getLocalExecutorAddressInfoMsg();
+        synchronized (globalExecutorMsg) {
 
-        LOG.info("Receive local executor address info for {}", msg.getExecutorId());
-        taskScheduledMap.setExecutorAddressInfo(msg.getExecutorId(),
-          msg.getAddress(), msg.getPort());
+          LOG.info("Receiving executor info {}", msg.getExecutorId());
+          globalExecutorMsg.put(msg.getExecutorId(), msg);
+
+        }
         break;
       }
       default:

@@ -197,20 +197,6 @@ public final class ByteTransport implements AutoCloseable {
 
     LOG.info("public address: {}, port: {}, executorId: {}", publicAddress, bindingPort, localExecutorId);
 
-    persistentConnectionToMasterMap
-      .getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-      ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-        .setType(ControlMessage.MessageType.LocalExecutorAddressInfo)
-        .setLocalExecutorAddressInfoMsg(ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
-          .setExecutorId(localExecutorId)
-          .setAddress(publicAddress)
-          .setPort(bindingPort)
-          .build())
-      .build());
-
-
     try {
       final ByteTransportIdentifier identifier = new ByteTransportIdentifier(localExecutorId);
       nameResolver.register(identifier,new InetSocketAddress(publicAddress, bindingPort));
@@ -229,6 +215,14 @@ public final class ByteTransport implements AutoCloseable {
     for (final Map.Entry<String, Pair<String, Integer>> entry : map.entrySet()) {
       executorAddressMap.put(entry.getKey(), new InetSocketAddress(entry.getValue().left(), entry.getValue().right()));
     }
+  }
+
+  public String getPublicAddress() {
+    return publicAddress;
+  }
+
+  public int getBindingPort() {
+    return bindingPort;
   }
 
   public ConcurrentMap<String, InetSocketAddress> getExecutorAddressMap() {

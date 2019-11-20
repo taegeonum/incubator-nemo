@@ -277,6 +277,14 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
   }
 
+  @NamedParameter
+  public final class RendevousServerAddress implements Name<String> {
+  }
+
+  @NamedParameter
+  public final class RendevousServerPort implements Name<Integer> {
+  }
+
 
   //////////////////////////////// Intermediate Configurations
 
