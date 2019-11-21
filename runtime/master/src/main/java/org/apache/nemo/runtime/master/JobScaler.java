@@ -183,7 +183,6 @@ public final class JobScaler {
           .map(pair -> pair.left())
           .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
 
-
         // 60초 이후에 scaling
         LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
         final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;

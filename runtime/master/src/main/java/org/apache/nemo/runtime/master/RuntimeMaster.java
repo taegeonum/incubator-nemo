@@ -28,6 +28,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.ServerlessContainerWarmer;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.offloading.client.VMOffloadingRequester;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -192,7 +193,7 @@ public final class RuntimeMaster {
 
   public void createNewExecutors(final int num) {
     containerManager
-      .requestContainer(num, containerManager.getResourceSpecOfARunningExecutor());
+      .requestContainer(num, containerManager.createResourceSpecOfARunningExecutor());
   }
 
   /**
@@ -368,6 +369,8 @@ public final class RuntimeMaster {
       .bindNamedParameter(JobConf.RendevousServerAddress.class, rendevousServerAddress)
       .bindNamedParameter(JobConf.RendevousServerPort.class, port + "")
       .build();
+
+    LOG.info("Node descriptor: {}", allocatedEvaluator.getEvaluatorDescriptor().getNodeDescriptor());
 
     runtimeMasterThread.execute(() ->
       containerManager.onContainerAllocated(executorId, allocatedEvaluator,

@@ -135,8 +135,12 @@ public final class ContainerManager {
     }
   }
 
-  public ResourceSpecification getResourceSpecOfARunningExecutor() {
-    return new ArrayList<>(evaluatorIdToResourceSpec.values()).get(0); // just get the first one.
+  public ResourceSpecification createResourceSpecOfARunningExecutor() {
+    final ResourceSpecification spec =
+      new ArrayList<>(evaluatorIdToResourceSpec.values()).get(0); // just get the first one.
+
+    return new ResourceSpecification(spec.getContainerType(),
+      spec.getCapacity(), spec.getMemory(), spec.getPoisonSec());
   }
 
   /**
