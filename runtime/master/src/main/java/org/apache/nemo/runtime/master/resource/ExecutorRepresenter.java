@@ -93,6 +93,10 @@ public final class ExecutorRepresenter {
     this.nodeName = nodeName;
   }
 
+  public ActiveContext getContext() {
+    return activeContext;
+  }
+
   /**
    * Marks all Tasks which were running in this executor as failed.
    *

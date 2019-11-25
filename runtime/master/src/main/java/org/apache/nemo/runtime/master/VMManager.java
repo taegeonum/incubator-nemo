@@ -4,47 +4,48 @@ package org.apache.nemo.runtime.master;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.*;
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.concurrent.DefaultThreadFactory;
-import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.offloading.client.OffloadingEventHandler;
-import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.NettyChannelInitializer;
-import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
+import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
+import java.util.stream.Collectors;
 
 public final class VMManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(VMManager.class.getName());
   private final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
-  public VMManager() {
+  private final List<String> runningVMs = new ArrayList<>();
+
+  @Inject
+  private VMManager() {
   }
 
-  private void startInstances(final Collection<String> instanceIds, final String vmAddress) {
+  public synchronized void startInstances(final int num) {
+
+    final List<String> readyVMs = new ArrayList<>(VMScalingAddresses.INSTANCE_IDS);
+    readyVMs.removeAll(runningVMs);
+
+    // select
+    final Iterator<String> iterator = readyVMs.iterator();
+    int instanceNum = 0;
+
+
+    final List<String> startIds = new ArrayList<>(num);
+
+    while (iterator.hasNext() && instanceNum < num) {
+      final String readyVmId = iterator.next();
+      runningVMs.add(readyVmId);
+      startIds.add(readyVmId);
+      instanceNum += 1;
+    }
 
     final StartInstancesRequest startRequest = new StartInstancesRequest()
-      .withInstanceIds(instanceIds);
+      .withInstanceIds(startIds);
     ec2.startInstances(startRequest);
-    LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+    LOG.info("Starting ec2 instances {}/{}", startIds, System.currentTimeMillis());
   }
 
   private void stopInstances(final Collection<String> instanceIds) {
@@ -52,5 +53,16 @@ public final class VMManager {
     final StopInstancesRequest request = new StopInstancesRequest()
       .withInstanceIds(instanceIds);
     ec2.stopInstances(request);
+  }
+
+  private void stopInstancesWithAddresses(final Collection<String> addresses) {
+    LOG.info("Stopping instances {}", addresses);
+
+    final Collection<String> instanceIds = addresses.stream()
+      .map(address ->VMScalingAddresses.INSTANCE_IDS
+        .get(VMScalingAddresses.VM_ADDRESSES.indexOf(address)))
+      .collect(Collectors.toList());
+
+    stopInstances(instanceIds);
   }
 }

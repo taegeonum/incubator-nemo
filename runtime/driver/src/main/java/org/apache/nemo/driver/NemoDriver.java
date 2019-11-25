@@ -146,6 +146,9 @@ public final class NemoDriver {
           jobScaler.proactive(message.getScalingMsg());
         } else if (decision.equals("info")) {
           jobScaler.broadcastInfo(message.getScalingMsg());
+        } else if (decision.equals("cn")) {
+          // create new nodes
+          runtimeMaster.createNewExecutors((int)message.getScalingMsg().getDivide());
         } else {
           throw new RuntimeException("Invalid scaling decision " + decision);
         }

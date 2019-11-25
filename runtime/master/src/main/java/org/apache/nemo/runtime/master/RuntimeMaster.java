@@ -130,6 +130,8 @@ public final class RuntimeMaster {
 
   private final RendevousServer rendevousServer;
 
+  private final VMManager vmMananger;
+
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final TaskScheduledMap taskScheduledMap,
@@ -143,6 +145,7 @@ public final class RuntimeMaster {
                         final PlanStateManager planStateManager,
                         final ExecutorRegistry executorRegistry,
                         final RendevousServer rendevousServer,
+                        final VMManager vmManager,
                         @Parameter(JobConf.JobId.class) final String jobId,
                         @Parameter(JobConf.DBAddress.class) final String dbAddress,
                         @Parameter(JobConf.DBId.class) final String dbId,
@@ -188,10 +191,14 @@ public final class RuntimeMaster {
     this.warmer = warmer;
     this.warmer.start(evalConf.poolSize);
     this.rendevousServer = rendevousServer;
+    this.vmMananger = vmManager;
 
   }
 
   public void createNewExecutors(final int num) {
+    // create VMs
+    vmMananger.startInstances(num);
+    LOG.info("Requesting containers {}", num);
     containerManager
       .requestContainer(num, containerManager.createResourceSpecOfARunningExecutor());
   }
@@ -370,7 +377,8 @@ public final class RuntimeMaster {
       .bindNamedParameter(JobConf.RendevousServerPort.class, port + "")
       .build();
 
-    LOG.info("Node descriptor: {}", allocatedEvaluator.getEvaluatorDescriptor().getNodeDescriptor());
+    LOG.info("Node descriptor: {}", allocatedEvaluator.getEvaluatorDescriptor().getNodeDescriptor().getInetSocketAddress());
+    // namenode/172.31.27.72:46453
 
     runtimeMasterThread.execute(() ->
       containerManager.onContainerAllocated(executorId, allocatedEvaluator,
@@ -404,6 +412,7 @@ public final class RuntimeMaster {
               .stream().map(entry -> {
               return entry.getValue();
             }).collect(Collectors.toList());
+
 
           executorRegistry.viewExecutors(executors -> {
             for (final ExecutorRepresenter e : executors) {

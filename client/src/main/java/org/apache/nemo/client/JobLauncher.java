@@ -376,7 +376,20 @@ public final class JobLauncher {
                   .build())
                 .build());
 
-            } else {
+            }  else if (decision.equals("cn")) {
+              // create new node
+              final int numNode = Integer.valueOf(split[1]);
+              LOG.info("Creating new nodes {}", numNode);
+
+              driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+                .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+                .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                  .setDecision(decision)
+                  .setDivide(numNode)
+                  .build())
+                .build());
+            }
+            else {
               throw new RuntimeException("Invalid line: " + lastLine);
             }
           }
