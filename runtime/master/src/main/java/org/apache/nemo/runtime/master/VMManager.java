@@ -42,10 +42,10 @@ public final class VMManager {
       instanceNum += 1;
     }
 
+    LOG.info("Starting ec2 instances {}/{}", startIds, System.currentTimeMillis());
     final StartInstancesRequest startRequest = new StartInstancesRequest()
       .withInstanceIds(startIds);
     ec2.startInstances(startRequest);
-    LOG.info("Starting ec2 instances {}/{}", startIds, System.currentTimeMillis());
   }
 
   private void stopInstances(final Collection<String> instanceIds) {
