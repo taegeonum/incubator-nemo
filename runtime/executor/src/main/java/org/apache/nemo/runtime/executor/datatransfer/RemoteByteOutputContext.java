@@ -59,7 +59,8 @@ public final class RemoteByteOutputContext extends AbstractRemoteByteOutputConte
 
     if (sendDataTo.equals(VM)) {
       // sf -> vm
-      // send ack to the vm channel
+      // send ack to the vm channel (why?)
+
       //LOG.info("Sending ack from parent stop output to ");
       final ByteTransferContextSetupMessage ackMessage =
         new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),

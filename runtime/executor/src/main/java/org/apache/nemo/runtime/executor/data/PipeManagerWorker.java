@@ -141,6 +141,9 @@ public final class PipeManagerWorker {
         new PipeTransferContextDescriptor(runtimeEdgeId,
           srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
 
+      final String dstStage = ((StageEdge) runtimeEdge).getDst().getId();
+      final String dstTaskId = RuntimeIdManager.generateTaskId(dstStage, dstTaskIndex, 0);
+
       taskExecutorIdMap.put(new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true), targetExecutorId);
 
       //LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",

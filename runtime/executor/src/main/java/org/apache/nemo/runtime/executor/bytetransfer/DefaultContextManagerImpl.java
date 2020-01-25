@@ -206,8 +206,6 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
       case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {
         // this means that the downstream task will be moved to another machine
         // so we should stop sending data to the downstream task
-        //final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-        //LOG.info("STOP_OUTPUT for moving {} receiveStopSignalFromChild {}", sendDataTo, transferIndex);
         final RemoteByteOutputContext outputContext =  (RemoteByteOutputContext) outputContexts.get(transferIndex);
         //LOG.info("Receiving SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} for index {}, receiveStopSignalFromChild to {}", message.getTaskId(), transferIndex,
         //  sendDataTo);

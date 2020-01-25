@@ -11,6 +11,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.resolver.NameResolver;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -23,6 +24,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class OffloadingHandler {
 
@@ -66,9 +68,24 @@ public final class OffloadingHandler {
 
   private transient CountDownLatch workerInitLatch;
 
-	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap) {
+  private final boolean isSf;
+
+  private final String nameServerAddr;
+  private final int nameServerPort;
+  private final String newExecutorId;
+
+	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap,
+                           final boolean isSf,
+                           final String nameServerAddr,
+                           final int nameServerPort,
+                           final String newExecutorId) {
     Logger.getRootLogger().setLevel(Level.INFO);
     this.lambdaEventHandlerMap = lambdaEventHandlerMap;
+    this.isSf = isSf;
+
+    this.nameServerAddr = nameServerAddr;
+    this.nameServerPort = nameServerPort;
+    this.newExecutorId = newExecutorId;
 
     this.operatingSystemMXBean =
       (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -383,7 +400,8 @@ public final class OffloadingHandler {
           // TODO: OffloadingTransform that receives data from parent tasks should register its id
           // to lambdaEventHandlerMap
           offloadingTransform.prepare(
-            new LambdaRuntimeContext(lambdaEventHandlerMap, this), outputCollector);
+            new LambdaRuntimeContext(lambdaEventHandlerMap, this, isSf,
+              nameServerAddr, nameServerPort, newExecutorId), outputCollector);
 
           System.out.println("End of worker init: " + (System.currentTimeMillis() - st));
 
