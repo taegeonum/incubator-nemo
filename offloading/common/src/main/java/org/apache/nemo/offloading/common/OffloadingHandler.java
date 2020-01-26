@@ -369,6 +369,24 @@ public final class OffloadingHandler {
     public synchronized void onNext(final OffloadingEvent nemoEvent) {
       switch (nemoEvent.getType()) {
         case VM_SCALING_INFO: {
+          // It receives global information such as name server address ...
+          final ByteBuf byteBuf = nemoEvent.getByteBuf();
+          final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+          final DataInputStream dataInputStream = new DataInputStream(bis);
+          try {
+            nameServerAddr = dataInputStream.readUTF();
+            nameServerPort = dataInputStream.readInt();
+            newExecutorId = dataInputStream.readUTF();
+
+            System.out.println(
+              "VM Scaling info..  nameServerAddr: " + nameServerAddr
+                + ", nameSeverPort: " + nameServerPort
+              + ", executorID: " + newExecutorId);
+
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
           break;
         }
         case WORKER_INIT: {

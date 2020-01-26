@@ -99,28 +99,6 @@ public class VMWorker {
                 }
                 break;
               }
-              case VM_SCALING_INFO: {
-                // It receives global information such as name server address ...
-                final ByteBuf byteBuf = event.getByteBuf();
-                final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
-                final DataInputStream dataInputStream = new DataInputStream(bis);
-                try {
-                  nameServerAddr = dataInputStream.readUTF();
-                  nameServerPort = dataInputStream.readInt();
-                  newExecutorId = dataInputStream.readUTF();
-
-                  offloadingHandler.setNameserverAddr(nameServerAddr, nameServerPort);
-                  offloadingHandler.setNewExecutorId(newExecutorId);
-
-                  LOG.info("VM Scaling info..  nameServerAddr: {}, nameSeverPort: {}, executorID: {}",
-                    nameServerAddr, nameServerPort, newExecutorId);
-
-                } catch (IOException e) {
-                  e.printStackTrace();
-                  throw new RuntimeException(e);
-                }
-                break;
-              }
               default:
                 throw new RuntimeException("unsupported type: " + event.getType());
             }
