@@ -158,6 +158,10 @@ public final class TinyTaskWorker {
     offloadingWorker.execute(byteBuf, 1, false);
   }
 
+  public void sendMessage(final ByteBuf byteBuf) {
+    offloadingWorker.execute(byteBuf, 1, false);
+  }
+
   public AtomicInteger getDeletePending() {
     return deletePending;
   }

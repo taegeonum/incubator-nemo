@@ -143,9 +143,8 @@ public final class LambdaByteTransport {//implements AutoCloseable {
 
         serverListeningChannel = listeningChannel;
 
-
         final ByteTransportIdentifier identifier = new ByteTransportIdentifier(localExecutorId);
-        nameResolver.register(identifier,new InetSocketAddress(publicAddress, bindingPort));
+        nameResolver.register(identifier, new InetSocketAddress(publicAddress, bindingPort));
 
         LOG.info("public address: {}, port: {}, executorId: {}, registering to nameResolver", publicAddress, bindingPort, localExecutorId);
         //executorAddressMap.put(localExecutorId, new InetSocketAddress(publicAddress, bindingPort));

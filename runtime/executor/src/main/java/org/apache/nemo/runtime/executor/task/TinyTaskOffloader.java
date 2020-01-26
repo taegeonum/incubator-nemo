@@ -87,6 +87,7 @@ public final class TinyTaskOffloader implements Offloader {
   private final ExecutorThread executorThread;
   private final ScheduledExecutorService scheduledExecutorService;
   private final ScalingOutCounter scalingOutCounter;
+  private final Map<String, String> taskExecutorIdMap;
 
   public TinyTaskOffloader(final String executorId,
                            final TaskExecutor taskExecutor,
@@ -108,7 +109,8 @@ public final class TinyTaskOffloader implements Offloader {
                            final TaskLocationMap taskLocationMap,
                            final ExecutorThread executorThread,
                            final List<DataFetcher> fetchers,
-                           final ScalingOutCounter scalingOutCounter) {
+                           final ScalingOutCounter scalingOutCounter,
+                           final Map<String, String> taskExecutorIdMap) {
     this.executorThread = executorThread;
     this.scheduledExecutorService = executorThread.scheduledExecutorService;
     this.executorId = executorId;
@@ -122,6 +124,7 @@ public final class TinyTaskOffloader implements Offloader {
     this.sourceVertexDataFetcher = sourceDataFetcher;
 
     this.scalingOutCounter = scalingOutCounter;
+    this.taskExecutorIdMap = taskExecutorIdMap;
 
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
     this.taskId = taskId;
@@ -461,7 +464,8 @@ public final class TinyTaskOffloader implements Offloader {
         prevWatermarkTimestamp,
         unboundedSource,
         stateMap,
-        coderMap);
+        coderMap,
+        taskExecutorIdMap);
     } else {
       readyTask = new ReadyTask(
         taskId,
@@ -471,7 +475,8 @@ public final class TinyTaskOffloader implements Offloader {
         -1,
         null,
         stateMap,
-        coderMap);
+        coderMap,
+        taskExecutorIdMap);
     }
 
 

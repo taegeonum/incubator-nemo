@@ -450,7 +450,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         taskLocationMap,
         executorThread,
         allFetchers,
-        scalingOutCounter));
+        scalingOutCounter,
+        pipeManagerWorker.getTaskExecutorIdMap()));
 
     } else {
       offloader = Optional.empty();

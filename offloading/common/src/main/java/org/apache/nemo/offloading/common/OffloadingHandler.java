@@ -70,22 +70,15 @@ public final class OffloadingHandler {
 
   private final boolean isSf;
 
-  private final String nameServerAddr;
-  private final int nameServerPort;
-  private final String newExecutorId;
+  private String nameServerAddr;
+  private int nameServerPort;
+  private String newExecutorId;
 
 	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap,
-                           final boolean isSf,
-                           final String nameServerAddr,
-                           final int nameServerPort,
-                           final String newExecutorId) {
+                           final boolean isSf) {
     Logger.getRootLogger().setLevel(Level.INFO);
     this.lambdaEventHandlerMap = lambdaEventHandlerMap;
     this.isSf = isSf;
-
-    this.nameServerAddr = nameServerAddr;
-    this.nameServerPort = nameServerPort;
-    this.newExecutorId = newExecutorId;
 
     this.operatingSystemMXBean =
       (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -103,6 +96,15 @@ public final class OffloadingHandler {
     this.status = LambdaStatus.INIT;
     //this.classLoaderCallable = classLoaderCallable;
 	}
+
+	public void setNameserverAddr(final String addr, final int port) {
+	  this.nameServerAddr = addr;
+	  this.nameServerPort = port;
+  }
+
+  public void setNewExecutorId(final String id) {
+	  this.newExecutorId = id;
+  }
 
   private Channel channelOpen(final Map<String, Object> input) {
     // 1) connect to the VM worker
@@ -366,6 +368,9 @@ public final class OffloadingHandler {
     @Override
     public synchronized void onNext(final OffloadingEvent nemoEvent) {
       switch (nemoEvent.getType()) {
+        case VM_SCALING_INFO: {
+          break;
+        }
         case WORKER_INIT: {
           System.out.println("Worker init... bytes: " + nemoEvent.getByteBuf().readableBytes());
           final long st = System.currentTimeMillis();

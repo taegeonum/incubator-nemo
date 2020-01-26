@@ -47,6 +47,8 @@ public class VMWorker {
   private int nameServerPort = 0;
   private String newExecutorId;
 
+  private OffloadingHandler offloadingHandler;
+
   private VMWorker() {
 
     this.lambdaEventHandlerMap = new ConcurrentHashMap<>();
@@ -67,7 +69,8 @@ public class VMWorker {
             switch (event.getType()) {
               case CLIENT_HANDSHAKE: {
                 final OffloadingHandler handler = new OffloadingHandler(
-                  lambdaEventHandlerMap, false, nameServerAddr, nameServerPort, newExecutorId);
+                  lambdaEventHandlerMap, false);
+                offloadingHandler = handler;
                 handlers.add(handler);
                 final byte[] bytes = new byte[event.getByteBuf().readableBytes()];
                 event.getByteBuf().readBytes(bytes);
@@ -105,6 +108,9 @@ public class VMWorker {
                   nameServerAddr = dataInputStream.readUTF();
                   nameServerPort = dataInputStream.readInt();
                   newExecutorId = dataInputStream.readUTF();
+
+                  offloadingHandler.setNameserverAddr(nameServerAddr, nameServerPort);
+                  offloadingHandler.setNewExecutorId(newExecutorId);
 
                   LOG.info("VM Scaling info..  nameServerAddr: {}, nameSeverPort: {}, executorID: {}",
                     nameServerAddr, nameServerPort, newExecutorId);

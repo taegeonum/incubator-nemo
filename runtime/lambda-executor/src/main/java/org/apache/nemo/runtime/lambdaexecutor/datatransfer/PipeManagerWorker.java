@@ -51,7 +51,7 @@ public final class PipeManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(PipeManagerWorker.class.getName());
 
   private final String executorId;
-  private final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap;
+  private final Map<String, String> taskExecutorIdMap;
 
   // To-Executor connections
   private final ByteTransfer byteTransfer;
@@ -67,7 +67,7 @@ public final class PipeManagerWorker {
 
   public PipeManagerWorker(final String executorId,
                            final ByteTransfer byteTransfer,
-                           final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap,
+                           final Map<String, String> taskExecutorIdMap,
                            final Map<String, Serializer> serializerMap,
                            final Map<String, TaskLoc> taskLocationMap,
                            final RelayServerClient relayServerClient,
@@ -162,11 +162,10 @@ public final class PipeManagerWorker {
                                                     final int dstTaskIndex) {
     final String runtimeEdgeId = runtimeEdge.getId();
     // TODO: check whether it is in SF or not
-    final String targetExecutorId = taskExecutorIdMap.get(
-      new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true));
-
     final String dstStage = ((StageEdge) runtimeEdge).getDst().getId();
     final String dstTaskId = RuntimeIdManager.generateTaskId(dstStage, dstTaskIndex, 0);
+
+    final String targetExecutorId = taskExecutorIdMap.get(dstTaskId);
     final TaskLoc loc = taskLocationMap.get(dstTaskId);
 
     //LOG.info("Locatoin of {}: {}", dstTaskId, loc);
@@ -211,12 +210,10 @@ public final class PipeManagerWorker {
                                                       final TaskExecutor taskExecutor,
                                                       final DataFetcher dataFetcher) {
     final String runtimeEdgeId = runtimeEdge.getId();
-    final String srcExecutorId = taskExecutorIdMap.get(
-      new NemoTriple(runtimeEdge.getId(), srcTaskIndex, false));
-
-
     final String srcStage = ((StageEdge) runtimeEdge).getSrc().getId();
     final String dstTaskId = RuntimeIdManager.generateTaskId(srcStage, srcTaskIndex, 0);
+
+    final String srcExecutorId = taskExecutorIdMap.get(dstTaskId);
     final TaskLoc loc = taskLocationMap.get(dstTaskId);
 
     //LOG.info("Call read {}, {}, {}, {}", srcTaskIndex, runtimeEdge.getId(), dstTaskIndex, loc);
