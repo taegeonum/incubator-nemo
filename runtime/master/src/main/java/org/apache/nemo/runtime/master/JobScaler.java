@@ -606,7 +606,7 @@ public final class JobScaler {
 
     int offloadingCnt = 0;
 
-    final double ratio = (1 - thp / input_rate);
+    final double ratio = (1 - ((double)thp * evalConf.scalingAlpha / input_rate));
 
     // # of vm scaling workers for each vm
     final int numWorkers = (int) Math.ceil((1 / ratio) - 1);
