@@ -612,7 +612,7 @@ public final class JobScaler {
     final int numWorkers = (int) Math.ceil((1 / ratio) - 1);
     final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
 
-    LOG.info("# of vm scaling workers: {}", numWorkers);
+    LOG.info("ratio {}, # of vm scaling workers: {}", ratio, numWorkers);
 
     for (final ExecutorRepresenter representer :
       taskScheduledMap.getScheduledStageTasks().keySet()) {
