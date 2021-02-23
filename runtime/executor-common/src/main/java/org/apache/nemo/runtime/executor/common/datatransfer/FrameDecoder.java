@@ -210,7 +210,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       }
 
     } else if ((flags & ((byte) (1 << 4))) == 0 &&
-      (flags & ((byte) (1 << 3))) == 1) {
+      (flags & ((byte) (1 << 3))) == (byte) (1 << 3)) {
       // flag: 01: => data message
 
       dataType = DataFrameEncoder.DataType.values()[(int) in.readByte()];
@@ -242,7 +242,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         }
       }
 
-    } else if ((flags & ((byte) (1 << 4))) == 1 &&
+    } else if ((flags & ((byte) (1 << 4))) == (byte) (1 << 4) &&
       (flags & ((byte) (1 << 3))) == 0) {
       // flag: 10: => offloading control message
 
@@ -250,8 +250,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       in.readInt();
 
       offloadingControlBytesToRead = in.readInt();
-    } else if ((flags & ((byte) (1 << 4))) == 1 &&
-      (flags & ((byte) (1 << 3))) == 1) {
+    } else if ((flags & ((byte) (1 << 4))) == (byte) (1 << 4) &&
+      (flags & ((byte) (1 << 3))) == (byte) (1 << 3)) {
       // flag: 11: => offloading data mesage
 
       dataType = DataFrameEncoder.DataType.values()[(int) in.readByte()];
