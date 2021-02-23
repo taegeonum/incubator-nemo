@@ -10,6 +10,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.common.OffloadingDecoder;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.SFTaskMetrics;

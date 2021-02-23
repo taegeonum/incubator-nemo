@@ -1,8 +1,8 @@
 package org.apache.nemo.runtime.lambdaexecutor.middle;
 
-import org.apache.nemo.offloading.common.OffloadingDecoder;
-import org.apache.nemo.offloading.common.OffloadingEncoder;
-import org.apache.nemo.offloading.common.OffloadingSerializer;
+import org.apache.nemo.common.OffloadingDecoder;
+import org.apache.nemo.common.OffloadingEncoder;
+import org.apache.nemo.common.OffloadingSerializer;
 import org.apache.nemo.runtime.executor.common.Serializer;
 
 import java.util.Map;

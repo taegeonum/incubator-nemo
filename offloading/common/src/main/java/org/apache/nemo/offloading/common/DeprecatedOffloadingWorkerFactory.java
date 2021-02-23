@@ -2,6 +2,7 @@ package org.apache.nemo.offloading.common;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.common.OffloadingSerializer;
 
 
 public interface DeprecatedOffloadingWorkerFactory {

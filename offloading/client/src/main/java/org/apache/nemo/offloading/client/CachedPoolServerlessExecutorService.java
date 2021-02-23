@@ -5,6 +5,7 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.util.IllegalReferenceCountException;
 import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.common.OffloadingSerializer;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.offloading.common.DeprecatedOffloadingWorker;
 import org.apache.nemo.offloading.common.DeprecatedOffloadingWorkerFactory;

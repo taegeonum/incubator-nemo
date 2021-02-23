@@ -2,8 +2,8 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.beam.sdk.coders.Coder;
-import org.apache.nemo.offloading.common.OffloadingDecoder;
-import org.apache.nemo.offloading.common.OffloadingEncoder;
+import org.apache.nemo.common.OffloadingDecoder;
+import org.apache.nemo.common.OffloadingEncoder;
 
 import java.io.IOException;
 import java.io.InputStream;

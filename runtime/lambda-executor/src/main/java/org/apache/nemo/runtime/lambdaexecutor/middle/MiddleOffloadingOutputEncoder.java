@@ -1,12 +1,11 @@
 package org.apache.nemo.runtime.lambdaexecutor.middle;
 
 import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
-import org.apache.nemo.offloading.common.OffloadingEncoder;
+import org.apache.nemo.common.OffloadingEncoder;
 import org.apache.nemo.runtime.executor.common.OffloadingDoneEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;

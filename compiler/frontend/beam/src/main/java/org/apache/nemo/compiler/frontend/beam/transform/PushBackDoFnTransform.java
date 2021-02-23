@@ -21,7 +21,6 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.Unpooled;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -31,8 +30,8 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
+import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 import org.apache.nemo.compiler.frontend.beam.coder.PushBackCoder;
@@ -70,7 +69,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   private transient OffloadingSerializer<
     Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>> offloadingSerializer;
 
-  private ServerlessExecutorProvider slsProvider;
+  // private ServerlessExecutorProvider slsProvider;
 
   /**
    * PushBackDoFnTransform Constructor.
@@ -91,9 +90,10 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;
-    this.offloadingTransform = new PushBackOffloadingTransform(
-      doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
+    this.offloadingTransform = null;
+    // new PushBackOffloadingTransform(
+    //  doFn, inputCoder, outputCoders, mainOutputTag,
+    //  additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
     this.mainCoder = mainCoder;
     this.sideCoder = sideCoder;
   }
@@ -148,7 +148,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
       initialized = true;
 
-      slsProvider = getContext().getServerlessExecutorProvider();
+      // slsProvider = getContext().getServerlessExecutorProvider();
     }
 
     // Need to distinguish side/main inputs and push-back main inputs.
@@ -202,10 +202,12 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
           }
 
           final int lastIndex = byteBufList.size() - 1;
+          /*
           if (byteBufList.get(lastIndex).buffer().readableBytes() > Constants.FLUSH_BYTES) {
             final ByteBuf byteBuf = Unpooled.buffer();
             byteBufList.add(new ByteBufOutputStream(byteBuf));
           }
+          */
 
           final ByteBufOutputStream bos = byteBufList.get(byteBufList.size() - 1);
           try {
@@ -236,8 +238,8 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     LOG.info("Start to offloading");
     final long st = System.currentTimeMillis();
 
-    final ServerlessExecutorService<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>> slsExecutor =
-      slsProvider.newCachedPool(offloadingTransform, offloadingSerializer, eventHandler);
+    // final ServerlessExecutorService<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>> slsExecutor =
+    //  slsProvider.newCachedPool(offloadingTransform, offloadingSerializer, eventHandler);
 
     // encode side input
     for (final ByteBufOutputStream bos : byteBufList) {
@@ -246,7 +248,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         sideCoder.encode(sideInput, bos);
         bos.close();
 
-        slsExecutor.execute(bos.buffer());
+        // slsExecutor.execute(bos.buffer());
       } catch (IOException e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -254,12 +256,12 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     }
 
 
-    LOG.info("# of partition: {}, partitionSize: {}, execute latency: {}",
-      byteBufList.size(), Constants.FLUSH_BYTES, System.currentTimeMillis() - st);
+    // LOG.info("# of partition: {}, partitionSize: {}, execute latency: {}",
+    //  byteBufList.size(), Constants.FLUSH_BYTES, System.currentTimeMillis() - st);
 
     final long st1 = System.currentTimeMillis();
 
-    slsExecutor.shutdown();
+    // slsExecutor.shutdown();
 
     LOG.info("Time to wait shutdown {}, timestamp: {}", System.currentTimeMillis() - st1,
       System.currentTimeMillis());

@@ -6,6 +6,8 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.common.OffloadingDecoder;
+import org.apache.nemo.common.OffloadingEncoder;
 import org.apache.nemo.offloading.client.SharedCachedPool;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.common.TaskHandlingEvent;

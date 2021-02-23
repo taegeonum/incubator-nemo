@@ -15,6 +15,8 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.common.OffloadingDecoder;
+import org.apache.nemo.common.OffloadingEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 
 import java.io.*;

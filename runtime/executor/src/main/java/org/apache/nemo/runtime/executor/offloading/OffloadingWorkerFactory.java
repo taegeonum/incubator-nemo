@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.EventHandler;
-import org.apache.nemo.offloading.common.OffloadingSerializer;
+import org.apache.nemo.common.OffloadingSerializer;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 

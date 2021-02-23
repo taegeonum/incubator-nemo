@@ -1,6 +1,7 @@
 package org.apache.nemo.offloading.common;
 
 import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.common.OffloadingSerializer;
 
 public interface ServerlessExecutorProvider {
 

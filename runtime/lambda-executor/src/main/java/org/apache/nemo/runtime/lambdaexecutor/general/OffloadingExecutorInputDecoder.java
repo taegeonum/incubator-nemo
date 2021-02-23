@@ -1,7 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.nemo.offloading.common.OffloadingDecoder;
+import org.apache.nemo.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;

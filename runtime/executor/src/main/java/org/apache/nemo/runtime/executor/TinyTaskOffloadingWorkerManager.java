@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.executor;
 
 import io.netty.buffer.*;
 import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.common.OffloadingSerializer;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.*;

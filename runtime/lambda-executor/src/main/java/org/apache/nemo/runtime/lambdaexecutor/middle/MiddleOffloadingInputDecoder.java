@@ -2,9 +2,8 @@ package org.apache.nemo.runtime.lambdaexecutor.middle;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.offloading.common.OffloadingDecoder;
+import org.apache.nemo.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingDataEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.offloading.common;
+package org.apache.nemo.common;
 
 import java.io.IOException;
 import java.io.OutputStream;
