@@ -62,6 +62,11 @@ public final class OffloadingEventCoder {
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
 
+      msg.readByte();
+      msg.readByte();
+      msg.readInt();
+      final int len = msg.readInt();
+
       try {
         final OffloadingEvent.Type type = OffloadingEvent.Type.values()[msg.readInt()];
         //System.out.println("Decode message; " + type.name() + ", size: " + msg.readableBytes());
