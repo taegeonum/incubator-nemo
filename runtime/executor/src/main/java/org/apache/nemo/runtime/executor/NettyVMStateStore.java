@@ -11,7 +11,7 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.NettyServerTransport;
-import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.runtime.executor.common.controlmessages.state.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;

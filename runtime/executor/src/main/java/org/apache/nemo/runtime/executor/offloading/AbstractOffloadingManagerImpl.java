@@ -5,13 +5,16 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.common.TaskHandlingEvent;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.*;
-import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
-import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.DefaultPipeIndexMapWorkerImpl;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.slf4j.Logger;
@@ -40,7 +43,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   protected final EvalConf evalConf;
 
   private final String executorId;
-  private final PipeIndexMapWorker pipeIndexMapWorker;
+  private final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker;
   private final ByteBuf offloadExecutorByteBuf;
 
   private final ExecutorService offloadingManagerThread;
@@ -55,7 +58,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   public AbstractOffloadingManagerImpl(final OffloadingWorkerFactory workerFactory,
                                        final TaskExecutorMapWrapper taskExecutorMapWrapper,
                                        final EvalConf evalConf,
-                                       final PipeIndexMapWorker pipeIndexMapWorker,
+                                       final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker,
                                        final String executorId,
                                        final String address,
                                        final int nettyStatePort,
@@ -77,7 +80,6 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       evalConf.isLocalSource,
       executorId,
       address,
-      workerFactory.getDataTransportPort(),
       nettyStatePort);
 
     final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();

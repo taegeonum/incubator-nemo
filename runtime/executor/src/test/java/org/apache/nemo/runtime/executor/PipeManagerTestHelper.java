@@ -14,7 +14,7 @@ import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
@@ -22,7 +22,6 @@ import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFac
 import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
 import org.apache.nemo.runtime.executor.offloading.DefaultOffloadingWorkerFactory;
 import org.apache.nemo.runtime.executor.offloading.OffloadingWorkerFactory;
-import org.apache.nemo.runtime.executor.offloading.OneTaskOneWorkerOffloadingManagerImpl;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.master.scheduler.StreamingScheduler;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;

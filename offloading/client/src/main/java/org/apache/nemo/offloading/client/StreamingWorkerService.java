@@ -3,6 +3,7 @@ package org.apache.nemo.offloading.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.offloading.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

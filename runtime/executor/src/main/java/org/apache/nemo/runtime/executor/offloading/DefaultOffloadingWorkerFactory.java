@@ -9,13 +9,14 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import io.netty.util.concurrent.ImmediateEventExecutor;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.ControlFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,18 +31,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFactory {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultOffloadingWorkerFactory.class.getName());
 
-  private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-
   private OffloadingEventHandler nemoEventHandler;
   private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
 
-  private final NettyServerTransport workerControlTransport;
+  private final NettyServerTransport workerTransport;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   private final AtomicInteger dataId = new AtomicInteger(0);
   private final AtomicInteger workerId = new AtomicInteger(0);
 
-  private final NettyServerTransport workerDataTransport;
   /*
   private final AtomicInteger pendingRequest = new AtomicInteger(0);
   private final AtomicInteger extraRequest = new AtomicInteger(0);
@@ -49,44 +47,32 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
 
   private final OffloadingRequester requestor;
 
-  private final ControlFrameEncoder controlFrameEncoder;
-  private final DataFrameEncoder dataFrameEncoder;
-  private final Map<String, Channel> dataTransportChannelMap;
-  private final OutputWriterFlusher outputWriterFlusher;
-  private final OffloadingFrameDecoder frameDecoder;
-
   @Inject
   private DefaultOffloadingWorkerFactory(final TcpPortProvider tcpPortProvider,
                                          final OffloadingRequesterFactory requesterFactory,
                                          final ControlFrameEncoder controlFrameEncoder,
                                          final EvalConf evalConf,
-                                         final OffloadingFrameDecoder frameDecoder,
-                                         final DataFrameEncoder dataFrameEncoder) {
-    this.controlFrameEncoder = controlFrameEncoder;
-    this.dataFrameEncoder = dataFrameEncoder;
-    this.frameDecoder = frameDecoder;
-    this.dataTransportChannelMap = new ConcurrentHashMap<>();
+                                         final OffloadingWorkerConnectionChannelInitializer channelInitializer,
+                                         final OutputWriterFlusher outputWriterFlusher) {
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
-    this.workerControlTransport = new NettyServerTransport(
-      tcpPortProvider, new NettyChannelInitializer(
-        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),
-      new NioEventLoopGroup(5,
-      new DefaultThreadFactory("WorkerControlTransport")),
+
+    channelInitializer.setChannelInboundHandler(
+        new NettyServerSideChannelHandler(outputWriterFlusher, nemoEventHandler));
+
+    this.workerTransport = new NettyServerTransport(
+      tcpPortProvider, channelInitializer,
+      new NioEventLoopGroup(10,
+      new DefaultThreadFactory("WorkerTransport")),
       false);
 
-    this.workerDataTransport = new NettyServerTransport(
-      tcpPortProvider, new WorkerDataTransportChannelInitializer(),
-      new NioEventLoopGroup(5),
-      false);
-    this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
 
     LOG.info("Netty server lambda transport created end");
     initialized.set(true);
 
     this.requestor = requesterFactory.getInstance(
-      nemoEventHandler, workerControlTransport.getPublicAddress(),
-      workerControlTransport.getPort());
+      nemoEventHandler, workerTransport.getPublicAddress(),
+      workerTransport.getPort());
   }
 
   private void createChannelRequest() {
@@ -108,7 +94,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
                                                 final EventHandler eventHandler) {
     LOG.info("Create streaming worker request!");
     createChannelRequest();
-    final Future<Pair<Channel, Pair<Channel, OffloadingEvent>>> channelFuture = new Future<Pair<Channel, Pair<Channel, OffloadingEvent>>>() {
+    final Future<Pair<Channel, OffloadingEvent>> channelFuture = new Future<Pair<Channel, OffloadingEvent>>() {
 
       @Override
       public boolean cancel(boolean mayInterruptIfRunning) {
@@ -126,7 +112,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
       }
 
       @Override
-      public Pair<Channel, Pair<Channel, OffloadingEvent>> get() throws InterruptedException, ExecutionException {
+      public Pair<Channel, OffloadingEvent> get() throws InterruptedException, ExecutionException {
         final Pair<Channel, OffloadingEvent> pair;
         try {
           pair = nemoEventHandler.getHandshakeQueue().take();
@@ -140,8 +126,11 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
 
         // Data channel!!
         final Pair<Channel, OffloadingEvent> workerDonePair = nemoEventHandler.getWorkerReadyQueue().take();
-        final int port = workerDonePair.right().getByteBuf().readInt();
-        workerDonePair.right().getByteBuf().release();
+        // final int port = workerDonePair.right().getByteBuf().readInt();
+        // workerDonePair.right().getByteBuf().release();
+
+        return workerDonePair;
+        /*
         final String addr = workerDonePair.left().remoteAddress().toString().split(":")[0];
 
         LOG.info("Get data channel for lambda {}:{}", addr, port);
@@ -156,10 +145,11 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
         // TODO: We configure data channel!!
         LOG.info("Waiting worker init done");
         return Pair.of(workerDonePair.left(), Pair.of(dataTransportChannelMap.get(fullAddr), workerDonePair.right()));
+        */
       }
 
       @Override
-      public Pair<Channel, Pair<Channel, OffloadingEvent>> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+      public Pair<Channel, OffloadingEvent> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
         return null;
       }
     };
@@ -169,48 +159,11 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   }
 
   @Override
-  public int getDataTransportPort() {
-    return workerDataTransport.getPort();
-  }
-
-  @Override
   public void deleteOffloadingWorker(OffloadingWorker worker) {
 
     LOG.info("Delete prepareOffloading worker: {}", worker.getChannel().remoteAddress());
 
     final Channel channel = worker.getChannel();
     requestor.destroyChannel(channel);
-
-  }
-
-  @ChannelHandler.Sharable
-  final class WorkerDataTransportChannelInitializer extends ChannelInitializer<SocketChannel> {
-
-    @Override
-    protected void initChannel(SocketChannel ch) throws Exception {
-      LOG.info("Data transport for prepareOffloading worker initialized {}", ch);
-      outputWriterFlusher.registerChannel(ch);
-      dataTransportChannelMap.put(ch.remoteAddress().toString(), ch);
-
-      ch.pipeline()
-        .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
-        Integer.MAX_VALUE, 0, 4, 0, 4))
-        // inbound
-        .addLast(frameDecoder)
-        // outbound
-        .addLast(controlFrameEncoder)
-        .addLast(dataFrameEncoder);
-    }
-
-    /**
-     * Remove the inactive channel from channelGroup.
-     * @param ctx the context object
-     * @throws Exception
-     */
-    @Override
-    public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
-      outputWriterFlusher.removeChannel(ctx.channel());
-      LOG.info("Channel inactive {}", ctx.channel());
-    }
   }
 }

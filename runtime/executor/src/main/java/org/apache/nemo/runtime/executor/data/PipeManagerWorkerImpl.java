@@ -28,8 +28,8 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.ExecutorChannelManagerMap;
-import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
-import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.DefaultPipeIndexMapWorkerImpl;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.TaskScheduledMapWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.common.Serializer;
@@ -67,7 +67,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   // 여기서 pipe manager worker끼리 N-to-N connection 맺어야.
   private final ExecutorChannelManagerMap executorChannelManagerMap;
   private final TaskScheduledMapWorker taskScheduledMapWorker;
-  private final PipeIndexMapWorker pipeIndexMapWorker;
+  private final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker;
   private final TaskExecutorMapWrapper taskExecutorMapWrapper;
 
   // Pipe input
@@ -94,7 +94,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                 final ByteTransfer byteTransfer,
                                 final ExecutorChannelManagerMap executorChannelManagerMap,
                                 final TaskScheduledMapWorker taskScheduledMapWorker,
-                                final PipeIndexMapWorker pipeIndexMapWorker,
+                                final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker,
                                 final TaskExecutorMapWrapper taskExecutorMapWrapper) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;

@@ -17,14 +17,13 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.VMWorkerConf;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.OffloadingEventHandler;
-import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +35,6 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
 

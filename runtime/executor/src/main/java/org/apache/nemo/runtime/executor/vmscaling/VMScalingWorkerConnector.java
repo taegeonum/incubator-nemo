@@ -9,11 +9,13 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.SFTaskMetrics;
 import org.apache.nemo.runtime.executor.StageOffloadingWorkerManager;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingOutputDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,9 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
-import static org.apache.nemo.offloading.common.OffloadingEvent.Type.CPU_LOAD;
-import static org.apache.nemo.offloading.common.OffloadingEvent.Type.END;
-import static org.apache.nemo.offloading.common.OffloadingEvent.Type.RESULT;
 
 public final class VMScalingWorkerConnector {
 

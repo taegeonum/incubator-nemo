@@ -1,5 +1,6 @@
 package org.apache.nemo.offloading.client;
 
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.offloading.common.*;
 
 import javax.inject.Inject;

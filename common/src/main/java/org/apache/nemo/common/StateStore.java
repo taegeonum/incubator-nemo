@@ -1,4 +1,4 @@
-package org.apache.nemo.offloading.common;
+package org.apache.nemo.common;
 
 
 import java.io.InputStream;

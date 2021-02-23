@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.common.ir;
 
-import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.common.StateStore;
 
 import java.io.IOException;
 import java.io.Serializable;

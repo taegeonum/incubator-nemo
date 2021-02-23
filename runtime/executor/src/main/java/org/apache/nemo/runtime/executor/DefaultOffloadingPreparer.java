@@ -3,8 +3,8 @@ package org.apache.nemo.runtime.executor;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
-import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.common.OffloadingPreparer;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 
 import javax.inject.Inject;
@@ -14,11 +14,11 @@ import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventTyp
 
 public final class DefaultOffloadingPreparer implements OffloadingPreparer {
 
-  private final PipeIndexMapWorker pipeIndexMapWorker;
+  private final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker;
   private final TaskExecutorMapWrapper taskExecutorMapWrapper;
 
   @Inject
-  private DefaultOffloadingPreparer(final PipeIndexMapWorker pipeIndexMapWorker,
+  private DefaultOffloadingPreparer(final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker,
                                     final TaskExecutorMapWrapper taskExecutorMapWrapper) {
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;

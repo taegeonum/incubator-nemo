@@ -11,9 +11,10 @@ import org.apache.nemo.common.TransferKey;
 import org.apache.nemo.common.VMWorkerConf;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
-import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
@@ -29,7 +30,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class VMWorkerManagerInMaster {
   private static final Logger LOG = LoggerFactory.getLogger(VMWorkerManagerInMaster.class.getName());
 
-  private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private OffloadingEventHandler nemoEventHandler;
   private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
 
@@ -53,12 +53,13 @@ public final class VMWorkerManagerInMaster {
     final EvalConf evalConf,
     final TaskScheduledMapMaster taskScheduledMap,
     final TransferIndexMaster transferIndexMaster,
-    final ExecutorCpuUseMap cpuMap) {
+    final ExecutorCpuUseMap cpuMap,
+    final OutputWriterFlusher outputWriterFlusher) {
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
-      new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),
+      new NettyServerSideChannelHandler(outputWriterFlusher, nemoEventHandler)),
       new NioEventLoopGroup(2,
         new DefaultThreadFactory("VMWorkerManager")),
       true);

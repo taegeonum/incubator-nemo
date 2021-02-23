@@ -21,10 +21,10 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.ChannelStatus;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.Serializer;
@@ -190,6 +190,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
       case RUNNING: {
         //LOG.info("Output stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.OUTPUT_STOP;
+
 
         /*
         executorThread.queue.add(() -> {

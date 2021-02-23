@@ -7,6 +7,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.burstypolicy.TaskOffloadingPolicy;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.monitoring.CpuEventModel;
 import org.apache.nemo.runtime.executor.monitoring.PolynomialCpuTimeModel;
 import org.apache.nemo.runtime.executor.monitoring.SystemLoadProfiler;

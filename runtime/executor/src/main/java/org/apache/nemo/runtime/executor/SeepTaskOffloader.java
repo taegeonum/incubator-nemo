@@ -4,6 +4,7 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.monitoring.CpuEventModel;
 import org.apache.nemo.runtime.executor.monitoring.PolynomialCpuTimeModel;
 import org.apache.nemo.runtime.executor.monitoring.SystemLoadProfiler;

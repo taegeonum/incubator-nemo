@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.offloading.common.TaskHandlingEvent;
+
+import org.apache.nemo.common.TaskHandlingEvent;
 
 public interface OffloadingManager {
   // void prepareOffloading(String taskId, ExecutorThreadQueue et);

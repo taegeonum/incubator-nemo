@@ -7,7 +7,6 @@ import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.offloading.common.ServerlessExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,8 +28,6 @@ public final class OperatorMetricCollector {
   public int serializedCnt;
   private final Serializer serializer;
   private final Edge edge;
-
-  private ServerlessExecutorService serverlessExecutorService;
 
   public boolean isOffloading = false;
 
@@ -65,10 +62,6 @@ public final class OperatorMetricCollector {
     this.taskId = taskId;
 
     //LOG.info("Sampling rate of {}: {}", srcVertex, samplingRate);
-  }
-
-  public void setServerlessExecutorService(final ServerlessExecutorService sls) {
-    serverlessExecutorService = sls;
   }
 
   @Override
@@ -118,7 +111,7 @@ public final class OperatorMetricCollector {
     compositeByteBuf.addComponents(true, lengthBuf, inputBuffer);
     // execute
 
-    serverlessExecutorService.execute(compositeByteBuf);
+    // serverlessExecutorService.execute(compositeByteBuf);
 
     // reset
     inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();

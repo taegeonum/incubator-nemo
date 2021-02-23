@@ -14,6 +14,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 
 import java.io.*;
 import java.lang.management.ManagementFactory;
@@ -76,6 +78,7 @@ public final class OffloadingHandler {
   private final boolean testing;
 
   private final Map<String, TaskCaching> stageTaskMap = new HashMap<>();
+  private OffloadingChannelInitializer offloadingChannelInitializer;
 
 	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap,
                            final boolean isSf,
@@ -95,11 +98,16 @@ public final class OffloadingHandler {
         new DefaultThreadFactory("hello" + "-ClientWorker"));
     this.clientBootstrap = new Bootstrap();
     this.map = new ConcurrentHashMap<>();
+
+    this.offloadingChannelInitializer = new OffloadingChannelInitializer(
+      new OffloadingPipeManagerWorkerImpl(), new NettyLambdaInboundHandler(map));
+
     this.clientBootstrap.group(clientWorkerGroup)
-        .channel(NioSocketChannel.class)
-        .handler(new NettyChannelInitializer(new NettyLambdaInboundHandler(map)))
-        .option(ChannelOption.SO_REUSEADDR, true)
-        .option(ChannelOption.SO_KEEPALIVE, true);
+      .channel(NioSocketChannel.class)
+      .handler(offloadingChannelInitializer)
+      .option(ChannelOption.SO_REUSEADDR, true)
+      .option(ChannelOption.SO_KEEPALIVE, true);
+
     this.status = LambdaStatus.INIT;
     //this.classLoaderCallable = classLoaderCallable;
 	}
@@ -115,7 +123,7 @@ public final class OffloadingHandler {
 
 
   private Channel channelOpen(final String address, final int port) {
-    // 1) connect to the VM worker
+    // 1) connect to the VM worker)
 
     while (true) {
       final ChannelFuture channelFuture;
@@ -304,8 +312,8 @@ public final class OffloadingHandler {
     }
 
     if (workerInitLatch.getCount() == 0) {
-      final byte[] addrPortBytes = ByteBuffer.allocate(4).putInt(executorDataAddrPort).array();
-      opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, addrPortBytes, addrPortBytes.length));
+      // final byte[] addrPortBytes = ByteBuffer.allocate(4).putInt(executorDataAddrPort).array();
+      opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, new byte[0], 0));
       LOG.info("Sending worker init done");
     }
 
@@ -476,7 +484,7 @@ public final class OffloadingHandler {
           offloadingTransform.prepare(
             new LambdaRuntimeContext(lambdaEventHandlerMap, this, isSf,
               nameServerAddr, nameServerPort, newExecutorId, opendChannel, throttleRate,
-              testing, stageTaskMap), outputCollector);
+              testing, stageTaskMap, offloadingChannelInitializer.pipeManagerWorker), outputCollector);
 
           LOG.info("End of offloading prepare");
 

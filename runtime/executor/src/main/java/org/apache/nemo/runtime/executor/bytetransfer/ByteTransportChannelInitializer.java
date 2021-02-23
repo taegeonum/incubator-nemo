@@ -23,12 +23,13 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
+import org.apache.nemo.runtime.executor.DefaultPipeIndexMapWorkerImpl;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -79,7 +80,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final ControlFrameEncoder controlFrameEncoder;
   private final DataFrameEncoder dataFrameEncoder;
   private final String localExecutorId;
-  private final PipeIndexMapWorker taskTransferIndexMap;
+  private final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker;
 
 
   private final ConcurrentMap<Integer, ByteInputContext> inputContexts = new ConcurrentHashMap<>();
@@ -92,6 +93,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final OutputWriterFlusher outputWriterFlusher;
   private final RelayServer relayServer;
   private final TaskLocationMap taskLocationMap;
+  private final TaskExecutorMapWrapper taskExecutorMapWrapper;
 
   /**
    * Creates a netty channel initializer.
@@ -102,24 +104,27 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
    */
   @Inject
   private ByteTransportChannelInitializer(
-                                          final ControlFrameEncoder controlFrameEncoder,
-                                          final DataFrameEncoder dataFrameEncoder,
-                                          final PipeIndexMapWorker taskTransferIndexMap,
-                                          @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
-                                          final PersistentConnectionToMasterMap toMaster,
-                                          final EvalConf evalConf,
-                                          final RelayServer relayServer,
-                                          final TaskLocationMap taskLocationMap) {
+    final ControlFrameEncoder controlFrameEncoder,
+    final DataFrameEncoder dataFrameEncoder,
+    final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker,
+    @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
+    final PersistentConnectionToMasterMap toMaster,
+    final EvalConf evalConf,
+    final RelayServer relayServer,
+    final TaskExecutorMapWrapper taskExecutorMapWrapper,
+    final TaskLocationMap taskLocationMap,
+    final OutputWriterFlusher outputWriterFlusher) {
 
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
     this.localExecutorId = localExecutorId;
-    this.taskTransferIndexMap = taskTransferIndexMap;
+    this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.channelServiceExecutor = Executors.newCachedThreadPool();
     this.toMaster = toMaster;
-    this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
+    this.outputWriterFlusher = outputWriterFlusher;
     this.relayServer = relayServer;
     this.taskLocationMap = taskLocationMap;
+    this.taskExecutorMapWrapper = taskExecutorMapWrapper;
   }
 
   public void initSetup(final PipeManagerWorker pipeManagerWorker,
@@ -155,7 +160,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
 
     ch.pipeline()
       // inbound
-      .addLast(new FrameDecoder(pipeManagerWorker))
+      .addLast(new FrameDecoder(pipeManagerWorker, pipeIndexMapWorker, taskExecutorMapWrapper))
       // outbound
       .addLast(controlFrameEncoder)
       .addLast(dataFrameEncoder)

@@ -22,18 +22,13 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import org.apache.nemo.common.TaskLoc;
-import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.InputStream;
 import java.util.Iterator;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Container for multiple input streams. Represents a transfer context on receiver-side.

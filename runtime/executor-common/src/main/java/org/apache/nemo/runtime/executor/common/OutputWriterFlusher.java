@@ -1,11 +1,12 @@
 package org.apache.nemo.runtime.executor.common;
 
 import io.netty.channel.Channel;
+import org.apache.nemo.common.parameters.FlushPeriod;
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Flushable;
-import java.io.IOException;
+import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -20,8 +21,9 @@ public final class OutputWriterFlusher {
 
   private final Set<Channel> channelList;
 
-  public OutputWriterFlusher(final long intervalMs) {
-    this.intervalMs = intervalMs;
+  @Inject
+  private OutputWriterFlusher(@Parameter(FlushPeriod.class) final int flushPeriod) {
+    this.intervalMs = flushPeriod;
     this.scheduledExecutorService = Executors.newScheduledThreadPool(5);
     this.channelList = new HashSet<>();
 

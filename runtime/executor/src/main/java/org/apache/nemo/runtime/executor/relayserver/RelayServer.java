@@ -49,6 +49,7 @@ public final class RelayServer {
   private RelayServer(@Parameter(JobConf.ExecutorId.class) final String executorId,
                       final TcpPortProvider tcpPortProvider,
                       @Parameter(EvalConf.Ec2.class) final boolean ec2,
+                      final OutputWriterFlusher outputWriterFlusher,
                       final NioChannelImplementationSelector channelImplSelector) {
 
     final String host;
@@ -66,7 +67,7 @@ public final class RelayServer {
 
     this.scheduledExecutorService = Executors.newScheduledThreadPool(10);
 
-    this.outputWriterFlusher = new OutputWriterFlusher(200);
+    this.outputWriterFlusher = outputWriterFlusher;
 
     serverListeningGroup = channelImplSelector.newEventLoopGroup(3,
         new DefaultThreadFactory(SERVER_LISTENING));

@@ -1,7 +1,7 @@
 package org.apache.nemo.runtime.executor.common;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.common.TaskHandlingEvent;
 
 public final class TaskOffloadingEvent implements TaskHandlingEvent {
 

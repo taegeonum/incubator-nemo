@@ -17,6 +17,7 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
   public final long throttleRate;
   public final boolean testing;
   public final Map<String, TaskCaching> stageTaskMap;
+  public final OffloadingPipeManagerWorkerImpl pipeManagerWorker;
 
   public LambdaRuntimeContext(
     final Map<String, OffloadingHandler.LambdaEventHandler> taskAndEventHandlerMap,
@@ -28,7 +29,8 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
     final Channel controlChannel,
     final long throttleRate,
     final boolean testing,
-    final Map<String, TaskCaching> stageTaskMap) {
+    final Map<String, TaskCaching> stageTaskMap,
+    final OffloadingPipeManagerWorkerImpl pipeManagerWorker) {
     this.taskAndEventHandlerMap = taskAndEventHandlerMap;
     this.lambdaEventHandler = lambdaEventHandler;
     this.isSf = isSf;
@@ -39,6 +41,7 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
     this.throttleRate = throttleRate;
     this.testing = testing;
     this.stageTaskMap = stageTaskMap;
+    this.pipeManagerWorker = pipeManagerWorker;
   }
 
   public String getNewExecutorId() {
@@ -66,7 +69,7 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
   }
 
   @Override
-  public Channel getControlChannel() {
+  public Channel getExecutorChannel() {
     return controlChannel;
   }
 }

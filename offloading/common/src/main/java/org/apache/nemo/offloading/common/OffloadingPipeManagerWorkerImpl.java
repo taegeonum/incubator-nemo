@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
+package org.apache.nemo.offloading.common;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
@@ -25,7 +25,6 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
-import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingDataFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
@@ -41,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 
 /**
@@ -54,22 +52,28 @@ import java.util.concurrent.ConcurrentMap;
 public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingPipeManagerWorkerImpl.class.getName());
 
-  private final String executorId;
+  private String executorId;
   private Channel channel;
-  private final Map<Triple<String, String, String>, Integer> map;
+  private Map<Triple<String, String, String>, Integer> map;
 
   private final Map<Integer, InputReader> inputPipeIndexInputReaderMap = new ConcurrentHashMap<>();
 
 
-  public OffloadingPipeManagerWorkerImpl(
-    final String executorId,
-    final Map<Triple<String, String, String>, Integer> map) {
+  public OffloadingPipeManagerWorkerImpl() {
     this.executorId = executorId;
-    this.map = map;
+    this.map = new ConcurrentHashMap<>();
+  }
+
+  public void setExecutorId(String eid) {
+    this.executorId = eid;
   }
 
   public void setChannel(final Channel ch) {
     channel = ch;
+  }
+
+  public void setMap(Map<Triple<String, String, String>, Integer> m) {
+    map = m;
   }
 
   @Override

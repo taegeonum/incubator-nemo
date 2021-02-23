@@ -26,10 +26,8 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.offloading.common.TaskCaching;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -85,7 +83,10 @@ public final class Task implements Serializable {
   }
 
   public static Task decode(DataInputStream dis,
-                            TaskCaching taskCaching) {
+                            ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
+                            DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
+                            List<StageEdge> incomingEdges,
+                            List<StageEdge> outgoingEdges) {
     try {
       final String planId = dis.readUTF();
       final String taskId = dis.readUTF();
@@ -113,10 +114,10 @@ public final class Task implements Serializable {
       }
 
       return new Task(planId, taskId,
-        (ExecutionPropertyMap<VertexExecutionProperty>) taskCaching.executionProperties,
-        (DAG<IRVertex, RuntimeEdge<IRVertex>>) taskCaching.irDag,
-        taskCaching.taskIncomingEdges,
-        taskCaching.taskOutgoingEdges,
+        executionProperties,
+        irDag,
+        incomingEdges,
+        outgoingEdges,
         new HashMap<>());
     } catch (final Exception e) {
       e.printStackTrace();

@@ -20,9 +20,8 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.TaskLoc;
-import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.io.InputStream;
 import java.util.Iterator;

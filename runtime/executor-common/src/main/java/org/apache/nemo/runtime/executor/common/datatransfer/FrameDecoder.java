@@ -23,6 +23,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.common.TaskOffloadedDataOutputEvent;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,6 +83,10 @@ public final class FrameDecoder extends ByteToMessageDecoder {
    * The number of bytes consisting body of a data frame to be read next.
    */
   private long dataBodyBytesToRead = 0;
+  private int offloadingDataBodyBytesToRead = 0;
+  private int offloadingPipeIndexOrsize = 0;
+
+  private int offloadingControlBytesToRead = 0;
 
 
   /**
@@ -89,15 +97,19 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   /**
    * Whether or not the data frame currently being read is the last frame of a data message.
    */
-  private boolean isLastFrame;
-  private boolean isStop;
-
 
   private int pipeIndex;
   private List<Integer> currPipeIndices;
 
-  public FrameDecoder(final PipeManagerWorker pipeManagerWorker) {
+  private final PipeIndexMapWorker pipeIndexMapWorker;
+  private final TaskExecutorMapWrapper taskExecutorMapWrapper;
+
+  public FrameDecoder(final PipeManagerWorker pipeManagerWorker,
+                      final PipeIndexMapWorker pipeIndexMapWorker,
+                      final TaskExecutorMapWrapper taskExecutorMapWrapper) {
     this.pipeManagerWorker = pipeManagerWorker;
+    this.pipeIndexMapWorker = pipeIndexMapWorker;
+    this.taskExecutorMapWrapper = taskExecutorMapWrapper;
   }
 
   @Override
@@ -110,6 +122,10 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       } else if (dataBodyBytesToRead > 0) {
         toContinue = onDataBodyAdded(in);
         // toContinue = in.readableBytes() > 0;
+      } else if (offloadingControlBytesToRead > 0) {
+        toContinue = onOffloadingControlBodyAdded(in, out);
+      } else if (offloadingDataBodyBytesToRead > 0) {
+        toContinue = onOffloadingDataBodyAdded(in, out);
       } else if (headerRemain > 0) {
         toContinue = onBroadcastRead(ctx, in);
       } else {
@@ -121,7 +137,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     }
   }
 
-  private ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection;
   private DataFrameEncoder.DataType dataType;
   private int broadcastSize;
   private byte flags;
@@ -150,8 +165,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     dataBodyBytesToRead = length;
 
     final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
-    isLastFrame = (flags & ((byte) (1 << 0))) != 0;
-    isStop = (flags & ((byte) (1 << 4))) != 0;
+    // isLastFrame = (flags & ((byte) (1 << 0))) != 0;
+    //isStop = (flags & ((byte) (1 << 4))) != 0;
 
     headerRemain = 0;
 
@@ -179,7 +194,10 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
     flags = in.readByte();
 
-    if ((flags & ((byte) (1 << 3))) == 0) {
+    if ((flags & ((byte) (1 << 4))) == 0 &&
+      (flags & ((byte) (1 << 3))) == 0) {
+      // flag: 00 => control message
+
       // setup context for reading control frame body
       // rm zero byte
       in.readByte();
@@ -191,14 +209,12 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         throw new IllegalStateException(String.format("Frame length is negative: %d", length));
       }
 
-    } else {
+    } else if ((flags & ((byte) (1 << 4))) == 0 &&
+      (flags & ((byte) (1 << 3))) == 1) {
+      // flag: 01: => data message
+
       dataType = DataFrameEncoder.DataType.values()[(int) in.readByte()];
       final int sizeOrIndex = in.readInt();
-
-      dataDirection =
-        (flags & ((byte) (1 << 2))) == 0
-          ? ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA :
-          ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
 
       switch (dataType) {
         case NORMAL:
@@ -213,10 +229,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
           // setup context for reading data frame body
           dataBodyBytesToRead = length;
 
-          final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
-          isLastFrame = (flags & ((byte) (1 << 0))) != 0;
-          isStop = (flags & ((byte) (1 << 4))) != 0;
-
           if (dataBodyBytesToRead == 0) {
             onDataFrameEnd();
           }
@@ -229,6 +241,25 @@ public final class FrameDecoder extends ByteToMessageDecoder {
           throw new RuntimeException("not supported data type " + dataType);
         }
       }
+
+    } else if ((flags & ((byte) (1 << 4))) == 1 &&
+      (flags & ((byte) (1 << 3))) == 0) {
+      // flag: 10: => offloading control message
+
+      in.readByte();
+      in.readInt();
+
+      offloadingControlBytesToRead = in.readInt();
+    } else if ((flags & ((byte) (1 << 4))) == 1 &&
+      (flags & ((byte) (1 << 3))) == 1) {
+      // flag: 11: => offloading data mesage
+
+      dataType = DataFrameEncoder.DataType.values()[(int) in.readByte()];
+
+      offloadingPipeIndexOrsize = in.readInt();
+      offloadingDataBodyBytesToRead = in.readInt();
+    } else {
+      throw new RuntimeException("No supported flags");
     }
 
     return true;
@@ -265,6 +296,79 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     }
 
     controlBodyBytesToRead = 0;
+    return true;
+  }
+
+  private boolean onOffloadingDataBodyAdded(final ByteBuf in, final List out) {
+    if (in.readableBytes() < offloadingDataBodyBytesToRead) {
+      return false;
+    }
+
+    final ByteBuf b = in.readRetainedSlice(offloadingDataBodyBytesToRead);
+    offloadingDataBodyBytesToRead = 0;
+
+    switch (dataType) {
+      case OFFLOAD_NORMAL_OUTPUT: {
+        final Triple<String, String, String> key = pipeIndexMapWorker.getKey(offloadingPipeIndexOrsize);
+        final ExecutorThread et = taskExecutorMapWrapper.getTaskExecutorThread(key.getLeft());
+        et.addEvent(new TaskOffloadedDataOutputEvent(
+          key.getLeft(),
+          key.getMiddle(),
+          Collections.singletonList(key.getRight()), b));
+        break;
+      }
+      case OFFLOAD_BROADCAST_OUTPUT: {
+        final List<Integer> indices = new ArrayList<>(offloadingPipeIndexOrsize);
+        for (int i = 0; i < offloadingPipeIndexOrsize; i++) {
+          indices.add(b.readInt());
+        }
+        final List<String> dstTasks = new ArrayList<String>(offloadingPipeIndexOrsize);
+        for (final int index : indices) {
+          final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
+          dstTasks.add(key.getRight());
+        }
+
+        // LOG.info("Offload broadcast SRC {} edge {} dst: {}", srcTask, edge, dstTasks);
+        final Triple<String, String, String> key = pipeIndexMapWorker.getKey(indices.get(0));
+        final ExecutorThread et = taskExecutorMapWrapper.getTaskExecutorThread(key.getLeft());
+        et.addEvent(new TaskOffloadedDataOutputEvent(key.getLeft(), key.getMiddle(), dstTasks, b));
+        break;
+      }
+      case DEOFFLOAD_DONE: {
+        try {
+          final ByteBufInputStream dis = new ByteBufInputStream(b);
+          final String taskId = dis.readUTF();
+          b.release();
+          final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskId);
+          LOG.info("Receive deoffloading done {}", taskId);
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+
+        break;
+      }
+      default: {
+        throw new RuntimeException("Not supported data type for offloading data " + dataType);
+      }
+    }
+
+    return true;
+  }
+
+  private boolean onOffloadingControlBodyAdded(final ByteBuf in, final List out) {
+    if (in.readableBytes() < offloadingControlBytesToRead) {
+      return false;
+    }
+
+    final ByteBuf b = in.readRetainedSlice(offloadingControlBytesToRead);
+    offloadingControlBytesToRead = 0;
+
+    final OffloadingEvent.Type type = OffloadingEvent.Type.values()[b.readInt()];
+
+    //System.out.println("Decode message; " + type.name() + ", size: " + msg.readableBytes());
+    out.add(new OffloadingEvent(type, b));
+
     return true;
   }
 

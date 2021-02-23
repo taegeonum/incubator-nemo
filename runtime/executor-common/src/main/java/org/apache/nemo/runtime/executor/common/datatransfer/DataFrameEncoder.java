@@ -26,7 +26,6 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.util.Recycler;
-import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,10 +64,9 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     // encode header
     byte flags = (byte) 0;
 
-    if (in.stopContext) {
-      flags |= (byte) (1 << 4);
-    }
-
+    // 00: control
+    // 01: data
+    // 10: offloading control
     flags |= (byte) (1 << 3);
     // in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA
     flags |= (byte) (1 << 2);

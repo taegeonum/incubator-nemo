@@ -2,7 +2,7 @@ package org.apache.nemo.common.test;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;

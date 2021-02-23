@@ -20,9 +20,9 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.ChannelStatus;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.Serializer;

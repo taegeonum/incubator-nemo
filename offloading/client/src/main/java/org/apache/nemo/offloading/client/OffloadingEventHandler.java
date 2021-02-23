@@ -1,8 +1,8 @@
 package org.apache.nemo.offloading.client;
 
 import io.netty.channel.Channel;
-import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 import org.apache.nemo.offloading.common.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +11,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.nemo.offloading.common.OffloadingEvent.Type.END;
+import static org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent.Type.END;
 
 public final class OffloadingEventHandler implements EventHandler<Pair<Channel,OffloadingEvent>> {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingEventHandler.class.getName());

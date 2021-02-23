@@ -23,9 +23,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.TaskMetrics;
-import org.apache.nemo.common.coder.FSTSingleton;
+import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
@@ -41,13 +39,7 @@ import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
-import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.common.Task;
-import org.apache.nemo.offloading.common.TaskHandlingEvent;
-import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.apache.nemo.offloading.common.StateStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +70,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
 
   // Variables for prepareOffloading - start
-  private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
   private final Map<String, List<String>> taskOutgoingEdges;
   private final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap = new HashMap<>();
@@ -148,7 +139,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                                  final IntermediateDataIOFactory intermediateDataIOFactory,
                                  final SerializerManager serializerManager,
-                                 final ServerlessExecutorProvider serverlessExecutorProvider,
                                  final Map<String, Double> samplingMap,
                                  final boolean isLocalSource,
                                  final ExecutorService prepareService,
@@ -227,8 +217,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     LOG.info("Task {} registering pipe time: {}", taskId, System.currentTimeMillis() - st);
 
     // samplingMap.putAll(evalConf.samplingJson);
-
-    this.serverlessExecutorProvider = serverlessExecutorProvider;
 
     this.serializerManager = serializerManager;
 
@@ -470,7 +458,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
       // Create VERTEX HARNESS
       final Transform.Context context =  new TransformContextImpl(
-          irVertex, serverlessExecutorProvider, taskId, stateStore);
+          irVertex, taskId, stateStore);
 
       TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector);
 

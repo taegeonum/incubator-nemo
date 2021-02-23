@@ -19,7 +19,7 @@
 package org.apache.nemo.driver;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ResourceSpecBuilder;
+import org.apache.nemo.common.parameters.FlushPeriod;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
@@ -30,14 +30,16 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.DefaultControlEventHandlerImpl;
+import org.apache.nemo.runtime.executor.DefaultPipeIndexMapWorkerImpl;
 import org.apache.nemo.runtime.executor.VMWorkerExecutor;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.offloading.*;
 import org.apache.nemo.runtime.executor.HDFStateStore;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFactoryImpl;
 import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
@@ -389,6 +391,8 @@ public final class NemoDriver {
       .bindImplementation(StateStore.class, HDFStateStore.class)
       .bindImplementation(OffloadingManager.class, getOffloadingManager())
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
+      .bindImplementation(PipeIndexMapWorker.class, DefaultPipeIndexMapWorkerImpl.class)
+      .bindNamedParameter(FlushPeriod.class, Integer.toString(evalConf.flushPeriod))
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
       .bindImplementation(OffloadingWorkerFactory.class, DefaultOffloadingWorkerFactory.class)

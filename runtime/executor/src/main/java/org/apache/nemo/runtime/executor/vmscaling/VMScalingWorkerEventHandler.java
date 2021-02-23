@@ -2,12 +2,11 @@ package org.apache.nemo.runtime.executor.vmscaling;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
-import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.runtime.executor.SFTaskMetrics;
 import org.apache.nemo.runtime.executor.StageOffloadingWorkerManager;
 import org.apache.nemo.runtime.executor.common.OffloadingDoneEvent;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.executor.common.DefaultTaskExecutorImpl;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;

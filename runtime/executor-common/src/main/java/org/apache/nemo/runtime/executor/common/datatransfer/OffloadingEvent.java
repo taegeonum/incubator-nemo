@@ -1,4 +1,4 @@
-package org.apache.nemo.offloading.common;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 

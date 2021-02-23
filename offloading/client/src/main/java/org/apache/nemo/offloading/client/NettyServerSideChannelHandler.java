@@ -5,9 +5,10 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.offloading.common.Constants;
-import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 import org.apache.nemo.offloading.common.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,12 +17,12 @@ import org.slf4j.LoggerFactory;
 @ChannelHandler.Sharable
 public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(NettyServerSideChannelHandler.class.getName());
-  private final ChannelGroup channelGroup;
+  private final OutputWriterFlusher outputWriterFlusher;
   private final EventHandler<Pair<Channel,OffloadingEvent>> eventHandler;
 
-  public NettyServerSideChannelHandler(final ChannelGroup channelGroup,
+  public NettyServerSideChannelHandler(final OutputWriterFlusher outputWriterFlusher,
                                        final EventHandler<Pair<Channel,OffloadingEvent>> eventHandler) {
-    this.channelGroup = channelGroup;
+    this.outputWriterFlusher = outputWriterFlusher;
     this.eventHandler = eventHandler;
   }
 
@@ -36,7 +37,7 @@ public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAd
       LOG.info("Channel activate: {}", ctx.channel());
     }
     LOG.info("Channel activate: {}", ctx.channel());
-    channelGroup.add(ctx.channel());
+    outputWriterFlusher.registerChannel(ctx.channel());
   }
 
   @Override
@@ -57,7 +58,7 @@ public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAd
   public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
     LOG.info("Channel inactive {}", ctx.channel());
 
-    channelGroup.remove(ctx);
+    outputWriterFlusher.removeChannel(ctx.channel());
     ctx.close();
   }
 
@@ -65,7 +66,7 @@ public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAd
   public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
     LOG.info("Exception caught {}", cause);
     cause.printStackTrace();
-    channelGroup.remove(ctx);
+    outputWriterFlusher.removeChannel(ctx.channel());
     ctx.close();
   }
 }

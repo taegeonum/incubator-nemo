@@ -18,8 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.offloading.common.StateStore;
-import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 
@@ -32,7 +31,6 @@ import java.util.Optional;
 public final class TransformContextImpl implements Transform.Context {
   private String data;
   private final IRVertex irVertex;
-  private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final String taskId;
   private final StateStore stateStore;
 
@@ -40,12 +38,10 @@ public final class TransformContextImpl implements Transform.Context {
    * Constructor of Context Implementation.
    */
   public TransformContextImpl(final IRVertex irVertex,
-                              final ServerlessExecutorProvider serverlessExecutorProvider,
                               final String taskId,
                               final StateStore stateStore) {
     this.data = null;
     this.irVertex = irVertex;
-    this.serverlessExecutorProvider = serverlessExecutorProvider;
     this.taskId = taskId;
     this.stateStore = stateStore;
   }
@@ -58,11 +54,6 @@ public final class TransformContextImpl implements Transform.Context {
   @Override
   public String getTaskId() {
     return taskId;
-  }
-
-  @Override
-  public ServerlessExecutorProvider getServerlessExecutorProvider() {
-    return serverlessExecutorProvider;
   }
 
   @Override

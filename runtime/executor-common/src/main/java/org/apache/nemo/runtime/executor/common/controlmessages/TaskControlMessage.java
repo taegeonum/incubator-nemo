@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.executor.common.controlmessages;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
-import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.common.TaskHandlingEvent;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

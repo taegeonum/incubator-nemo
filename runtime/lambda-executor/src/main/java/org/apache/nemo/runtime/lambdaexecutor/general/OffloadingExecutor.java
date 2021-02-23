@@ -17,6 +17,8 @@ import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.*;
@@ -52,7 +54,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final ConcurrentMap<SocketChannel, Boolean> channels;
   private final String executorId;
   private final String parentExecutorAddress;
-  private final int parentExecutorDataPort;
   private final AtomicInteger numReceivedTasks = new AtomicInteger(0);
   private final Map<String, Double> samplingMap;
   private final boolean isLocalSource;
@@ -66,7 +67,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private ExecutorService prepareService;
   private PipeManagerWorker pipeManagerWorker;
   private OutputCollectorGenerator outputCollectorGenerator;
-
 
   // updated whenever task is submitted
   private final SerializerManager serializerManager;
@@ -86,11 +86,10 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final boolean isLocalSource,
                             final String parentExecutorId,
                             final String parentExecutorAddress,
-                            final int parentExecutorDataPort,
                             final int stateStorePort) {
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
-    LOG.info("Offloading executor started {}/{}/{}/{}/{}/{}",
-      executorThreadNum, samplingMap, isLocalSource, parentExecutorId, parentExecutorAddress, parentExecutorDataPort);
+    LOG.info("Offloading executor started {}/{}/{}/{}/{}",
+      executorThreadNum, samplingMap, isLocalSource, parentExecutorId, parentExecutorAddress);
     this.stateStorePort = stateStorePort;
     this.executorThreadNum = executorThreadNum;
     this.channels = new ConcurrentHashMap<>();
@@ -100,7 +99,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.serializerManager = new DefaultSerializerManagerImpl();
     this.indexMap = new ConcurrentHashMap<>();
     this.parentExecutorAddress = parentExecutorAddress;
-    this.parentExecutorDataPort = parentExecutorDataPort;
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
     this.taskExecutorMap = new ConcurrentHashMap<>();
   }
@@ -119,7 +117,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       if (parentExecutorChannel != null && parentExecutorChannel.isOpen()) {
         parentExecutorChannel.flush();
       }
-    }, 20, 20, TimeUnit.MILLISECONDS);
+    }, 100, 100, TimeUnit.MILLISECONDS);
 
     this.scheduledService.scheduleAtFixedRate(() -> {
       LOG.info("CPU Load {}", monitoringThread.getTotalUsage());
@@ -137,8 +135,10 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     LOG.info("Netty state store client created...");
 
-    pipeManagerWorker =
-      new OffloadingPipeManagerWorkerImpl(executorId, indexMap);
+    pipeManagerWorker = context.pipeManagerWorker;
+    context.pipeManagerWorker.setExecutorId(executorId);
+    context.pipeManagerWorker.setMap(indexMap);
+
 
     LOG.info("Pipe manager worker created...");
 
@@ -150,23 +150,22 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.outputCollectorGenerator =
       new OffloadingOutputCollectorGeneratorImpl(intermediateDataIOFactory, executorId + "-offloading");
 
-
+    /*
     final OffloadingTransportChannelInitializer initializer =
       new OffloadingTransportChannelInitializer(pipeManagerWorker,
         new ControlMessageHandler());
-
-    LOG.info("OffloadingTransportChannelInitializer...");
-
-    this.clientTransport = new VMScalingClientTransport(initializer);
+    // LOG.info("OffloadingTransportChannelInitializer...");
+    // this.clientTransport = new VMScalingClientTransport(initializer);
 
     this.parentExecutorChannel = clientTransport
       .connectTo(parentExecutorAddress, parentExecutorDataPort).channel();
 
     LOG.info("Parente executor channel: {}", parentExecutorAddress);
+     */
 
     final OffloadingTaskControlEventHandlerImpl taskControlEventHandler =
       new OffloadingTaskControlEventHandlerImpl(executorId, pipeManagerWorker, taskExecutorThreadMap,
-        taskExecutorMap, parentExecutorChannel, context.getControlChannel());
+        taskExecutorMap, context.getExecutorChannel());
 
     executorThreads = new ArrayList<>();
     for (int i = 0; i < executorThreadNum; i++) {
@@ -182,7 +181,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     LOG.info("Executor thread created: {}", parentExecutorAddress);
 
-    final Channel controlChannel = context.getControlChannel();
+    parentExecutorChannel = context.getExecutorChannel();
 
 
     final OperatingSystemMXBean operatingSystemMXBean =
@@ -211,7 +210,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       executorMetrics.processingRate = processSum - prevProcessingSum.get();
       prevProcessingSum.set(processSum);
 
-      final ByteBuf byteBuf = controlChannel.alloc().ioBuffer();
+      final ByteBuf byteBuf = parentExecutorChannel.alloc().ioBuffer();
       final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
       try {
         FSTSingleton.getInstance().encodeToStream(bos, executorMetrics);
@@ -250,7 +249,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         final Task task;
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(e.taskId);
         if (context.stageTaskMap.containsKey(stageId)) {
-          task = Task.decode(dis, context.stageTaskMap.get(stageId));
+          final TaskCaching tc = context.stageTaskMap.get(stageId);
+          task = Task.decode(dis,
+            (ExecutionPropertyMap<VertexExecutionProperty>) tc.executionProperties,
+            (DAG<IRVertex, RuntimeEdge<IRVertex>>) tc.irDag,
+            tc.taskIncomingEdges,
+            tc.taskOutgoingEdges);
           LOG.info("Decode task from task caching");
         } else {
           task = Task.decode(dis);
@@ -326,7 +330,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         irDag,
         intermediateDataIOFactory,
         serializerManager,
-        null,
         samplingMap,
         isLocalSource,
         prepareService,

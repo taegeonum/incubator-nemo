@@ -24,8 +24,8 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
-import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.DefaultPipeIndexMapWorkerImpl;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.TaskOffloadedDataOutputEvent;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
@@ -40,11 +40,11 @@ public final class OffloadingFrameDecoder extends MessageToMessageDecoder<ByteBu
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingFrameDecoder.class.getName());
 
   private final TaskExecutorMapWrapper taskExecutorMapWrapper;
-  private final PipeIndexMapWorker pipeIndexMapWorker;
+  private final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker;
 
   @Inject
   private OffloadingFrameDecoder(final TaskExecutorMapWrapper taskExecutorMapWrapper,
-                                 final PipeIndexMapWorker pipeIndexMapWorker) {
+                                 final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker) {
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
   }

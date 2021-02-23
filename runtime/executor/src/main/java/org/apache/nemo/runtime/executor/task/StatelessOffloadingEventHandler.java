@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
-import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.common.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

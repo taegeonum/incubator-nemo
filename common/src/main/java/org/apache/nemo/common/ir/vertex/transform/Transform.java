@@ -18,11 +18,10 @@
  */
 package org.apache.nemo.common.ir.vertex.transform;
 
-import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 
 import java.io.Serializable;
 import java.util.Optional;
@@ -81,8 +80,6 @@ public interface Transform<I, O> extends Serializable {
     StateStore getStateStore();
 
     String getTaskId();
-
-    ServerlessExecutorProvider getServerlessExecutorProvider();
 
     /**
      * @param id of the variable to get.

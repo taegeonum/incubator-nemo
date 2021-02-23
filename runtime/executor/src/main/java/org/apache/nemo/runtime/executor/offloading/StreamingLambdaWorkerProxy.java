@@ -5,12 +5,14 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.offloading.client.SharedCachedPool;
 import org.apache.nemo.offloading.common.*;
-import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,13 +26,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingLambdaWorkerProxy.class.getName());
-  private volatile Channel controlChannel;
-  private volatile Channel dataChannel;
+  private volatile Channel workerChannel;
   //private volatile int dataProcessingCnt = 0;
   private volatile boolean finished = false;
   private final BlockingQueue<OffloadingEvent> endQueue;
   private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
-  private final Future<Pair<Channel, Pair<Channel, OffloadingEvent>>> channelFuture;
+  private final Future<Pair<Channel, OffloadingEvent>> channelFuture;
 
   private final AtomicInteger numTasks = new AtomicInteger(0);
 
@@ -53,7 +54,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   private final Set<String> readyTasks = new HashSet<>();
 
   public StreamingLambdaWorkerProxy(final int workerId,
-                                    final Future<Pair<Channel, Pair<Channel, OffloadingEvent>>> channelFuture,
+                                    final Future<Pair<Channel, OffloadingEvent>> channelFuture,
                                     final OffloadingWorkerFactory offloadingWorkerFactory,
                                     final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap,
                                     final OffloadingEncoder offloadingEncoder,
@@ -71,11 +72,9 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
     channelThread.execute(() -> {
       try {
-        final Pair<Channel, Pair<Channel, OffloadingEvent>> pair = channelFuture.get();
-        controlChannel = pair.left();
-        dataChannel = pair.right().left();
-
-        LOG.info("Get control channel {}, data channel {}", controlChannel, dataChannel);
+        final Pair<Channel, OffloadingEvent> pair = channelFuture.get();
+        workerChannel = pair.left();
+        LOG.info("Get control channel {}", workerChannel);
 
         /*
         final ByteBuf byteBuf = pair.right().getByteBuf();
@@ -91,7 +90,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
         byteBuf.release();
         */
 
-        channelEventHandlerMap.put(controlChannel, new EventHandler<OffloadingEvent>() {
+        channelEventHandlerMap.put(workerChannel, new EventHandler<OffloadingEvent>() {
           @Override
           public void onNext(OffloadingEvent msg) {
             switch (msg.getType()) {
@@ -149,7 +148,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   @Override
   public boolean isReady() {
-    return controlChannel != null;
+    return workerChannel != null;
   }
 
   @Override
@@ -159,7 +158,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   @Override
   public Channel getChannel() {
-    return controlChannel;
+    return workerChannel;
   }
 
   @Override
@@ -195,18 +194,18 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   @Override
   public void writeControl(OffloadingEvent offloadingEvent) {
-    controlChannel.writeAndFlush(offloadingEvent);
+    workerChannel.writeAndFlush(offloadingEvent);
   }
 
   @Override
   public void writeData(final int pipeIndex, final TaskHandlingEvent event) {
     if (event.isControlMessage()) {
-      dataChannel.writeAndFlush(event);
+      workerChannel.writeAndFlush(event);
     } else {
       final ByteBuf byteBuf = event.getDataByteBuf();
       final Object finalData = DataFrameEncoder.DataFrame.newInstance(
         Collections.singletonList(pipeIndex), byteBuf, byteBuf.readableBytes(), true);
-      dataChannel.write(finalData);
+      workerChannel.write(finalData);
     }
   }
 
@@ -214,7 +213,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   public void writeSourceData(final int index,
                               final Serializer serializer,
                               final Object event) {
-    final ByteBuf byteBuf = dataChannel.alloc().ioBuffer();
+    final ByteBuf byteBuf = workerChannel.alloc().ioBuffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
 
     try {
@@ -223,7 +222,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
       final Object finalData = DataFrameEncoder.DataFrame.newInstance(
         Collections.singletonList(index), byteBuf, byteBuf.readableBytes(), true);
-      dataChannel.write(finalData);
+      workerChannel.write(finalData);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -253,16 +252,16 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   @Deprecated
   private synchronized void forceClose() {
-    if (controlChannel != null) {
+    if (workerChannel != null) {
       //byteBufOutputStream.buffer().release();
       closeThread.execute(() -> {
         LOG.info("ForceClose: Send end mesesage to worker {}", workerId);
-        controlChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
+        workerChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
 
       });
     } else {
       closeThread.execute(() -> {
-        while (controlChannel == null) {
+        while (workerChannel == null) {
           try {
             Thread.sleep(200);
           } catch (InterruptedException e) {
@@ -271,7 +270,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
         }
 
           LOG.info("ForceClose: Send end mesesage to worker {}", workerId);
-        controlChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
+        workerChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
 
       });
     }

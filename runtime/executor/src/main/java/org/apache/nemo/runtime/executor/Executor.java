@@ -41,7 +41,7 @@ import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
-import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.SerializerManager;
@@ -110,7 +110,7 @@ public final class Executor {
 
   private final ExecutorService prepareService = Executors.newCachedThreadPool();
 
-  final PipeIndexMapWorker  pipeIndexMapWorker;
+  final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker;
 
   private final ExecutorThreads executorThreads;
 
@@ -145,7 +145,7 @@ public final class Executor {
                    // final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper,
-                   final PipeIndexMapWorker pipeIndexMapWorker,
+                   final DefaultPipeIndexMapWorkerImpl pipeIndexMapWorker,
                    // final RelayServer relayServer,
                    final StageExecutorThreadMap stageExecutorThreadMap,
                    // final JobScalingHandlerWorker jobScalingHandlerWorker,
@@ -451,7 +451,6 @@ public final class Executor {
             irDag,
             intermediateDataIOFactory,
             serializerManager,
-            null,
             evalConf.samplingJson,
             evalConf.isLocalSource,
             prepareService,
@@ -473,7 +472,6 @@ public final class Executor {
             irDag,
             intermediateDataIOFactory,
             serializerManager,
-            null,
             evalConf.samplingJson,
             evalConf.isLocalSource,
             prepareService,

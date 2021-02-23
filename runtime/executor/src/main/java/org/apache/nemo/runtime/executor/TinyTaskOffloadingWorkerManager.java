@@ -1,8 +1,8 @@
 package org.apache.nemo.runtime.executor;
 
 import io.netty.buffer.*;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
@@ -10,7 +10,6 @@ import org.apache.nemo.runtime.executor.offloading.StreamingLambdaWorkerProxy;
 import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
-import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -6,8 +6,8 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

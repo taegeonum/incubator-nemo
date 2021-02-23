@@ -5,6 +5,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeIndexMapWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,16 +16,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public final class PipeIndexMapWorker {
+public final class DefaultPipeIndexMapWorkerImpl implements PipeIndexMapWorker {
   // key: (runtimeEdgeId, dstTaskIndex), value: input contexts of this task
-  private static final Logger LOG = LoggerFactory.getLogger(PipeIndexMapWorker.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultPipeIndexMapWorkerImpl.class.getName());
 
   private final ConcurrentMap<Triple<String, String, String>, Integer> map;
   private final ConcurrentMap<Integer, Triple<String, String, String>> keyMap;
   private final PersistentConnectionToMasterMap toMaster;
 
   @Inject
-  private PipeIndexMapWorker(final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+  private DefaultPipeIndexMapWorkerImpl(final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     this.toMaster = persistentConnectionToMasterMap;
     this.map = new ConcurrentHashMap<>();
     this.keyMap = new ConcurrentHashMap<>();

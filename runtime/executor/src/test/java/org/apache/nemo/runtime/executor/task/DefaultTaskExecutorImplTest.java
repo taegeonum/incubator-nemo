@@ -46,7 +46,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.transform.FlattenTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
-import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.*;
@@ -55,7 +55,7 @@ import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessag
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.SerializerManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
@@ -321,7 +321,7 @@ public final class DefaultTaskExecutorImplTest {
         "testSourceVertexDataFetching",
         task1Id,
         TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
+        stage1Dag,
         Collections.emptyList(),
         Collections.singletonList(s1ToS2),
         vertexIdToReadable1);
@@ -331,7 +331,7 @@ public final class DefaultTaskExecutorImplTest {
         "task2plan",
         task2Id,
         TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
+        stage1Dag,
         Collections.singletonList(s1ToS2),
         Collections.emptyList(),
         new HashMap<>());
@@ -455,7 +455,7 @@ public final class DefaultTaskExecutorImplTest {
         "testSourceVertexDataFetching",
         RuntimeIdManager.generateTaskId(stage1Id, 0, 0),
         TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
+        taskDag,
         Collections.emptyList(),
         Collections.emptyList(),
         vertexIdToReadable);

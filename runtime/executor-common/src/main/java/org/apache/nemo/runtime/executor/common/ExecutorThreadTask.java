@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.common.TaskHandlingEvent;
 
 /**
  * Executes a task.

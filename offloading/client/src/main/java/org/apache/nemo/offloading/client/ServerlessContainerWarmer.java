@@ -11,7 +11,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 import org.apache.nemo.offloading.common.Constants;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
@@ -25,8 +26,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class ServerlessContainerWarmer {
   private static final Logger LOG = LoggerFactory.getLogger(ServerlessContainerWarmer.class.getName());
 
-  private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final AtomicBoolean initialized = new AtomicBoolean(false);
   private final OffloadingEventHandler nemoEventHandler;
@@ -37,11 +36,12 @@ public final class ServerlessContainerWarmer {
   private final AWSLambdaAsync awsLambda;
 
   @Inject
-  private ServerlessContainerWarmer(final TcpPortProvider tcpPortProvider) {
+  private ServerlessContainerWarmer(final TcpPortProvider tcpPortProvider,
+                                    final OutputWriterFlusher outputWriterFlusher) {
     this.nemoEventHandler = new OffloadingEventHandler();
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
-        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),
+        new NettyServerSideChannelHandler(outputWriterFlusher, nemoEventHandler)),
       new NioEventLoopGroup(3,
         new DefaultThreadFactory("Warmer")),
       false);

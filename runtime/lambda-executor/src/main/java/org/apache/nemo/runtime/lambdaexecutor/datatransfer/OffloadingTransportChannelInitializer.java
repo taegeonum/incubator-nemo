@@ -21,17 +21,8 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.LengthFieldPrepender;
-import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.apache.nemo.runtime.lambdaexecutor.datatransfer.OffloadingPipeManagerWorkerImpl;
-import org.apache.reef.tang.annotations.Parameter;
-
-import javax.inject.Inject;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import org.apache.nemo.offloading.common.OffloadingPipeManagerWorkerImpl;
 
 /**
  * Sets up {@link io.netty.channel.ChannelPipeline} for {@link ByteTransport}.
@@ -84,9 +75,9 @@ public final class OffloadingTransportChannelInitializer extends ChannelInitiali
     ((OffloadingPipeManagerWorkerImpl) pipeManagerWorker).setChannel(ch);
 
     ch.pipeline()
-      .addLast("frameEncoder", new LengthFieldPrepender(4))
+      // .addLast("frameEncoder", new LengthFieldPrepender(4))
       // inbound
-      .addLast(new FrameDecoder(pipeManagerWorker))
+      .addLast(new FrameDecoder(pipeManagerWorker, null, null))
       // outbound
       .addLast(new OffloadingDataFrameEncoder())
       .addLast()

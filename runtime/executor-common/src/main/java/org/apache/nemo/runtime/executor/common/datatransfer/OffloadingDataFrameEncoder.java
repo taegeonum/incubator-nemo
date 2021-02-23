@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
@@ -41,6 +42,11 @@ import java.util.List;
 public final class OffloadingDataFrameEncoder extends MessageToMessageEncoder<OffloadingDataFrameEncoder.DataFrame> {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingDataFrameEncoder.class.getName());
 
+    private static final int TRANSFER_INDEX_LENGTH = Integer.BYTES;
+    private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
+    public static final int ZEROS_LENGTH = 2 + Integer.BYTES;
+    public static final int HEADER_LENGTH = Byte.BYTES  + Byte.BYTES + TRANSFER_INDEX_LENGTH + BODY_LENGTH_LENGTH;
+
 
   @Inject
   public OffloadingDataFrameEncoder() {
@@ -49,37 +55,62 @@ public final class OffloadingDataFrameEncoder extends MessageToMessageEncoder<Of
   @Override
   public void encode(final ChannelHandlerContext ctx, final DataFrame in, final List out) {
 
-    final ByteBuf header = ctx.alloc().ioBuffer();
+    byte flags = (byte) 0;
+    flags |= (byte) (1 << 4);
+    flags |= (byte) (1 << 3);
+
+    ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
+    header.writeByte(flags);
     header.writeByte(in.type.ordinal());
 
     switch (in.type) {
       case OFFLOAD_NORMAL_OUTPUT:  {
-        try {
-          final ByteBufOutputStream bos = new ByteBufOutputStream(header);
-          bos.writeInt(in.pipeIndices.get(0));
-          bos.close();
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
+        header.writeInt(in.pipeIndices.get(0));
+        // size
+        if (in.body != null) {
+          header.writeInt(((ByteBuf) in.body).readableBytes());
+          final CompositeByteBuf compositeByteBuf = ctx.alloc().compositeBuffer(2);
+          compositeByteBuf.addComponents(true, header, (ByteBuf) in.body);
+          out.add(compositeByteBuf);
+        } else {
+          header.writeInt(0);
+          out.add(header);
         }
         break;
       }
       case OFFLOAD_BROADCAST_OUTPUT: {
-        try {
-          final ByteBufOutputStream bos = new ByteBufOutputStream(header);
-          bos.writeInt(in.pipeIndices.size());
-          for (final int index : in.pipeIndices) {
-            bos.writeInt(index);
-          }
-          bos.close();
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
+        header.writeInt(in.pipeIndices.size());
+        // size
+        if (in.body != null) {
+          header.writeInt(Integer.BYTES * in.pipeIndices.size() +
+            ((ByteBuf) in.body).readableBytes());
+        } else {
+          header.writeInt(Integer.BYTES * in.pipeIndices.size());
         }
+
+        final ByteBuf b =
+          ctx.alloc().ioBuffer(Integer.BYTES * in.pipeIndices.size());
+        for (final int index : in.pipeIndices) {
+          b.writeInt(index);
+        }
+
+        if (in.body != null) {
+          final CompositeByteBuf compositeByteBuf = ctx.alloc().compositeBuffer(3);
+          compositeByteBuf.addComponents(true, header, b, (ByteBuf) in.body);
+          out.add(compositeByteBuf);
+        } else {
+          final CompositeByteBuf compositeByteBuf = ctx.alloc().compositeBuffer(2);
+          compositeByteBuf.addComponents(true, header, b);
+          out.add(compositeByteBuf);
+        }
+
         break;
       }
       case DEOFFLOAD_DONE: {
-        final ByteBufOutputStream bos = new ByteBufOutputStream(header);
+        header.writeZero(Integer.BYTES);
+
+        final ByteBufOutputStream bos =
+          new ByteBufOutputStream(ctx.alloc().ioBuffer(in.taskId.length() * Character.BYTES));
         try {
           bos.writeUTF(in.taskId);
           bos.close();
@@ -87,22 +118,16 @@ public final class OffloadingDataFrameEncoder extends MessageToMessageEncoder<Of
           e.printStackTrace();
           throw new RuntimeException(e);
         }
+
+        header.writeInt(bos.buffer().readableBytes());
+
+        final CompositeByteBuf compositeByteBuf = ctx.alloc().compositeBuffer(2);
+        compositeByteBuf.addComponents(true, header, bos.buffer());
+        out.add(compositeByteBuf);
         break;
       }
       default:
         throw new RuntimeException("invalid type " + in.type);
-    }
-
-    // encode body
-    if (in.body != null) {
-      final CompositeByteBuf compositeByteBuf = ctx.alloc().compositeBuffer(2);
-      compositeByteBuf.addComponents(true, header, (ByteBuf) in.body);
-      // buf.writeBytes((ByteBuf) in.body);
-      // ((ByteBuf) in.body).release();
-      out.add(compositeByteBuf);
-      //out.add(in.body);
-    } else {
-      out.add(header);
     }
 
     // recycle DataFrame object

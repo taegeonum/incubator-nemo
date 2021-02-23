@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.executor.bytetransfer;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import org.apache.nemo.common.TaskLoc;
-import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 

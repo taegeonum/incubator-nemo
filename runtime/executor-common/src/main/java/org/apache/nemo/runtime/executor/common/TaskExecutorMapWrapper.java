@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor;
+package org.apache.nemo.runtime.executor.common;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.RuntimeIdManager;
@@ -21,7 +21,7 @@ public final class TaskExecutorMapWrapper {
   private final Map<String, ByteBuf> taskIdSerializedTaskMap;
 
   @Inject
-  private TaskExecutorMapWrapper() {
+  public TaskExecutorMapWrapper() {
     this.taskExecutorMap = new ConcurrentHashMap<>();
     this.stageTaskMap = new ConcurrentHashMap<>();
     this.taskIdExecutorMap = new ConcurrentHashMap<>();

@@ -1,5 +1,7 @@
 package org.apache.nemo.offloading.common;
 
+import org.apache.nemo.common.EventHandler;
+
 public interface ServerlessExecutorProvider {
 
   <I, O> ServerlessExecutorService<I, O> newCachedPool(

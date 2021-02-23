@@ -1,8 +1,8 @@
 package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.channel.Channel;
-import org.apache.nemo.offloading.common.OffloadingEvent;
-import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
+import org.apache.nemo.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.Serializer;
 
