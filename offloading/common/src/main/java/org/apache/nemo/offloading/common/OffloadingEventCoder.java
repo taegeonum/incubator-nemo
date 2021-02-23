@@ -3,6 +3,7 @@ package org.apache.nemo.offloading.common;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingEvent;
 
@@ -56,7 +57,6 @@ public final class OffloadingEventCoder {
     }
   }
 
-  /*
   public static final class OffloadingEventDecoder extends MessageToMessageDecoder<ByteBuf> {
 
     @Override
@@ -72,6 +72,5 @@ public final class OffloadingEventCoder {
       }
     }
   }
-  */
 
 }

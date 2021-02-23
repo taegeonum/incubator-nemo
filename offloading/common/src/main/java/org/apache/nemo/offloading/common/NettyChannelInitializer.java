@@ -37,11 +37,10 @@ public final class NettyChannelInitializer
     // offloading event: 0
     //
     ch.pipeline()
-      // .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
-      //  Integer.MAX_VALUE, 0, 4, 0, 4))
-      // .addLast("frameEncoder", new LengthFieldPrepender(4))
-
-      // .addLast("decoder", new OffloadingEventCoder.OffloadingEventDecoder())
+      .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
+       Integer.MAX_VALUE, 0, 4, 0, 4))
+      .addLast("frameEncoder", new LengthFieldPrepender(4))
+      .addLast("decoder", new OffloadingEventCoder.OffloadingEventDecoder())
       .addLast("encoder", new OffloadingEventCoder.OffloadingEventEncoder())
       .addLast("handler", inboundHandlerAdapter);
   }
