@@ -183,6 +183,14 @@ public final class FrameDecoder extends ByteToMessageDecoder {
    * @param in  the {@link ByteBuf} from which to read data
    * @return {@code true} if a header was decoded, {@code false} otherwise
    */
+
+  final byte flagMask = (byte) (1 << 4) | (byte) (1 << 3);
+
+  final byte controlFlag = 0;
+  final byte dataFlag = (byte) (1 << 3);
+  final byte offloadingControlFlag = (byte) (1 << 4);
+  final byte offloadingDataFlag = (byte) (1 << 4) | (byte) (1 << 3);
+
   private boolean onFrameStarted(final ChannelHandlerContext ctx, final ByteBuf in) {
     assert (controlBodyBytesToRead == 0);
     assert (dataBodyBytesToRead == 0);
@@ -194,8 +202,9 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
     flags = in.readByte();
 
-    if ((flags & ((byte) (1 << 4))) == 0 &&
-      (flags & ((byte) (1 << 3))) == 0) {
+    int masked = flags & flagMask;
+
+    if (masked == controlFlag) {
       // flag: 00 => control message
 
       // setup context for reading control frame body
@@ -209,8 +218,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         throw new IllegalStateException(String.format("Frame length is negative: %d", length));
       }
 
-    } else if ((flags & ((byte) (1 << 4))) == 0 &&
-      (flags & ((byte) (1 << 3))) == (byte) (1 << 3)) {
+    } else if (masked == dataFlag) {
       // flag: 01: => data message
 
       dataType = DataFrameEncoder.DataType.values()[(int) in.readByte()];
@@ -242,16 +250,14 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         }
       }
 
-    } else if ((flags & ((byte) (1 << 4))) == (byte) (1 << 4) &&
-      (flags & ((byte) (1 << 3))) == 0) {
+    } else if (masked == offloadingControlFlag) {
       // flag: 10: => offloading control message
 
       in.readByte();
       in.readInt();
 
       offloadingControlBytesToRead = in.readInt();
-    } else if ((flags & ((byte) (1 << 4))) == (byte) (1 << 4) &&
-      (flags & ((byte) (1 << 3))) == (byte) (1 << 3)) {
+    } else if (masked == offloadingDataFlag) {
       // flag: 11: => offloading data mesage
 
       dataType = DataFrameEncoder.DataType.values()[(int) in.readByte()];
