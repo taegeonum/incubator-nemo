@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingLambdaWorkerProxy.class.getName());
@@ -71,10 +72,19 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     this.channelEventHandlerMap = channelEventHandlerMap;
     this.endQueue = new LinkedBlockingQueue<>();
 
+    final AtomicLong st = new AtomicLong(System.currentTimeMillis());
     se.scheduleAtFixedRate(() -> {
       if (controlChannel != null) {
         LOG.info("Channel is open? {}, active? {}", controlChannel.isOpen(),
           controlChannel.isActive());
+
+        if (System.currentTimeMillis() - st.get() >= 10000) {
+          controlChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.PING, new byte[0], 0));
+          st.set(System.currentTimeMillis());
+        }
+
+      } else {
+        st.set(System.currentTimeMillis());
       }
     }, 1, 1, TimeUnit.SECONDS);
 

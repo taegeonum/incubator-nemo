@@ -418,6 +418,10 @@ public final class StateMachineOffloadingHandler {
     @Override
     public synchronized void onNext(final OffloadingEvent nemoEvent) {
       switch (nemoEvent.getType()) {
+        case PING: {
+          LOG.info("Receive Ping ....");
+          break;
+        }
         case VM_SCALING_INFO: {
           // It receives global information such as name server address ...
           final ByteBuf byteBuf = nemoEvent.getByteBuf();

@@ -31,6 +31,8 @@ public final class OffloadingEvent implements Serializable {
     /// for vm scaling info
     VM_SCALING_INFO,
 
+    PING,
+
 
     // master -> worker
     EXECUTOR_INIT_INFO,

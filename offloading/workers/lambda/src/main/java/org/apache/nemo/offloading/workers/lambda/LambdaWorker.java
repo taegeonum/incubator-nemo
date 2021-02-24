@@ -9,6 +9,7 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.nemo.offloading.common.OffloadingHandler;
+import org.apache.nemo.offloading.common.StateMachineOffloadingHandler;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,7 +24,8 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
 	private static final String PATH = "/tmp/nexmark-0.2-SNAPSHOT-shaded.jar";
 	//private static final String PATH = "/tmp/shaded.jar";
 
-  private final OffloadingHandler offloadingHandler;
+  // private final OffloadingHandler offloadingHandler;
+  private final StateMachineOffloadingHandler offloadingHandler;
 
 	private ClassLoader createClassLoader() {
 	  /*
@@ -56,7 +58,9 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
   }
 
 	public LambdaWorker() {
-    this.offloadingHandler = new OffloadingHandler(
+    // this.offloadingHandler = new OffloadingHandler(
+    //  new HashMap<>(), true, Long.MAX_VALUE, false);
+    this.offloadingHandler = new StateMachineOffloadingHandler(
       new HashMap<>(), true, Long.MAX_VALUE, false);
 	}
 
