@@ -52,6 +52,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   private final Set<String> readyTasks = new HashSet<>();
 
+  private final ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
+
   public StreamingLambdaWorkerProxy(final int workerId,
                                     final Future<Pair<Channel, Pair<Channel, OffloadingEvent>>> channelFuture,
                                     final OffloadingWorkerFactory offloadingWorkerFactory,
@@ -68,6 +70,13 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
     this.channelEventHandlerMap = channelEventHandlerMap;
     this.endQueue = new LinkedBlockingQueue<>();
+
+    se.scheduleAtFixedRate(() -> {
+      if (controlChannel != null) {
+        LOG.info("Channel is open? {}, active? {}", controlChannel.isOpen(),
+          controlChannel.isActive());
+      }
+    }, 1, 1, TimeUnit.SECONDS);
 
     channelThread.execute(() -> {
       try {

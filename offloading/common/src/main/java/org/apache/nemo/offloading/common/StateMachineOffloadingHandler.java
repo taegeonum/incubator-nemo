@@ -15,7 +15,9 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -25,9 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
-public final class OffloadingHandler {
+public final class StateMachineOffloadingHandler {
 
-  private static final Logger LOG = Logger.getLogger(OffloadingHandler.class.getName());
+  private static final Logger LOG = Logger.getLogger(StateMachineOffloadingHandler.class.getName());
 
 	//private static final String PATH = "/tmp/shaded.jar";
 	private ClassLoader classLoader = null;
@@ -77,10 +79,10 @@ public final class OffloadingHandler {
 
   private final Map<String, TaskCaching> stageTaskMap = new HashMap<>();
 
-	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap,
-                           final boolean isSf,
-                           final long throttleRate,
-                           final boolean testing) {
+	public StateMachineOffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap,
+                                       final boolean isSf,
+                                       final long throttleRate,
+                                       final boolean testing) {
     Logger.getRootLogger().setLevel(Level.INFO);
     this.lambdaEventHandlerMap = lambdaEventHandlerMap;
     this.isSf = isSf;
@@ -246,7 +248,10 @@ public final class OffloadingHandler {
     final String address = (String) input.get("address");
     final Integer port = (Integer) input.get("port");
     if (opendChannel == null) {
+      LOG.info("Opening channel for " + address + "/" + port);
       opendChannel = channelOpen(address, port);
+    } else {
+      LOG.info("Channel is already opened for " + address + "/" + port);
     }
 
     final int requestId = (Integer) input.get("requestId");
@@ -324,6 +329,15 @@ public final class OffloadingHandler {
     //opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.READY, new byte[0], 0));
 
 
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    LOG.info("Finishing lambda ... check whether the connection becomes inactive or not");
+
+    /*
 		final List<ChannelFuture> futures = new LinkedList<>();
 
 		// send result
@@ -343,19 +357,6 @@ public final class OffloadingHandler {
 
     final long sst = System.currentTimeMillis();
 
-    /*
-    futures.forEach(future -> {
-      try {
-        future.get();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      } catch (ExecutionException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    });
-    */
 
     try {
       // wait until end
@@ -394,6 +395,7 @@ public final class OffloadingHandler {
     });
 
     map.clear();
+    */
 
     return null;
 	}

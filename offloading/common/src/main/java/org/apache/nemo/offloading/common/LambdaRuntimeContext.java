@@ -7,8 +7,6 @@ import java.util.Map;
 
 public final class LambdaRuntimeContext implements OffloadingTransform.OffloadingContext {
 
-  private final Map<String, OffloadingHandler.LambdaEventHandler> taskAndEventHandlerMap;
-  private final OffloadingHandler.LambdaEventHandler lambdaEventHandler;
   private final boolean isSf;
   private final String newExecutorId;
   private final String nameServerAddr;
@@ -19,8 +17,6 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
   public final Map<String, TaskCaching> stageTaskMap;
 
   public LambdaRuntimeContext(
-    final Map<String, OffloadingHandler.LambdaEventHandler> taskAndEventHandlerMap,
-    final OffloadingHandler.LambdaEventHandler lambdaEventHandler,
     final boolean isSf,
     final String nameServerAddr,
     final int nameServerPort,
@@ -29,8 +25,6 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
     final long throttleRate,
     final boolean testing,
     final Map<String, TaskCaching> stageTaskMap) {
-    this.taskAndEventHandlerMap = taskAndEventHandlerMap;
-    this.lambdaEventHandler = lambdaEventHandler;
     this.isSf = isSf;
     this.newExecutorId = newExecutorId;
     this.nameServerAddr = nameServerAddr;
@@ -55,14 +49,6 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
 
   public boolean getIsSf() {
     return isSf;
-  }
-
-  public Map<String, OffloadingHandler.LambdaEventHandler> getTaskAndEventHandlerMap() {
-    return taskAndEventHandlerMap;
-  }
-
-  public OffloadingHandler.LambdaEventHandler getLambdaEventHandler() {
-    return lambdaEventHandler;
   }
 
   @Override
