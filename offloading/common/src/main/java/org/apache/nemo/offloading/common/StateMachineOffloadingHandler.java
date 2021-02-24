@@ -212,6 +212,8 @@ public final class StateMachineOffloadingHandler {
     return channel;
   }
 
+  Channel opendChannel = null;
+
 	public Object handleRequest(Map<String, Object> input) {
 	  final long st = System.currentTimeMillis();
     this.workerHeartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -219,110 +221,117 @@ public final class StateMachineOffloadingHandler {
 		System.out.println("Input: " + input);
     final LinkedBlockingQueue<Pair<Object, Integer>> result = new LinkedBlockingQueue<>();
 
-    offloadingTransform = null;
-
-    // open channel
-    Channel opendChannel = null;
-    this.workerInitLatch = new CountDownLatch(1);
-
-    for (final Map.Entry<Channel, EventHandler<OffloadingEvent>> entry : map.entrySet()) {
-      final Channel channel = entry.getKey();
-      final String address = (String) input.get("address");
-      final Integer port = (Integer) input.get("port");
-
-      final String requestedAddr = "/" + address + ":" + port;
-
-      System.out.println("Requested addr: " + requestedAddr +
-        ", channelAddr: " +channel.remoteAddress().toString());
-
-      if (channel.remoteAddress().toString().equals(requestedAddr)
-        && channel.isOpen()) {
-        opendChannel = channel;
-        break;
-      } else if (!channel.isOpen()) {
-        channel.close();
-        map.remove(channel);
-      }
-    }
-
-    final String address = (String) input.get("address");
-    final Integer port = (Integer) input.get("port");
-    if (opendChannel == null) {
-      LOG.info("Opening channel for " + address + "/" + port);
-      opendChannel = channelOpen(address, port);
-    } else {
-      LOG.info("Channel is already opened for " + address + "/" + port);
-    }
-
-    final int requestId = (Integer) input.get("requestId");
-
-    map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
-    LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
-
-    System.out.println("Open channel: " + opendChannel);
-
-    // load class loader
-
-    if (classLoader == null) {
-      System.out.println("Loading jar: " + opendChannel);
+    if (opendChannel != null && opendChannel.isActive() && opendChannel.isOpen()) {
+      LOG.info("Waiting for ping message... can we get the ping message in container reuse? ");
       try {
-        //classLoader = classLoaderCallable.call();
-        classLoader = Thread.currentThread().getContextClassLoader();
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-      status = LambdaStatus.READY;
-      LOG.info("Create class loader: {}");
-    }
-
-    Thread.currentThread().setContextClassLoader(classLoader);
-
-    // write handshake
-    System.out.println("Data processing cnt: " + dataProcessingCnt
-      + ", Write handshake: " + (System.currentTimeMillis() - st));
-
-    byte[] bytes = ByteBuffer.allocate(4).putInt(requestId).array();
-
-    opendChannel = handshake(bytes, address, port, opendChannel, result);
-    handler = (LambdaEventHandler) map.get(opendChannel);
-
-    // Waiting worker init done..
-    LOG.info("Waiting worker init or end");
-
-    if (handler == null) {
-      LOG.info("handler is null for channel " + opendChannel);
-      opendChannel = handshake(bytes, address, port, opendChannel, result);
-      handler = (LambdaEventHandler) map.get(opendChannel);
-    }
-
-    while (workerInitLatch.getCount() > 0 && handler.endBlockingQueue.isEmpty()) {
-      if (!opendChannel.isActive()) {
-        opendChannel = handshake(bytes, address, port, opendChannel, result);
-        handler = (LambdaEventHandler) map.get(opendChannel);
-      }
-      try {
-        Thread.sleep(1000);
+        Thread.sleep(20000);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
-    }
+    } else {
 
-    if (workerInitLatch.getCount() == 0) {
-      final byte[] addrPortBytes = ByteBuffer.allocate(4).putInt(executorDataAddrPort).array();
-      opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, addrPortBytes, addrPortBytes.length));
-      LOG.info("Sending worker init done");
-    }
+      // open channel
+      this.workerInitLatch = new CountDownLatch(1);
 
-    // cpu heartbeat
-    final Channel ochannel = opendChannel;
-    workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
-      final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
-      System.out.println("CPU Load: " + cpuLoad);
-      final ByteBuf bb = ochannel.alloc().buffer();
-      bb.writeDouble(cpuLoad);
-      // ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
-    }, 2, 2, TimeUnit.SECONDS);
+      for (final Map.Entry<Channel, EventHandler<OffloadingEvent>> entry : map.entrySet()) {
+        final Channel channel = entry.getKey();
+        final String address = (String) input.get("address");
+        final Integer port = (Integer) input.get("port");
+
+        final String requestedAddr = "/" + address + ":" + port;
+
+        System.out.println("Requested addr: " + requestedAddr +
+          ", channelAddr: " + channel.remoteAddress().toString());
+
+        if (channel.remoteAddress().toString().equals(requestedAddr)
+          && channel.isOpen()) {
+          opendChannel = channel;
+          break;
+        } else if (!channel.isOpen()) {
+          channel.close();
+          map.remove(channel);
+        }
+      }
+
+      final String address = (String) input.get("address");
+      final Integer port = (Integer) input.get("port");
+      if (opendChannel == null) {
+        LOG.info("Opening channel for " + address + "/" + port);
+        opendChannel = channelOpen(address, port);
+      } else {
+        LOG.info("Channel is already opened for " + address + "/" + port);
+      }
+
+      final int requestId = (Integer) input.get("requestId");
+
+      map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
+      LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
+
+      System.out.println("Open channel: " + opendChannel);
+
+      // load class loader
+
+      if (classLoader == null) {
+        System.out.println("Loading jar: " + opendChannel);
+        try {
+          //classLoader = classLoaderCallable.call();
+          classLoader = Thread.currentThread().getContextClassLoader();
+        } catch (Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+        status = LambdaStatus.READY;
+        LOG.info("Create class loader: {}");
+      }
+
+      Thread.currentThread().setContextClassLoader(classLoader);
+
+      // write handshake
+      System.out.println("Data processing cnt: " + dataProcessingCnt
+        + ", Write handshake: " + (System.currentTimeMillis() - st));
+
+      byte[] bytes = ByteBuffer.allocate(4).putInt(requestId).array();
+
+      opendChannel = handshake(bytes, address, port, opendChannel, result);
+      handler = (LambdaEventHandler) map.get(opendChannel);
+
+      // Waiting worker init done..
+      LOG.info("Waiting worker init or end");
+
+      if (handler == null) {
+        LOG.info("handler is null for channel " + opendChannel);
+        opendChannel = handshake(bytes, address, port, opendChannel, result);
+        handler = (LambdaEventHandler) map.get(opendChannel);
+      }
+
+      while (workerInitLatch.getCount() > 0 && handler.endBlockingQueue.isEmpty()) {
+        if (!opendChannel.isActive()) {
+          opendChannel = handshake(bytes, address, port, opendChannel, result);
+          handler = (LambdaEventHandler) map.get(opendChannel);
+        }
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      if (workerInitLatch.getCount() == 0) {
+        final byte[] addrPortBytes = ByteBuffer.allocate(4).putInt(executorDataAddrPort).array();
+        opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, addrPortBytes, addrPortBytes.length));
+        LOG.info("Sending worker init done");
+      }
+
+      // cpu heartbeat
+      final Channel ochannel = opendChannel;
+      workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
+        final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
+        System.out.println("CPU Load: " + cpuLoad);
+        final ByteBuf bb = ochannel.alloc().buffer();
+        bb.writeDouble(cpuLoad);
+        // ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
+      }, 2, 2, TimeUnit.SECONDS);
+    }
 
 
     // ready state

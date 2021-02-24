@@ -78,7 +78,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
         LOG.info("Channel is open? {}, active? {}", controlChannel.isOpen(),
           controlChannel.isActive());
 
-        if (System.currentTimeMillis() - st.get() >= 10000) {
+        if (System.currentTimeMillis() - st.get() >= 5000) {
+          LOG.info("Send ping message");
           controlChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.PING, new byte[0], 0));
           st.set(System.currentTimeMillis());
         }
