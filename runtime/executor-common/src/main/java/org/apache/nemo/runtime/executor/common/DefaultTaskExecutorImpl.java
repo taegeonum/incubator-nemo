@@ -80,6 +80,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   final Map<String, Double> samplingMap;
 
   private final AtomicInteger processedCnt = new AtomicInteger(0);
+  private final AtomicInteger offloadedCnt = new AtomicInteger(0);
 
   private boolean isStateless = true;
 
@@ -371,6 +372,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     return processedCnt;
   }
 
+  @Override
+  public AtomicInteger getOffloadedCnt() {
+    return offloadedCnt;
+  }
+
 
   /**
    * Converts the DAG of vertices into pointer-based DAG of vertex harnesses.
@@ -614,8 +620,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       if (currentState.equals(CurrentState.OFFLOADED)) {
 
         // Write to offloaded task
-        bufferedData.forEach(e ->
-          offloadingManager.offloadIntermediateData(taskId, e));
+        bufferedData.forEach(e -> {
+          offloadedCnt.getAndIncrement();
+          offloadingManager.offloadIntermediateData(taskId, e);
+        });
         bufferedData.clear();
 
       } else if (currentState.equals(CurrentState.RUNNING)) {
@@ -729,6 +737,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             if (!bufferedData.isEmpty()) {
               throw new RuntimeException("buffer should be empty");
             }
+            offloadedCnt.getAndIncrement();
             offloadingManager.offloadIntermediateData(taskId, taskHandlingEvent);
             break;
           }
