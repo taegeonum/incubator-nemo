@@ -734,8 +734,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           }
           case DEOFFLOAD_PENDING:
           case OFFLOAD_PENDING:
-            bufferedData.add(taskHandlingEvent);
-            break;
+            //bufferedData.add(taskHandlingEvent);
+            //break;
           case WAIT_WORKER:
           case RUNNING: {
             // Decoding
