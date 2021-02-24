@@ -52,7 +52,8 @@ package:
 
 functions:
   tg-erverless-worker:
-    handler: org.apache.nemo.runtime.executor.common.LambdaWorker
+    handler: org.apache.nemo.offloading.workers.lambda.LambdaWorker
+    #    handler: org.apache.nemo.runtime.executor.common.LambdaWorker
 #      - stream:
 #        arn: arn:aws:kinesis:ap-northeast-1:835596193924:stream/nemo
 #        type: kinesis

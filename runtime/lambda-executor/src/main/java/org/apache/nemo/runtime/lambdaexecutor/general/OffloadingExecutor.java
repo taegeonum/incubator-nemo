@@ -61,7 +61,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private List<ExecutorThread> executorThreads;
   private StateStore stateStore;
-  private VMScalingClientTransport clientTransport;
   private Channel parentExecutorChannel;
   private IntermediateDataIOFactory intermediateDataIOFactory;
   private ExecutorService prepareService;
@@ -289,7 +288,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public void close() {
     scheduledService.shutdown();
     stateStore.close();
-    clientTransport.close();
   }
 
   private void launchTask(final Task task,
