@@ -224,7 +224,7 @@ public final class StateMachineOffloadingHandler {
     if (opendChannel != null && opendChannel.isActive() && opendChannel.isOpen()) {
       LOG.info("Waiting for ping message... can we get the ping message in container reuse? ");
       try {
-        Thread.sleep(20000);
+        Thread.sleep(2500);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

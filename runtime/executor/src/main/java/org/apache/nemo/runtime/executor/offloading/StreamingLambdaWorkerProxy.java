@@ -1,10 +1,16 @@
 package org.apache.nemo.runtime.executor.offloading;
 
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.services.lambda.AWSLambdaAsync;
+import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
+import com.amazonaws.services.lambda.model.InvokeRequest;
+import com.amazonaws.services.lambda.model.InvokeResult;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.nemo.offloading.client.AWSUtils;
 import org.apache.nemo.offloading.client.SharedCachedPool;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
@@ -55,6 +61,10 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   private final ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
 
+  private final AWSLambdaAsync awsLambda = AWSLambdaAsyncClientBuilder.standard()
+      .withRegion("ap-northeast-2").withClientConfiguration(
+        new ClientConfiguration().withMaxConnections(500)).build();
+
   public StreamingLambdaWorkerProxy(final int workerId,
                                     final Future<Pair<Channel, Pair<Channel, OffloadingEvent>>> channelFuture,
                                     final OffloadingWorkerFactory offloadingWorkerFactory,
@@ -79,7 +89,23 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
           controlChannel.isActive());
 
         if (System.currentTimeMillis() - st.get() >= 5000) {
+          final InvokeRequest request = new InvokeRequest()
+            .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
+            .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
+              "local", 1111, 555));
+
+          LOG.info("Invoke async request {}", request);
+
+          final Future<InvokeResult> future = awsLambda.invokeAsync(request);
+
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+
           LOG.info("Send ping message");
+
           controlChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.PING, new byte[0], 0));
           st.set(System.currentTimeMillis());
         }
