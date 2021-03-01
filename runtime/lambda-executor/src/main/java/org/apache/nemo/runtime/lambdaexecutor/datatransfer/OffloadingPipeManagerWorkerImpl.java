@@ -71,6 +71,8 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
     map.forEach((key, index) -> {
       indexTaskMap.put(index, key.getRight());
     });
+
+    LOG.info("IndexTaskMap {}", indexTaskMap);
   }
 
   public void setChannel(final Channel ch) {
@@ -181,11 +183,16 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
       inputPipeIndexInputReaderMap.get(index).addData(index, event);
 
     } else {
-      final String taskId = indexTaskMap.get(index);
-      pendingByteBufQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
-      final Queue<Pair<Integer, ByteBuf>> queue = pendingByteBufQueueMap.get(taskId);
-      queue.add(Pair.of(index, event));
-      LOG.info("Pending data for index {} cnt {}", index, pendingDataNum.getAndIncrement());
+      try {
+        final String taskId = indexTaskMap.get(index);
+        pendingByteBufQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
+        final Queue<Pair<Integer, ByteBuf>> queue = pendingByteBufQueueMap.get(taskId);
+        queue.add(Pair.of(index, event));
+        LOG.info("Pending data for index {} cnt {}", index, pendingDataNum.getAndIncrement());
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException("Task  index " + index + ", " + indexTaskMap);
+      }
     }
   }
 
