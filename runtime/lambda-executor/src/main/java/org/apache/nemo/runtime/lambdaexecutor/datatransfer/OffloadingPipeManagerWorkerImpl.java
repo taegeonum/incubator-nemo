@@ -59,20 +59,17 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   private final Map<Triple<String, String, String>, Integer> map;
 
   private final Map<Integer, InputReader> inputPipeIndexInputReaderMap = new ConcurrentHashMap<>();
-  private final Map<Integer, String> indexTaskMap = new ConcurrentHashMap<>();
+  public final Map<Integer, String> indexTaskMap;
 
 
   public OffloadingPipeManagerWorkerImpl(
     final String executorId,
-    final Map<Triple<String, String, String>, Integer> map) {
+    final Map<Triple<String, String, String>, Integer> map,
+    final Map<Integer, String> indexTaskMap) {
     this.executorId = executorId;
     this.map = map;
+    this.indexTaskMap = indexTaskMap;
 
-    map.forEach((key, index) -> {
-      indexTaskMap.put(index, key.getRight());
-    });
-
-    LOG.info("IndexTaskMap {}", indexTaskMap);
   }
 
   public void setChannel(final Channel ch) {
@@ -184,6 +181,15 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
 
     } else {
       try {
+
+        while (!indexTaskMap.containsKey(index)) {
+          try {
+            Thread.sleep(5);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+
         final String taskId = indexTaskMap.get(index);
         pendingByteBufQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
         final Queue<Pair<Integer, ByteBuf>> queue = pendingByteBufQueueMap.get(taskId);
@@ -198,9 +204,9 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
 
   @Override
   public void addControlData(int index, TaskControlMessage controlMessage) {
-    final String taskId = indexTaskMap.get(index);
 
     if (inputPipeIndexInputReaderMap.containsKey(index)) {
+      final String taskId = indexTaskMap.get(index);
 
       if (pendingControlQueueMap.containsKey(taskId)) {
         final Queue<Pair<Integer, TaskControlMessage>> queue = pendingControlQueueMap.remove(taskId);
@@ -214,6 +220,17 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
       inputPipeIndexInputReaderMap.get(index).addControl(controlMessage);
 
     } else {
+
+      while (!indexTaskMap.containsKey(index)) {
+        try {
+          Thread.sleep(5);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      final String taskId = indexTaskMap.get(index);
+
       pendingControlQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
       final Queue<Pair<Integer, TaskControlMessage>> queue = pendingControlQueueMap.get(taskId);
       queue.add(Pair.of(index, controlMessage));
