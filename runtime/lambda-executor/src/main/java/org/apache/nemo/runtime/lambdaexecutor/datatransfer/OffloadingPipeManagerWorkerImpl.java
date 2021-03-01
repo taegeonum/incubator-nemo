@@ -23,6 +23,7 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.offloading.common.Pair;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
@@ -58,6 +59,7 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   private final Map<Triple<String, String, String>, Integer> map;
 
   private final Map<Integer, InputReader> inputPipeIndexInputReaderMap = new ConcurrentHashMap<>();
+  private final Map<Integer, String> indexTaskMap = new ConcurrentHashMap<>();
 
 
   public OffloadingPipeManagerWorkerImpl(
@@ -65,6 +67,10 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
     final Map<Triple<String, String, String>, Integer> map) {
     this.executorId = executorId;
     this.map = map;
+
+    map.forEach((key, index) -> {
+      indexTaskMap.put(index, key.getRight());
+    });
   }
 
   public void setChannel(final Channel ch) {
@@ -137,32 +143,37 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
     throw new RuntimeException("not supported");
   }
 
-  private final Map<Integer, Queue<ByteBuf>> pendingByteBufQueueMap = new ConcurrentHashMap<>();
-  private final Map<Integer, Queue<TaskControlMessage>> pendingControlQueueMap = new ConcurrentHashMap<>();
+  private final Map<String, Queue<Pair<Integer, ByteBuf>>> pendingByteBufQueueMap = new ConcurrentHashMap<>();
+  private final Map<String, Queue<Pair<Integer, TaskControlMessage>>> pendingControlQueueMap = new ConcurrentHashMap<>();
 
   private final AtomicInteger pendingDataNum = new AtomicInteger(0);
   private final AtomicInteger addDataNum = new AtomicInteger(0);
 
   @Override
   public void addInputData(int index, ByteBuf event) {
+
     if (inputPipeIndexInputReaderMap.containsKey(index)) {
 
-      if (pendingByteBufQueueMap.containsKey(index)) {
-        final Queue<ByteBuf> queue = pendingByteBufQueueMap.remove(index);
-        if (queue != null) {
-          queue.forEach(data -> {
-            inputPipeIndexInputReaderMap.get(index).addData(index, data);
-            LOG.info("Add data for index {} cnt {}", index, addDataNum.getAndIncrement());
-          });
-        }
-      }
+      if (!pendingByteBufQueueMap.isEmpty()) {
+        final String taskId = indexTaskMap.get(index);
 
-      if (pendingControlQueueMap.containsKey(index)) {
-        final Queue<TaskControlMessage> queue = pendingControlQueueMap.remove(index);
-        if (queue != null) {
-          queue.forEach(data -> {
-            inputPipeIndexInputReaderMap.get(index).addControl(data);
-          });
+        if (pendingByteBufQueueMap.containsKey(taskId)) {
+          final Queue<Pair<Integer, ByteBuf>> queue = pendingByteBufQueueMap.remove(taskId);
+          if (queue != null) {
+            queue.forEach(data -> {
+              inputPipeIndexInputReaderMap.get(data.left()).addData(data.left(), data.right());
+              LOG.info("Add data for index {} cnt {}", data.left(), addDataNum.getAndIncrement());
+            });
+          }
+        }
+
+        if (pendingControlQueueMap.containsKey(taskId)) {
+          final Queue<Pair<Integer, TaskControlMessage>> queue = pendingControlQueueMap.remove(taskId);
+          if (queue != null) {
+            queue.forEach(data -> {
+              inputPipeIndexInputReaderMap.get(data.left()).addControl(data.right());
+            });
+          }
         }
       }
 
@@ -170,22 +181,25 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
       inputPipeIndexInputReaderMap.get(index).addData(index, event);
 
     } else {
-      pendingByteBufQueueMap.putIfAbsent(index, new ConcurrentLinkedQueue<>());
-      final Queue<ByteBuf> queue = pendingByteBufQueueMap.get(index);
-      queue.add(event);
+      final String taskId = indexTaskMap.get(index);
+      pendingByteBufQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
+      final Queue<Pair<Integer, ByteBuf>> queue = pendingByteBufQueueMap.get(taskId);
+      queue.add(Pair.of(index, event));
       LOG.info("Pending data for index {} cnt {}", index, pendingDataNum.getAndIncrement());
     }
   }
 
   @Override
   public void addControlData(int index, TaskControlMessage controlMessage) {
+    final String taskId = indexTaskMap.get(index);
+
     if (inputPipeIndexInputReaderMap.containsKey(index)) {
 
-      if (pendingControlQueueMap.containsKey(index)) {
-        final Queue<TaskControlMessage> queue = pendingControlQueueMap.remove(index);
+      if (pendingControlQueueMap.containsKey(taskId)) {
+        final Queue<Pair<Integer, TaskControlMessage>> queue = pendingControlQueueMap.remove(taskId);
         if (queue != null) {
           queue.forEach(data -> {
-            inputPipeIndexInputReaderMap.get(index).addControl(data);
+            inputPipeIndexInputReaderMap.get(data.left()).addControl(data.right());
           });
         }
       }
@@ -193,9 +207,9 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
       inputPipeIndexInputReaderMap.get(index).addControl(controlMessage);
 
     } else {
-      pendingControlQueueMap.putIfAbsent(index, new ConcurrentLinkedQueue<>());
-      final Queue<TaskControlMessage> queue = pendingControlQueueMap.get(index);
-      queue.add(controlMessage);
+      pendingControlQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
+      final Queue<Pair<Integer, TaskControlMessage>> queue = pendingControlQueueMap.get(taskId);
+      queue.add(Pair.of(index, controlMessage));
     }
   }
 
