@@ -40,6 +40,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -139,6 +140,9 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   private final Map<Integer, Queue<ByteBuf>> pendingByteBufQueueMap = new ConcurrentHashMap<>();
   private final Map<Integer, Queue<TaskControlMessage>> pendingControlQueueMap = new ConcurrentHashMap<>();
 
+  private final AtomicInteger pendingDataNum = new AtomicInteger(0);
+  private final AtomicInteger addDataNum = new AtomicInteger(0);
+
   @Override
   public void addInputData(int index, ByteBuf event) {
     if (inputPipeIndexInputReaderMap.containsKey(index)) {
@@ -148,6 +152,7 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
         if (queue != null) {
           queue.forEach(data -> {
             inputPipeIndexInputReaderMap.get(index).addData(index, data);
+            LOG.info("Add data for index {} cnt {}", index, addDataNum.getAndIncrement());
           });
         }
       }
@@ -161,12 +166,14 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
         }
       }
 
+      addDataNum.getAndIncrement();
       inputPipeIndexInputReaderMap.get(index).addData(index, event);
 
     } else {
       pendingByteBufQueueMap.putIfAbsent(index, new ConcurrentLinkedQueue<>());
       final Queue<ByteBuf> queue = pendingByteBufQueueMap.get(index);
       queue.add(event);
+      LOG.info("Pending data for index {} cnt {}", index, pendingDataNum.getAndIncrement());
     }
   }
 
