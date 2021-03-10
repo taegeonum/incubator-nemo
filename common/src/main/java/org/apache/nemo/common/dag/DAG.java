@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.nemo.common.Util;
 import org.apache.nemo.common.exception.IllegalEdgeOperationException;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -59,8 +58,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
       final List<V> rootVertices = new ArrayList<>(s);
       for (int i = 0; i < s; i++) {
         final boolean isRoot = dis.readBoolean();
-        final V vertex = Util.deserializeWithCustomLoader(dis);
-        // final V vertex = SerializationUtils.deserialize(dis);
+        final V vertex = SerializationUtils.deserialize(dis);
         vertices.add(vertex);
         if (isRoot) {
           rootVertices.add(vertex);
@@ -75,8 +73,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
           final RuntimeEdge e = RuntimeEdge.decode(dis, vertices);
           edges.add((E)e);
         } else {
-          edges.add(Util.deserializeWithCustomLoader(dis));
-          // edges.add(SerializationUtils.deserialize(dis));
+          edges.add(SerializationUtils.deserialize(dis));
         }
       }
 

@@ -1,7 +1,6 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.offloading.common.CustomClassLoader;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,15 +43,12 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   private final ExecutorMetrics executorMetrics;
 
-  private final boolean onLambda;
-
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId,
                         final ControlEventHandler controlEventHandler,
                         final long throttleRate,
                         final ExecutorMetrics executorMetrics,
-                        final boolean testing,
-                        final boolean onLambda) {
+                        final boolean testing) {
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
@@ -65,7 +61,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     this.throttleRate = throttleRate;
     this.testing = testing;
     this.executorMetrics = executorMetrics;
-    this.onLambda = onLambda;
 
     final AtomicLong l = new AtomicLong(System.currentTimeMillis());
 
@@ -194,11 +189,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
     executorService.execute(() -> {
       try {
-        if (onLambda) {
-          ClassLoader cl = Thread.currentThread().getContextClassLoader();
-          Thread.currentThread().setContextClassLoader(new CustomClassLoader(cl));
-        }
-
         while (!finished) {
 
           // process source tasks

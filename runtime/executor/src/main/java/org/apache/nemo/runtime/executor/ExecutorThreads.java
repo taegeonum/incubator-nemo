@@ -27,7 +27,7 @@ public final class ExecutorThreads {
     this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
     for (int i = 0; i < evalConf.executorThreadNum; i++) {
       executorThreads.add(new ExecutorThread(
-        i, executorId, taskControlEventHandler, Long.MAX_VALUE, executorMetrics, false, false));
+        i, executorId, taskControlEventHandler, Long.MAX_VALUE, executorMetrics, false));
       executorThreads.get(i).start();
     }
   }

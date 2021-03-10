@@ -107,14 +107,12 @@ public final class Task implements Serializable {
       int s = dis.readInt();
       final List<StageEdge> taskIncomingEdges = new ArrayList<>(s);
       for (int i = 0; i < s; i++) {
-        taskIncomingEdges.add(Util.deserializeWithCustomLoader(dis));
-        // taskIncomingEdges.add(SerializationUtils.deserialize(dis));
+        taskIncomingEdges.add(SerializationUtils.deserialize(dis));
       }
       s = dis.readInt();
       final List<StageEdge> taskOutgoingEdges = new ArrayList<>(s);
       for (int i = 0; i < s; i++) {
-        taskOutgoingEdges.add(Util.deserializeWithCustomLoader(dis));
-        // taskOutgoingEdges.add(SerializationUtils.deserialize(dis));
+        taskOutgoingEdges.add(SerializationUtils.deserialize(dis));
       }
       // final byte[] serializedIRDag = new byte[dis.readInt()];
       // dis.read(serializedIRDag);
@@ -122,8 +120,7 @@ public final class Task implements Serializable {
       final Map<String, Readable> irVertexIdToReadable = new HashMap<>(s);
       for (int i = 0; i < s; i++) {
         final String key = dis.readUTF();
-        final Readable val = Util.deserializeWithCustomLoader(dis);
-        // final Readable val = SerializationUtils.deserialize(dis);
+        final Readable val = SerializationUtils.deserialize(dis);
         irVertexIdToReadable.put(key, val);
       }
 

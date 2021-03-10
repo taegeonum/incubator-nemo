@@ -295,8 +295,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
           taskControlEventHandler,
           throttleRate,
           executorMetrics,
-          context.testing,
-          true));
+          context.testing));
       executorThreads.get(i).start();
     }
 
@@ -342,14 +341,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   @Override
   public void onData(Object event, OffloadingOutputCollector a) {
-    try {
-      Thread.currentThread().setContextClassLoader(
-        new CustomClassLoader(Thread.currentThread().getContextClassLoader()));
-    } catch (final Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-
     if (event instanceof SendToOffloadingWorker) {
       // prepareOffloading task
       final SendToOffloadingWorker e = (SendToOffloadingWorker) event;

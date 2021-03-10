@@ -254,7 +254,7 @@ public final class OffloadingHandler {
       System.out.println("Loading jar: " + controlChannel);
       try {
         //classLoader = classLoaderCallable.call();
-        classLoader = new CustomClassLoader(Thread.currentThread().getContextClassLoader());
+        classLoader = Thread.currentThread().getContextClassLoader();
       } catch (Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
