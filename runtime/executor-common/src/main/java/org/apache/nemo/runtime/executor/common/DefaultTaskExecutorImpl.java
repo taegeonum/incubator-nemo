@@ -457,7 +457,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
         // Create VERTEX HARNESS
         final Transform.Context context = new TransformContextImpl(
-          irVertex, serverlessExecutorProvider, taskId, stateStore);
+          irVertex, serverlessExecutorProvider, taskId, stateStore,
+          executorId);
 
         TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector, taskId);
 
