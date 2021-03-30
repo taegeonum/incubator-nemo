@@ -1197,25 +1197,22 @@ public final class JobScaler {
             stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
 
 
+            LOG.info("Waiting for task reclaiming {}", taskId);
+            while (!taskScheduledMap.isTaskScheduled(taskId)) {
+              try {
+                Thread.sleep(50);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              // Waiting for task scheduling
+            }
+            LOG.info("End of waiting for task reclaiming {}", taskId);
           }
         }
-      }
-
-      for (final String taskId : currStageStopped) {
-        LOG.info("Waiting for task reclaiming {}", taskId);
-        while (!taskScheduledMap.isTaskScheduled(taskId)) {
-          try {
-            Thread.sleep(50);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-          // Waiting for task scheduling
-        }
-        LOG.info("End of waiting for task reclaiming {}", taskId);
       }
 
       try {
-        Thread.sleep(3000);
+        Thread.sleep(1000);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
