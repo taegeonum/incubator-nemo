@@ -1202,24 +1202,24 @@ public final class JobScaler {
             }
           }
         }
-      }
 
-      for (final String taskId : stoppedTasks) {
-        LOG.info("Waiting for task reclaiming {}", taskId);
-        while (!taskScheduledMap.isTaskScheduled(taskId)) {
-          try {
-            Thread.sleep(50);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
+        for (final String taskId : stoppedTasks) {
+          LOG.info("Waiting for task reclaiming {}", taskId);
+          while (!taskScheduledMap.isTaskScheduled(taskId)) {
+            try {
+              Thread.sleep(50);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            // Waiting for task scheduling
           }
-          // Waiting for task scheduling
+          LOG.info("End of waiting for task reclaiming {}", taskId);
+          prevMovedTask.remove(taskId);
         }
-        LOG.info("End of waiting for task reclaiming {}", taskId);
-        prevMovedTask.remove(taskId);
       }
 
       try {
-        Thread.sleep(500);
+        Thread.sleep(200);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
