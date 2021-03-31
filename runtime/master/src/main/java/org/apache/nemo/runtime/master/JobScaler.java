@@ -1155,72 +1155,74 @@ public final class JobScaler {
     stageIds.sort((a, b) -> -Integer.valueOf(a.split("Stage")[1])
       .compareTo(Integer.valueOf(b.split("Stage")[1])));
 
-    for (final String stageId : stageIds) {
+    for (int k = 0; k < num; k++) {
+      for (final String stageId : stageIds) {
 
-      final List<String> currStageStopped = new LinkedList<>();
+        final List<String> currStageStopped = new LinkedList<>();
 
-      if (prevStageId != null &&
-        (Integer.valueOf(prevStageId.split("Stage")[1]) ==
-          Integer.valueOf(stageId.split("Stage")[1]) - 1)) {
-        // waiting for the finish of scheduling
-        for (final String taskId : prevStoppedTasks) {
-          LOG.info("Waiting for prev stage task rescheduling {}, task {}", prevStageId, taskId);
-          if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(prevStageId)) {
-            while (!taskScheduledMap.isTaskScheduled(taskId)) {
-              try {
-                Thread.sleep(50);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
+        if (prevStageId != null &&
+          (Integer.valueOf(prevStageId.split("Stage")[1]) ==
+            Integer.valueOf(stageId.split("Stage")[1]) - 1)) {
+          // waiting for the finish of scheduling
+          for (final String taskId : prevStoppedTasks) {
+            LOG.info("Waiting for prev stage task rescheduling {}, task {}", prevStageId, taskId);
+            if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(prevStageId)) {
+              while (!taskScheduledMap.isTaskScheduled(taskId)) {
+                try {
+                  Thread.sleep(50);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+                // Waiting for task scheduling
               }
-              // Waiting for task scheduling
+            }
+          }
+          LOG.info("End of waiting for stage rescheduling {}", prevStageId);
+        }
+
+        prevStageId = stageId;
+        prevStoppedTasks.clear();
+
+        LOG.info("Start stopping {}", stageId);
+        for (final String taskId : prevMovedTask) {
+          if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(stageId)) {
+            stageStoppedCnt.putIfAbsent(stageId, 0);
+
+            if (stageStoppedCnt.get(stageId) < 1) {
+              LOG.info("Stop task {}", taskId);
+              currStageStopped.add(taskId);
+              taskScheduledMap.stopTask(taskId);
+              stoppedTasks.add(taskId);
+              prevStoppedTasks.add(taskId);
+
+              stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
             }
           }
         }
-        LOG.info("End of waiting for stage rescheduling {}", prevStageId);
       }
 
-      prevStageId = stageId;
-      prevStoppedTasks.clear();
-
-      LOG.info("Start stopping {}", stageId);
-      for (final String taskId : prevMovedTask) {
-        if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(stageId)) {
-          stageStoppedCnt.putIfAbsent(stageId, 0);
-
-          if (stageStoppedCnt.get(stageId) < num) {
-            LOG.info("Stop task {}", taskId);
-            currStageStopped.add(taskId);
-            taskScheduledMap.stopTask(taskId);
-            stoppedTasks.add(taskId);
-            prevStoppedTasks.add(taskId);
-
-            stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
+      for (final String taskId : stoppedTasks) {
+        LOG.info("Waiting for task reclaiming {}", taskId);
+        while (!taskScheduledMap.isTaskScheduled(taskId)) {
+          try {
+            Thread.sleep(50);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
           }
+          // Waiting for task scheduling
         }
+        LOG.info("End of waiting for task reclaiming {}", taskId);
+        prevMovedTask.remove(taskId);
+      }
+
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
       }
     }
 
-    for (final String taskId : stoppedTasks) {
-      LOG.info("Waiting for task reclaiming {}", taskId);
-      while (!taskScheduledMap.isTaskScheduled(taskId)) {
-        try {
-          Thread.sleep(50);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        // Waiting for task scheduling
-      }
-      LOG.info("End of waiting for task reclaiming {}", taskId);
-      prevMovedTask.remove(taskId);
-    }
-
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-
-    // prevMovedTask.clear();
+    prevMovedTask.clear();
   }
 
   public synchronized void sendTaskStopSignal(final int num,

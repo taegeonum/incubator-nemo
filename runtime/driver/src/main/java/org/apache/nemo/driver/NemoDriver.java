@@ -245,9 +245,7 @@ public final class NemoDriver {
               Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                 .collect(Collectors.toList());
             // runtimeMaster.triggerConditionalRouting(false, 0);
-            for (int i = 0; i < num; i++) {
-              jobScaler.sendPrevMovedTaskStopSignal(1, stages);
-            }
+            jobScaler.sendPrevMovedTaskStopSignal(num, stages);
           } else if (decision.equals("throttle-source")) {
             final String[] args = message.getScalingMsg().getInfo().split(" ");
             final int num = new Integer(args[1]);
