@@ -1146,7 +1146,6 @@ public final class JobScaler {
     taskDispatcher.setReclaiming(true);
 
     final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
-    final Map<String, Integer> stageStoppedCnt = new HashMap<>();
 
     String prevStageId = null;
     final List<String> prevStoppedTasks = new LinkedList<>();
@@ -1156,6 +1155,7 @@ public final class JobScaler {
 
     for (int k = 0; k < num; k++) {
       final List<String> stoppedTasks = new LinkedList<>();
+      final Map<String, Integer> stageStoppedCnt = new HashMap<>();
 
       for (final String stageId : stageIds) {
 
