@@ -1161,6 +1161,7 @@ public final class JobScaler {
 
         final List<String> currStageStopped = new LinkedList<>();
 
+        /*
         if (prevStageId != null &&
           (Integer.valueOf(prevStageId.split("Stage")[1]) ==
             Integer.valueOf(stageId.split("Stage")[1]) - 1)) {
@@ -1180,6 +1181,7 @@ public final class JobScaler {
           }
           LOG.info("End of waiting for stage rescheduling {}", prevStageId);
         }
+        */
 
         prevStageId = stageId;
         prevStoppedTasks.clear();
