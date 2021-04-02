@@ -230,11 +230,12 @@ public final class NemoDriver {
             final String[] args = message.getScalingMsg().getInfo().split(" ");
             final int num = new Integer(args[1]);
             final String[] stageIds = args[2].split(",");
+            final boolean fluid = Boolean.valueOf(args[3]);
             final List<String> stages =
               Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                 .collect(Collectors.toList());
             for (int i = stages.size() - 1; i >= 0; i--) {
-              jobScaler.sendTaskStopSignal(num, Collections.singletonList(stages.get(i)));
+              jobScaler.sendTaskStopSignal(num, Collections.singletonList(stages.get(i)), fluid);
               try {
                 Thread.sleep(250);
               } catch (InterruptedException e) {

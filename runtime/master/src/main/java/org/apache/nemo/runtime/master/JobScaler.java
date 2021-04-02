@@ -1231,7 +1231,8 @@ public final class JobScaler {
   }
 
   public synchronized void sendTaskStopSignal(final int num,
-                                              final List<String> stageIds) {
+                                              final List<String> stageIds,
+                                              final boolean fluid) {
 
     taskDispatcher.setReclaiming(false);
 
@@ -1291,6 +1292,23 @@ public final class JobScaler {
                 stoppedTasks.add(taskId);
 
                 stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
+
+                if (fluid) {
+                  LOG.info("Waiting for task rescheduling {}", taskId);
+                  while (!taskScheduledMap.isTaskScheduled(taskId)) {
+                    try {
+                      Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                      e.printStackTrace();
+                    }
+                    // Waiting for task scheduling
+                  }
+                  try {
+                    Thread.sleep(100);
+                  } catch (InterruptedException e) {
+                    e.printStackTrace();
+                  }
+                }
               }
             }
           }
