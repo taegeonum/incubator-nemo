@@ -1293,24 +1293,28 @@ public final class JobScaler {
 
                 stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
 
-                if (fluid) {
-                  LOG.info("Waiting for task rescheduling {}", taskId);
-                  while (!taskScheduledMap.isTaskScheduled(taskId)) {
-                    try {
-                      Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                      e.printStackTrace();
-                    }
-                    // Waiting for task scheduling
-                  }
-                  try {
-                    Thread.sleep(100);
-                  } catch (InterruptedException e) {
-                    e.printStackTrace();
-                  }
-                }
               }
             }
+          }
+        }
+
+        // 5개 마다 기다리기
+        if (fluid && (stoppedTasks.size() + 1) % 5 == 0) {
+          LOG.info("Waiting for task rescheduling {}", taskId);
+          for (final String stoppedTask : stoppedTasks) {
+            while (!taskScheduledMap.isTaskScheduled(stoppedTask)) {
+              try {
+                Thread.sleep(10);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              // Waiting for task scheduling
+            }
+          }
+          try {
+            Thread.sleep(100);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
           }
         }
       }
