@@ -89,7 +89,10 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
   public Optional<Long> trackAndEmitWatermarks(final String edgeId,
                                                final int taskIndex,
                                                final long watermark) {
+    return vmWatermarkTracker
+      .trackAndEmitWatermarks(vmPathEdgeId, taskIndex, watermark);
 
+    /*
     final Optional<Long> val;
     final boolean pairStopped;
     if (edgeId.equals(lambdaPathEdgeId)) {
@@ -109,11 +112,6 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
       dataFetcherWatermarkMap.put(edgeId, val.get());
 
-      /*
-      LOG.info("R2 pair trackAndEmitWatermark task {} edge {} / {} / {} emit watermark {}, pairStopped {} / prev watermark {}" +
-          "dataFetcherWatermarkMap {}",
-        taskId, edgeId, taskIndex, watermark, outputW, pairStopped, prevWatermark, dataFetcherWatermarkMap);
-        */
 
       final long minWatermark;
       if (pairStopped) {
@@ -130,5 +128,6 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     }
 
     return Optional.empty();
+    */
   }
 }

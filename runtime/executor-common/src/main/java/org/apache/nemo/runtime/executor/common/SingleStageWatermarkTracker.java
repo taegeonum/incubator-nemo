@@ -46,6 +46,10 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
   }
 
   private int findNextMinWatermarkIndex() {
+    if (allStopped) {
+      return -1;
+    }
+
     int index = -1;
     long timestamp = Long.MAX_VALUE;
     for (int i = 0; i < watermarks.size(); i++) {
