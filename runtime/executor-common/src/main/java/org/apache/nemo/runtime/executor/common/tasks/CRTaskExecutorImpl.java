@@ -104,7 +104,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
   private final StateStore stateStore;
 
-  private R2WatermarkManager taskWatermarkManager;
+  private TaskInputWatermarkManager taskWatermarkManager;
   private final InputPipeRegister inputPipeRegister;
 
   // private final OffloadingManager offloadingManager;
@@ -247,7 +247,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     this.vmPathDstTasks = getDstTaskIds(vmPathEdge);
     this.vmPathSerializer = serializerManager.getSerializer(vmPathEdge.getId());
 
-    this.taskWatermarkManager = new R2WatermarkManager(taskId);
+    this.taskWatermarkManager = new TaskInputWatermarkManager(taskId);
 
     if (vmPathDstTasks.size() > 1) {
       this.getDstTaskId = new RRDstTAskId();
@@ -373,14 +373,14 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     LOG.info("Stop input pipe index {}", triple);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
-    taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
+    // taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
   }
 
   public void startInputPipeIndex(final Triple<String, String, String> triple) {
     LOG.info("Start input pipe index {}", triple);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
-    taskWatermarkManager.startIndex(taskIndex, edgeId);
+    // taskWatermarkManager.startIndex(taskIndex, edgeId);
   }
 
   private void prepare() {
@@ -614,10 +614,12 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
               // LOG.info("Adding data fetcher 33 for {} / {}", taskId, irVertex.getId());
               if (edge.isTransientPath()) {
                 final String pairVMEdgeId = edge.getPropertyValue(PairEdgeProperty.class).get();
-                taskWatermarkManager.addDataFetcher(pairVMEdgeId, df.getEdgeId(), 1);
+                // taskWatermarkManager.addDataFetcher(pairVMEdgeId, df.getEdgeId(), 1);
+                taskWatermarkManager.addDataFetcher(pairVMEdgeId, 1);
               } else {
                 if (task.getTaskIncomingEdges().size() == 1) {
-                  taskWatermarkManager.addDataFetcher(df.getEdgeId(), df.getEdgeId(), 1);
+                  // taskWatermarkManager.addDataFetcher(df.getEdgeId(), df.getEdgeId(), 1);
+                  taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
                 }
               }
 
@@ -632,10 +634,12 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
               if (edge.isTransientPath()) {
                 final String pairVMEdgeId = edge.getPropertyValue(PairEdgeProperty.class).get();
-                taskWatermarkManager.addDataFetcher(pairVMEdgeId, df.getEdgeId(), parallelism);
+                // taskWatermarkManager.addDataFetcher(pairVMEdgeId, df.getEdgeId(), parallelism);
+                taskWatermarkManager.addDataFetcher(pairVMEdgeId, parallelism);
               } else {
                 if (task.getTaskIncomingEdges().size() == 1) {
-                  taskWatermarkManager.addDataFetcher(df.getEdgeId(), df.getEdgeId(), parallelism);
+                  // taskWatermarkManager.addDataFetcher(df.getEdgeId(), df.getEdgeId(), parallelism);
+                  taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
                 }
               }
               // LOG.info("Adding data fetcher 44 for {} / {}", taskId, irVertex.getId());
