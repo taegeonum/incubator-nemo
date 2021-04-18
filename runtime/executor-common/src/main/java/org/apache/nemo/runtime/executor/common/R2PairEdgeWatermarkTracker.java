@@ -237,6 +237,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         if (minWatermark < prevWatermark) {
           return Optional.empty();
         } else {
+          prevWatermark = minWatermark;
           return Optional.of(minWatermark);
         }
       } else {
