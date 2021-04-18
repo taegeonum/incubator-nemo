@@ -93,8 +93,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   private final AtomicBoolean prepared = new AtomicBoolean(false);
 
-  private List<Transform> statefulTransforms;
-
   private final TaskMetrics taskMetrics;
 
   private final StateStore stateStore;
@@ -192,8 +190,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
 
     this.externalAdditionalOutputMap = new HashMap<>();
-
-    this.statefulTransforms = new ArrayList<>();
 
     final long restoresSt = System.currentTimeMillis();
 
@@ -325,14 +321,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   @Override
   public int getNumKeys() {
-    if (isStateless) {
-      return 0;
-    } else {
-      //LOG.info("Key {}, {}", num, taskId);
-      return statefulTransforms.stream().map(t -> t.getNumKeys())
-        .reduce((x, y) -> x + y)
-        .get();
-    }
+    return mergerTransform.getNumKeys();
   }
 
   @Override
@@ -493,7 +482,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         isStateless = false;
         if (childVertex instanceof OperatorVertex) {
           final OperatorVertex ov = (OperatorVertex) childVertex;
-          statefulTransforms.add(ov.getTransform());
           LOG.info("Set GBK final transform");
         }
       }
@@ -841,7 +829,11 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            if (getNumKeys() > 1) {
+              mergerTransform.onWatermark(watermark);
+            } else {
               dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+            }
           });
       } else {
         dataRouter.writeData(data);
@@ -865,7 +857,11 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
-            dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+            if (getNumKeys() > 1) {
+              mergerTransform.onWatermark(watermark);
+            } else {
+              dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+            }
           });
       } else {
         // data
