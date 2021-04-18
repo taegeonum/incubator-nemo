@@ -279,7 +279,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
       @Override
       public void emitWatermark(Watermark watermark) {
-        // LOG.info("SM vertex {} emits watermark {}", taskId, watermark.getTimestamp());
+        LOG.info("SM vertex {} emits watermark {}", taskId, watermark.getTimestamp());
         dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
       }
 
