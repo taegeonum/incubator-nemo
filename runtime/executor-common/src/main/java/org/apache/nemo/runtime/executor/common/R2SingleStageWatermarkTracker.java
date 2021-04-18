@@ -105,7 +105,7 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
 
       final Long nextMinWatermark = watermarks.get(nextMinWatermarkIndex);
 
-      if (nextMinWatermark > prevEmitWatermark) {
+      if (nextMinWatermark >= prevEmitWatermark) {
         // Watermark timestamp progress!
         // Emit the min watermark
         minWatermarkIndex = nextMinWatermarkIndex;
