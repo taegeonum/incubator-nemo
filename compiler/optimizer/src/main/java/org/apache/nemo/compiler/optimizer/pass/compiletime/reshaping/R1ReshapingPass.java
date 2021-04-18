@@ -56,15 +56,16 @@ public final class R1ReshapingPass extends ReshapingPass {
         //  dag.insert(new StreamVertex(), edge);
         // }
       } else {
-        final IREdge edge = edges.get(0);
-        if (CommunicationPatternProperty.Value.Shuffle
-          .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-          dag.insert(new StreamVertex(), edge);
-        }
+        edges.forEach(edge -> {
+          if (CommunicationPatternProperty.Value.Shuffle
+            .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+            dag.insert(new StreamVertex(), edge);
+          }
 
-        if (edge.getSrc() instanceof SourceVertex) {
-          dag.insert(new SrcStreamVertex(), edge);
-        }
+          if (edge.getSrc() instanceof SourceVertex) {
+            dag.insert(new SrcStreamVertex(), edge);
+          }
+        });
       }
     });
 
