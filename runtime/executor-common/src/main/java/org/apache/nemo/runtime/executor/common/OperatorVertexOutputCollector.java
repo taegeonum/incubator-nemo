@@ -103,10 +103,11 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.samplingRate = samplingMap.getOrDefault(irVertex.getId(), 0.0);
     this.latencyLimit = latencyLimit;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
-    this.isSink = irVertex.isSink;
+    this.isSink = this.internalMainOutputs.length == 0 && this.externalMainOutputs.length == 0
+      && internalAdditionalOutputs.size() == 0 && externalAdditionalOutputs.size() == 0;
 
+    LOG.info("Vertex {} is sink {}", irVertex.getId(), isSink);
     this.mainDataEmitter = getMainDataEmitter();
-
     // LOG.info("Vertex Id Sampling Rate {} / {} / {}", irVertex.getId(), samplingRate, samplingMap);
   }
 
