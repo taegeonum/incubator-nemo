@@ -825,7 +825,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
         // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
         //  watermarkWithIndex.getIndex(), event.getEdgeId());
-
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
@@ -854,7 +853,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
         // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
         //  watermarkWithIndex.getIndex(), taskHandlingEvent.getEdgeId());
-
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {

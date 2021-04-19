@@ -58,7 +58,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     if (lambdaPathAllStopped) {
       watermarkTracker = vmPathTracker;
     } else if (vmPathAllStopped) {
-      watermarkTracker = lambdaWatermarkTracker;
+      watermarkTracker = lambdaPathTracker;
     } else {
       watermarkTracker = bothPathTracker;
     }
@@ -210,10 +210,6 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
     @Override
     public Optional<Long> trackAndEmitWatermarks(String taskId, String edgeId, int edgeIndex, long watermark) {
-      if (edgeId.equals(vmPathEdgeId)) {
-        throw new RuntimeException("VM path stopped .. but receive watermark");
-      }
-
       final Optional<Long> val = lambdaWatermarkTracker
         .trackAndEmitWatermarks(taskId, lambdaPathEdgeId, edgeIndex, watermark);
 
@@ -234,10 +230,6 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
     @Override
     public Optional<Long> trackAndEmitWatermarks(String taskId, String edgeId, int edgeIndex, long watermark) {
-      if (edgeId.equals(lambdaPathEdgeId)) {
-        throw new RuntimeException("Lambda path stopped .. but receive watermark");
-      }
-
       final Optional<Long> val =
         vmWatermarkTracker.trackAndEmitWatermarks(taskId, vmPathEdgeId, edgeIndex, watermark);
 
