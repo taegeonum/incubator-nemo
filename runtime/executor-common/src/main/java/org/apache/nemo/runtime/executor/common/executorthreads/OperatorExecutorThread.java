@@ -176,7 +176,9 @@ public final class OperatorExecutorThread implements ExecutorThread {
     synchronized (tasks) {
       tasks.add(task.getId());
     }
-    LOG.info("Add task to unInitializedTasks {} / {} in {}", task.getId(), unInitializedTasks,
+    LOG.info("Add task to unInitializedTasks {}, taskEventQueueMap: {}, " +
+        "activeWaitingQueueTasks: {}, {} in {}", task.getId(), unInitializedTasks,
+      taskEventQueueMap.keySet(), activeWaitingQueueTasks,
       executorId);
   }
 
