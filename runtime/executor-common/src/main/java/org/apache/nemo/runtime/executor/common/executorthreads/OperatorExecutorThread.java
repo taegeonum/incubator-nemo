@@ -136,8 +136,8 @@ public final class OperatorExecutorThread implements ExecutorThread {
     try {
         synchronized (activeWaitingQueueTasks) {
           synchronized (emptyQueueTasks) {
-            activeWaitingQueueTasks.remove(task);
-            emptyQueueTasks.remove(task);
+            activeWaitingQueueTasks.remove(task.getId());
+            emptyQueueTasks.remove(task.getId());
           }
         }
 
@@ -489,12 +489,12 @@ public final class OperatorExecutorThread implements ExecutorThread {
             }
           }
 
-          taskScheduler.schedule(rescheduleTasks);
+          rescheduleTasks.forEach(t -> taskScheduler.schedule(t));
           rescheduleTasks.clear();
 
           if (!activeWaitingQueueTasks.isEmpty()) {
             synchronized (activeWaitingQueueTasks) {
-              taskScheduler.schedule(activeWaitingQueueTasks);
+              activeWaitingQueueTasks.forEach(t -> taskScheduler.schedule(t));
               activeWaitingQueueTasks.clear();
             }
           }
