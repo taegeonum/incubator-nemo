@@ -18,13 +18,11 @@
  */
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
-import org.apache.nemo.runtime.executor.common.InputWatermarkManager;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

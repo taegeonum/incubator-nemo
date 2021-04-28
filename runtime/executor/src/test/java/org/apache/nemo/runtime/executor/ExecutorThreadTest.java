@@ -7,6 +7,8 @@ import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.nemo.runtime.executor.common.executorthreads.ExecutorThreadTask;
+import org.apache.nemo.runtime.executor.common.executorthreads.OperatorExecutorThread;
 import org.junit.Test;
 
 import java.util.*;
@@ -23,7 +25,7 @@ public final class ExecutorThreadTest {
 
   @Test
   public void testExecutorThread() throws InterruptedException {
-    final ExecutorThread executorThread = new ExecutorThread(0,
+    final OperatorExecutorThread executorThread = new OperatorExecutorThread(0,
       "executor1", controlEventHandler, Long.MAX_VALUE, new ExecutorMetrics(),
       false);
 

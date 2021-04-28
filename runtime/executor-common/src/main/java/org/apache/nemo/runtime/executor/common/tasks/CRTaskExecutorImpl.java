@@ -40,6 +40,9 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.executorthreads.ExecutorThreadQueue;
+import org.apache.nemo.runtime.executor.common.watermarks.R2MultiPairWatermarkManager;
+import org.apache.nemo.runtime.executor.common.watermarks.TaskInputWatermarkManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

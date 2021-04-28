@@ -7,7 +7,7 @@ import io.netty.channel.socket.SocketChannel;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.*;
@@ -16,6 +16,7 @@ import org.apache.nemo.runtime.executor.common.Executor;
 import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.executorthreads.OperatorExecutorThread;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
@@ -54,7 +55,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final boolean isLocalSource;
   private final int stateStorePort;
 
-  private List<ExecutorThread> executorThreads;
+  private List<OperatorExecutorThread> executorThreads;
   private StateStore stateStore;
   private VMScalingClientTransport clientTransport;
   private Channel parentExecutorChannel;
@@ -68,7 +69,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final SerializerManager serializerManager;
   private final Map<Triple<String, String, String>, Integer> indexMap;
   private final Map<Integer, String> indexTaskMap;
-  private final Map<String, ExecutorThread> taskExecutorThreadMap;
+  private final Map<String, OperatorExecutorThread> taskExecutorThreadMap;
   private final Map<String, TaskExecutor> taskExecutorMap;
 
   private ScheduledExecutorService scheduledService;
@@ -187,7 +188,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   @Override
   public boolean hasRemainingEvent() {
-    for (ExecutorThread e : executorThreads) {
+    for (OperatorExecutorThread e : executorThreads) {
       if (!e.isEmpty()) {
         return true;
       }
@@ -306,6 +307,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     jcb.bindNamedParameter(EvalConf.LatencyLimit.class, Long.toString(latencyLimit));
 
+    jcb.bindNamedParameter(JobConf.ExecutorResourceType.class, ResourcePriorityProperty.LAMBDA);
 
     final Configuration conf = jcb.build();
 
@@ -365,7 +367,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     executorThreads = new ArrayList<>();
     for (int i = 0; i < executorThreadNum; i++) {
       executorThreads.add(
-        new ExecutorThread(1,
+        new OperatorExecutorThread(1,
           "lambda-" + i,
           taskControlEventHandler,
           throttleRate,
@@ -474,7 +476,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       final int numTask = numReceivedTasks.getAndIncrement();
       final int index = numTask % executorThreadNum;
-      final ExecutorThread executorThread = executorThreads.get(index);
+      final OperatorExecutorThread executorThread = executorThreads.get(index);
 
       final TaskExecutor taskExecutor =
       new DefaultTaskExecutorImpl(

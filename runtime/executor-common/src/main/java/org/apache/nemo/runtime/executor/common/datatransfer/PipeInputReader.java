@@ -23,6 +23,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.nemo.runtime.executor.common.executorthreads.ExecutorThreadQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

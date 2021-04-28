@@ -4,7 +4,7 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
-import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.common.executorthreads.TaskExecutorMapWrapper;
 import org.apache.reef.tang.annotations.Parameter;
 import org.joda.time.Instant;
 import org.slf4j.Logger;

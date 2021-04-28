@@ -6,7 +6,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.common.NettyStateStore;
 import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
-import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.common.executorthreads.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.lambdaexecutor.NetworkUtils;
 import org.apache.reef.tang.annotations.Parameter;

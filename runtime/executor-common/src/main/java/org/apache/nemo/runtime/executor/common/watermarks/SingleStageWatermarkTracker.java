@@ -1,6 +1,7 @@
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.watermarks;
 
 import org.apache.nemo.common.Util;
+import org.apache.nemo.runtime.executor.common.WatermarkTracker;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

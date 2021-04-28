@@ -1,13 +1,13 @@
 package org.apache.nemo.runtime.executor.common.monitoring;
 
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
+import org.apache.nemo.runtime.executor.common.executorthreads.OperatorExecutorThread;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public final class BackpressureSleepAlarm {
-  private final ExecutorThread executorThread;
+  private final OperatorExecutorThread executorThread;
   private final long remainingSleepMs;
   private final long remainingWindow;
   private final ScheduledExecutorService scheduler;
@@ -15,7 +15,7 @@ public final class BackpressureSleepAlarm {
 
   private boolean deactivated = false;
 
-  public BackpressureSleepAlarm(final ExecutorThread executorThread,
+  public BackpressureSleepAlarm(final OperatorExecutorThread executorThread,
                                 final ScheduledExecutorService scheduler,
                                 final AlarmManager alarmManager,
                                 final long remainingSleepMs,

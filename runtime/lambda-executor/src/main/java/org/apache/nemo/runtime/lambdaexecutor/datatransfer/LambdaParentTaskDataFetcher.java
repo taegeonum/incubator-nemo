@@ -31,6 +31,9 @@ import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.watermarks.InputWatermarkManager;
+import org.apache.nemo.runtime.executor.common.watermarks.MultiInputWatermarkManager;
+import org.apache.nemo.runtime.executor.common.watermarks.SingleInputWatermarkManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

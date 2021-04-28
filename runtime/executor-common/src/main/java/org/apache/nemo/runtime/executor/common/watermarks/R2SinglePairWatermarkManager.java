@@ -1,18 +1,15 @@
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.watermarks;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.common.WatermarkTracker;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.Serializable;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 public final class R2SinglePairWatermarkManager implements R2WatermarkManager {

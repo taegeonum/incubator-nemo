@@ -26,7 +26,7 @@ import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.ChannelStatus;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
+import org.apache.nemo.runtime.executor.common.executorthreads.OperatorExecutorThread;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayDataFrame;
@@ -76,7 +76,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
   private final Object writeLock = new Object();
 
-  protected ExecutorThread executorThread;
+  protected OperatorExecutorThread executorThread;
 
   private final TaskLoc myLocation;
 
@@ -224,7 +224,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
    * @throws IOException if an exception was set or this context was closed.
    */
   @Override
-  public synchronized ByteOutputStream newOutputStream(final ExecutorThread t) throws IOException {
+  public synchronized ByteOutputStream newOutputStream(final OperatorExecutorThread t) throws IOException {
     ensureNoException();
     if (closed) {
       throw new IOException("Context already closed.");

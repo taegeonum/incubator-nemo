@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.executorthreads;
 
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 

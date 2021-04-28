@@ -72,7 +72,7 @@ public final class TinyTaskOffloader implements Offloader {
 //
 //  public final RemainingOffloadTasks remainingOffloadTasks = RemainingOffloadTasks.getInstance();
 //
-//  public final ExecutorThread executorThread;
+//  public final OperatorExecutorThread executorThread;
 //  public final ScheduledExecutorService scheduledExecutorService;
 //  public final ScalingOutCounter scalingOutCounter;
 //  public final Map<String, String> taskExecutorIdMap;
@@ -95,7 +95,7 @@ public final class TinyTaskOffloader implements Offloader {
 //                           final Collection<OutputWriter> outputWriters,
 //                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
 //                           final TaskLocationMap taskLocationMap,
-//                           final ExecutorThread executorThread,
+//                           final OperatorExecutorThread executorThread,
 //                           final List<DataFetcher> fetchers,
 //                           final ScalingOutCounter scalingOutCounter,
 //                           final Map<String, String> taskExecutorIdMap) {

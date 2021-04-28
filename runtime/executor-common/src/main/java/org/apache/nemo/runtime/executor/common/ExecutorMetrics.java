@@ -1,11 +1,8 @@
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.executor.common.executorthreads.ExecutorThread;
 
 import javax.inject.Inject;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

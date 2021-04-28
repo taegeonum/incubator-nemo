@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.common.tasks;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.ir.vertex.*;
-import org.apache.nemo.runtime.executor.common.ExecutorThreadTask;
+import org.apache.nemo.runtime.executor.common.executorthreads.ExecutorThreadTask;
 
 /**
  * Executes a task.

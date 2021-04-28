@@ -16,14 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.ExecutorChannelMap;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
+import org.apache.nemo.runtime.executor.common.SimpleContextManagerImpl;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
-import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;

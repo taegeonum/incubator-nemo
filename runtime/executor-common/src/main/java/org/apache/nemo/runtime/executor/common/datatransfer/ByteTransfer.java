@@ -16,11 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.channel.*;
-import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

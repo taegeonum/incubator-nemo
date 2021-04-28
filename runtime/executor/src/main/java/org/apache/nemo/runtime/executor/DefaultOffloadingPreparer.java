@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.executor;
 
 import org.apache.nemo.runtime.executor.common.OffloadingPreparer;
 import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
-import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.common.executorthreads.TaskExecutorMapWrapper;
 
 import javax.inject.Inject;
 

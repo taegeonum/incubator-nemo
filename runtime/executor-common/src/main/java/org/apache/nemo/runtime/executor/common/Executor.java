@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
@@ -36,8 +35,8 @@ import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessag
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.common.executorthreads.*;
 import org.apache.nemo.runtime.executor.common.monitoring.AlarmManager;
-import org.apache.nemo.runtime.executor.common.monitoring.BackpressureSleepAlarm;
 import org.apache.nemo.runtime.executor.common.tasks.*;
 import org.apache.nemo.runtime.message.*;
 import org.apache.reef.tang.annotations.Parameter;
@@ -202,7 +201,7 @@ public final class Executor {
    //  this.workerFactory = workerFactory;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
-      if (resourceType.equals("Compute")) {
+      if (!resourceType.equals(ResourcePriorityProperty.SOURCE)) {
         CpuInfoExtractor.printNetworkStat(-1);
       }
 
@@ -963,9 +962,9 @@ public final class Executor {
 
   public void terminate() {
     try {
-      for (final Pair<AtomicInteger, List<ExecutorThread>> pair :
+      for (final Pair<AtomicInteger, List<OperatorExecutorThread>> pair :
         stageExecutorThreadMap.getStageExecutorThreadMap().values()) {
-        pair.right().forEach(ExecutorThread::close);
+        pair.right().forEach(OperatorExecutorThread::close);
       }
       scheduledExecutorService.shutdownNow();
       executorService.shutdownNow();
@@ -1014,14 +1013,14 @@ public final class Executor {
           });
           */
 
+            /*
           executorThreads.getExecutorThreads().forEach(executorThread -> {
             executorThread.backpressure();
-            /*
             executorThread.addShortcutEvent(new TaskControlMessage(
               TaskControlMessage.TaskControlMessageType.SOURCE_SLEEP,
               -1, -1, "", message.getSetNum()));
-              */
           });
+              */
           break;
         }
         case ThrottleSource: {

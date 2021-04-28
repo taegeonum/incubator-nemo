@@ -23,7 +23,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
+import org.apache.nemo.runtime.executor.common.executorthreads.OperatorExecutorThread;
 import org.apache.nemo.runtime.executor.common.Serializer;
 
 import javax.annotation.Nullable;
@@ -52,7 +52,7 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
   void receiveRestartSignalFromChild(Channel channel, ByteTransferContextSetupMessage msg);
   void setupRestartChannel(Channel channel, ByteTransferContextSetupMessage msg);
 
-  ByteOutputStream newOutputStream(ExecutorThread executorThread) throws IOException;
+  ByteOutputStream newOutputStream(OperatorExecutorThread executorThread) throws IOException;
 
 
   void onChannelError(@Nullable final Throwable cause);

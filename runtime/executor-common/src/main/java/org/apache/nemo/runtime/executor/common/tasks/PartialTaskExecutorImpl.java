@@ -43,6 +43,9 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.executorthreads.ExecutorThreadQueue;
+import org.apache.nemo.runtime.executor.common.watermarks.DoubleStageWatermarkTracker;
+import org.apache.nemo.runtime.executor.common.watermarks.SingleStageWatermarkTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

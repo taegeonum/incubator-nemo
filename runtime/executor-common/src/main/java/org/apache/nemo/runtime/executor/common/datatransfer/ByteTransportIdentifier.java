@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import org.apache.reef.wake.Identifier;
 

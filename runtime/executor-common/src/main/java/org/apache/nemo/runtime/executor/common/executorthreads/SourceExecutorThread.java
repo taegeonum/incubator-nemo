@@ -1,10 +1,11 @@
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.executorthreads;
 
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskState;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
@@ -18,8 +19,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
 
-public final class ExecutorThread implements ExecutorThreadQueue {
-  private static final Logger LOG = LoggerFactory.getLogger(ExecutorThread.class.getName());
+public final class SourceExecutorThread implements ExecutorThread {
+  private static final Logger LOG = LoggerFactory.getLogger(OperatorExecutorThread.class.getName());
 
   private volatile boolean finished = false;
   //private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
@@ -67,7 +68,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   private final TaskScheduledMapWorker taskScheduledMapWorker;
 
-  public ExecutorThread(final int executorThreadIndex,
+  public SourceExecutorThread(final int executorThreadIndex,
                         final String executorId,
                         final ControlEventHandler controlEventHandler,
                         final long throttleRate,
@@ -106,7 +107,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
         synchronized (sourceTasks) {
           if (System.currentTimeMillis() - l.get() >= 2000) {
             // LOG.info("Pending source tasks: {} / active source tasks {} in executor {}", pendingSourceTasks, sourceTasks, executorId);
-           // l.set(System.currentTimeMillis());
+            // l.set(System.currentTimeMillis());
           }
           final Iterator<ExecutorThreadTask> iterator = pendingSourceTasks.iterator();
           while (iterator.hasNext()) {
@@ -159,12 +160,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     LOG.info("Add task to unInitializedTasks {} / {}", task.getId(), unInitializedTasks);
   }
 
-  public int getNumTasks() {
-    synchronized (tasks) {
-      return tasks.size();
-    }
-  }
-
   @Override
   public void addShortcutEvent(final TaskHandlingEvent event) {
     controlShortcutQueue.add(event);
@@ -179,14 +174,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     }
 
     queue.add(event);
-  }
-
-  public void handlingControlEvent(final TaskHandlingEvent event) {
-    if (Thread.currentThread().equals(currThread)) {
-      controlEventHandler.handleControlEvent(event);
-    } else {
-      queue.add(event);
-    }
   }
 
   @Override
@@ -205,7 +192,13 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     while (controlIterator.hasNext()) {
       // Handling control event
       final TaskHandlingEvent event = controlIterator.next();
-      controlEventHandler.handleControlEvent(event);
+      if (event.isOffloadingMessage()) {
+        final String taskId = event.getTaskId();
+        final ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
+        taskExecutor.handleData(event.getEdgeId(), event);
+      } else {
+        controlEventHandler.handleControlEvent(event);
+      }
       controlIterator.remove();
     }
   }
@@ -239,15 +232,13 @@ public final class ExecutorThread implements ExecutorThreadQueue {
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
-
       }
-
       elapsedTime = 0;
       currProcessedCnt = 0;
     }
     */
 
-     // throttling
+    // throttling
     // nano to sec
     /*
     final long curr = System.currentTimeMillis();
@@ -257,22 +248,18 @@ public final class ExecutorThread implements ExecutorThreadQueue {
       final long desiredElapsedTime = Math.min(1000,
         Math.max(0, (long) ((currRate / (double) throttleRate) * period - period)));
       sleepTime += desiredElapsedTime;
-
       if (desiredElapsedTime > 0) {
         // LOG.info("Throttling.. current processed cnt: {}, currRate: {}, throttleRate: {}, sleep {} ms, ",
         //  currProcessedCnt, currRate, throttleRate, desiredElapsedTime);
-
         try {
           Thread.sleep(desiredElapsedTime);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
       }
-
       currProcessedCnt = 0;
       prevSleepTime = System.currentTimeMillis();
     }
-
     // Adjustment throttle rate
     if (curr - prevThrottleRateAdjustTime >= adjustPeriod) {
       synchronized (this) {
@@ -300,7 +287,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
         return;
       }
     }
-
     synchronized (this) {
       LOG.info("Backpressure throttle rate from {} to {}", throttleRate, Math.max(1000, (long) (throttleRate * 0.8)));
       throttleRate = Math.max(1000, (long) (throttleRate * 0.8));
@@ -310,66 +296,9 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     */
   }
 
-  private Thread currThread;
-
-  public Thread getCurrThread() {
-    return currThread;
-  }
-
-  public void handlingDataEvent(final TaskHandlingEvent event) {
-    // Handling data
-    if (Thread.currentThread().equals(currThread)) {
-      final String taskId = event.getTaskId();
-      ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
-
-      while (taskExecutor == null) {
-        taskExecutor = taskIdExecutorMap.get(taskId);
-        try {
-          Thread.sleep(5);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      taskExecutor.handleData(event.getEdgeId(), event);
-    } else {
-      addEvent(event);
-    }
-  }
-
-  private void handlingEvent(final TaskHandlingEvent event) {
-    // check control message
-    handlingControlEvent();
-
-    if (event.isControlMessage()) {
-      controlEventHandler.handleControlEvent(event);
-    } else {
-      // Handling data
-      final String taskId = event.getTaskId();
-      ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
-
-      while (taskExecutor == null) {
-        taskExecutor = taskIdExecutorMap.get(taskId);
-        try {
-          Thread.sleep(5);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      // throttling();
-      taskExecutor.handleData(event.getEdgeId(), event);
-      final long cnt = executorMetrics.inputProcessCntMap.get(this);
-      executorMetrics.inputProcessCntMap.put(this, cnt + 1);
-      currProcessedCnt += 1;
-    }
-  }
-
   public void start() {
 
     executorService.execute(() -> {
-      currThread = Thread.currentThread();
-
       try {
         while (!finished) {
 
@@ -462,9 +391,42 @@ public final class ExecutorThread implements ExecutorThreadQueue {
           // process intermediate data
           final Iterator<TaskHandlingEvent> iterator = queue.iterator();
           while (iterator.hasNext()) {
+            // check control message
+            handlingControlEvent();
+
             //LOG.info("Polling queue");
             final TaskHandlingEvent event = iterator.next();
-            handlingEvent(event);
+
+
+            if (event.isControlMessage()) {
+              controlEventHandler.handleControlEvent(event);
+            } else {
+              // Handling data
+              final String taskId = event.getTaskId();
+              ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
+
+              while (taskExecutor == null) {
+                taskExecutor = taskIdExecutorMap.get(taskId);
+                Thread.sleep(5);
+              }
+
+              // throttling();
+
+              if (testing) {
+                long st = System.nanoTime();
+                taskExecutor.handleData(event.getEdgeId(), event);
+                long et = System.nanoTime();
+                elapsedTime += (et - st);
+              } else {
+                taskExecutor.handleData(event.getEdgeId(), event);
+                final long cnt = executorMetrics.inputProcessCntMap.get(this);
+                executorMetrics.inputProcessCntMap.put(this, cnt + 1);
+              }
+
+              processed = true;
+              currProcessedCnt += 1;
+            }
+
             iterator.remove();
           }
 
@@ -482,26 +444,10 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     });
   }
 
-  @Override
-  public String toString() {
-    return "ExecutorThread" + index;
-  }
-
   public void close() {
     finished = true;
 
     LOG.info("Closing executor thread...");
-
-    /*
-    while (!queue.isEmpty()) {
-      LOG.info("Waiting for executor {}, numEvent: {}",  executorId, queue);
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    */
 
     while (!closed) {
       try {
@@ -510,5 +456,22 @@ public final class ExecutorThread implements ExecutorThreadQueue {
         e.printStackTrace();
       }
     }
+  }
+
+  @Override
+  public int getNumTasks() {
+    synchronized (tasks) {
+      return tasks.size();
+    }
+  }
+
+  @Override
+  public void handlingDataEvent(TaskHandlingEvent event) {
+    addEvent(event);
+  }
+
+  @Override
+  public void handlingControlEvent(TaskHandlingEvent event) {
+    controlShortcutQueue.add(event);
   }
 }

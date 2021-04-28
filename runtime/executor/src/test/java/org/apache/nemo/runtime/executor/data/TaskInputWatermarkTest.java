@@ -1,9 +1,8 @@
 package org.apache.nemo.runtime.executor.data;
 
-import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
-import org.apache.nemo.runtime.executor.common.TaskInputWatermarkManager;
+import org.apache.nemo.runtime.executor.common.watermarks.TaskInputWatermarkManager;
 import org.junit.Test;
 
 import java.util.Optional;

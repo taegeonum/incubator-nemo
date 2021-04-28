@@ -17,13 +17,12 @@
  * under the License.
  */
 package org.apache.nemo.runtime.executor.datatransfer;
-import org.apache.nemo.runtime.executor.common.InputWatermarkManager;
-import org.apache.nemo.runtime.executor.common.MultiInputWatermarkManager;
+import org.apache.nemo.runtime.executor.common.watermarks.InputWatermarkManager;
+import org.apache.nemo.runtime.executor.common.watermarks.MultiInputWatermarkManager;
 import org.apache.nemo.runtime.executor.common.OperatorWatermarkCollector;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import java.util.LinkedList;

@@ -29,7 +29,7 @@ import io.netty.channel.group.ChannelGroupFuture;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.executor.common.ByteTransportIdentifier;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransportIdentifier;
 import org.apache.nemo.runtime.lambdaexecutor.NetworkUtils;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.Tang;

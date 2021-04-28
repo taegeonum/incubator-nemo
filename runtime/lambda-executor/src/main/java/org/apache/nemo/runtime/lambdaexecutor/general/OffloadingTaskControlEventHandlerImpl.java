@@ -5,7 +5,7 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.nemo.offloading.common.OffloadingExecutorControlEvent;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
+import org.apache.nemo.runtime.executor.common.executorthreads.OperatorExecutorThread;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
@@ -25,7 +25,7 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
 
   private final String executorId;
   private final PipeManagerWorker pipeManagerWorker;
-  private final Map<String, ExecutorThread> taskExecutorThreadMap;
+  private final Map<String, OperatorExecutorThread> taskExecutorThreadMap;
   private final Map<String, TaskExecutor> taskExecutorMap;
   private final Channel executorDataChannel;
   private final Channel executorControlChannel;
@@ -33,7 +33,7 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
   public OffloadingTaskControlEventHandlerImpl(
     final String executorId,
     final PipeManagerWorker pipeManagerWorker,
-    final Map<String, ExecutorThread> taskExecutorThreadMap,
+    final Map<String, OperatorExecutorThread> taskExecutorThreadMap,
     final Map<String, TaskExecutor> taskExecutorMap,
     final Channel executorDataChannel,
     final Channel executorControlChannel) {
@@ -86,7 +86,7 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
   private void stopAndCheckpointTask(final String taskId) {
     // stop and remove task
     final TaskExecutor taskExecutor = taskExecutorMap.remove(taskId);
-    final ExecutorThread et = taskExecutorThreadMap.remove(taskId);
+    final OperatorExecutorThread et = taskExecutorThreadMap.remove(taskId);
     et.deleteTask(taskExecutor);
     taskExecutor.checkpoint(false, null);
   }

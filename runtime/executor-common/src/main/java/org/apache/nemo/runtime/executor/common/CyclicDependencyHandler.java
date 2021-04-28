@@ -1,12 +1,9 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.common.ByteTransportChannelInitializer;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransportChannelInitializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.common.ByteTransport;
-import org.apache.nemo.runtime.message.MessageEnvironment;
-import org.apache.nemo.runtime.message.NemoNameResolver;
-import org.apache.nemo.runtime.message.netty.NettyWorkerEnvironment;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransport;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;

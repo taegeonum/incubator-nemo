@@ -19,17 +19,14 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.util.Recycler;
 import org.apache.nemo.common.TaskMetrics;
-import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
-import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.common.executorthreads.TaskExecutorMapWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

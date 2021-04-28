@@ -1,7 +1,6 @@
 package org.apache.nemo.runtime.executor.common.controlmessages;
 
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
@@ -9,7 +8,8 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.common.monitoring.BackpressureSleepAlarm;
+import org.apache.nemo.runtime.executor.common.executorthreads.ExecutorThread;
+import org.apache.nemo.runtime.executor.common.executorthreads.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;

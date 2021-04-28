@@ -22,8 +22,7 @@ import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.runtime.executor.common.ExecutorThreadQueue;
-import org.apache.nemo.runtime.executor.common.SerializerManager;
+import org.apache.nemo.runtime.executor.common.executorthreads.ExecutorThreadQueue;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 
 import javax.inject.Inject;

@@ -12,7 +12,7 @@ import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
-import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.common.executorthreads.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.TaskExecutorUtil;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.tasks.*;

@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.executorthreads;
 
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.offloading.common.EventHandler;
@@ -42,7 +42,7 @@ public final class TaskExecutorMapWrapper {
   }
 
   public synchronized void putTaskExecutor(final TaskExecutor taskExecutor,
-                              ExecutorThread thread) {
+                                           ExecutorThread thread) {
     taskExecutorMap.put(taskExecutor, true);
     taskIdExecutorMap.put(taskExecutor.getId(), taskExecutor);
     taskExecutorThreadMap.put(taskExecutor, thread);

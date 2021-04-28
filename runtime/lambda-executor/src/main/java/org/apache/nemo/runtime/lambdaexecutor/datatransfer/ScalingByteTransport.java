@@ -18,28 +18,9 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
-import io.netty.bootstrap.Bootstrap;
-import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.ChannelGroupFuture;
-import io.netty.util.concurrent.DefaultThreadFactory;
-import io.netty.util.concurrent.Future;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.executor.common.ByteTransportIdentifier;
-import org.apache.nemo.runtime.lambdaexecutor.NetworkUtils;
-import org.apache.reef.io.network.naming.NameResolver;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.wake.remote.ports.TcpPortProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
-import java.util.Map;
 
 /**
  * Bootstraps the server and connects to other servers on demand.

@@ -47,7 +47,7 @@ import org.apache.nemo.runtime.master.JobScaler;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
-import org.apache.nemo.runtime.executor.common.ByteTransport;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransport;
 import org.apache.nemo.runtime.message.MessageParameters;
 import org.apache.nemo.runtime.message.NemoNameServer;
 import org.apache.reef.annotations.audience.DriverSide;

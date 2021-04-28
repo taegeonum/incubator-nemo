@@ -29,6 +29,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.executorthreads.TaskExecutorMapWrapper;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

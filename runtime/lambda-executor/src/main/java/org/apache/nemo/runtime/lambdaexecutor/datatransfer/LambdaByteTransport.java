@@ -30,17 +30,15 @@ import io.netty.util.concurrent.Future;
 
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.common.ByteTransport;
-import org.apache.nemo.runtime.executor.common.ByteTransportChannelInitializer;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransport;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransportChannelInitializer;
 import org.apache.nemo.runtime.message.NemoNameResolver;
-import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.InetSocketAddress;
-import java.util.Map;
 
 /**
  * Bootstraps the server and connects to other servers on demand.

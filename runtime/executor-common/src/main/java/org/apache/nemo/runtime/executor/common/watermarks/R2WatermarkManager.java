@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.watermarks;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;

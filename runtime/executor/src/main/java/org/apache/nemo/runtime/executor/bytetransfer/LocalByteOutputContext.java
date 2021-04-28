@@ -22,7 +22,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
+import org.apache.nemo.runtime.executor.common.executorthreads.OperatorExecutorThread;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 
 import javax.annotation.Nullable;
@@ -78,7 +78,7 @@ public final class LocalByteOutputContext implements ByteOutputContext {
   }
 
   @Override
-  public ByteOutputStream newOutputStream(ExecutorThread executorThread) throws IOException {
+  public ByteOutputStream newOutputStream(OperatorExecutorThread executorThread) throws IOException {
     return null;
   }
 
@@ -185,7 +185,7 @@ public final class LocalByteOutputContext implements ByteOutputContext {
 //   * @throws IOException if an exception was set or this context was closed.
 //   */
 //  @Override
-//  public ByteOutputStream newOutputStream(ExecutorThread t) throws IOException {
+//  public ByteOutputStream newOutputStream(OperatorExecutorThread t) throws IOException {
 //    return new LocalByteOutputStream();
 //  }
 //
