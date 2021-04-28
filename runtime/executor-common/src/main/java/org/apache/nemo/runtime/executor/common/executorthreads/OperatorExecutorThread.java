@@ -371,23 +371,27 @@ public final class OperatorExecutorThread implements ExecutorThread {
 
   private void handlingEvent(final TaskHandlingEvent event) {
     // Handling data
-    final String taskId = event.getTaskId();
-    ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
+    if (event.isControlMessage()) {
+      controlEventHandler.handleControlEvent(event);
+    } else {
+      final String taskId = event.getTaskId();
+      ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
 
-    while (taskExecutor == null) {
-      taskExecutor = taskIdExecutorMap.get(taskId);
-      try {
-        Thread.sleep(5);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      while (taskExecutor == null) {
+        taskExecutor = taskIdExecutorMap.get(taskId);
+        try {
+          Thread.sleep(5);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
-    }
 
-    // throttling();
-    taskExecutor.handleData(event.getEdgeId(), event);
-    final long cnt = executorMetrics.inputProcessCntMap.get(this);
-    executorMetrics.inputProcessCntMap.put(this, cnt + 1);
-    currProcessedCnt += 1;
+      // throttling();
+      taskExecutor.handleData(event.getEdgeId(), event);
+      final long cnt = executorMetrics.inputProcessCntMap.get(this);
+      executorMetrics.inputProcessCntMap.put(this, cnt + 1);
+      currProcessedCnt += 1;
+    }
   }
 
   public void start() {
