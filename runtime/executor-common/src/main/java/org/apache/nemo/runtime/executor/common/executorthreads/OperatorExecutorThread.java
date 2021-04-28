@@ -169,7 +169,7 @@ public final class OperatorExecutorThread implements ExecutorThread {
     }
 
     synchronized (activeWaitingQueueTasks) {
-      taskEventQueueMap.put(task.getId(), new LinkedBlockingQueue<>());
+      taskEventQueueMap.putIfAbsent(task.getId(), new LinkedBlockingQueue<>());
       activeWaitingQueueTasks.add(task.getId());
     }
 
@@ -476,7 +476,7 @@ public final class OperatorExecutorThread implements ExecutorThread {
               e.printStackTrace();
               throw new RuntimeException("Exception while activtTask " + activeTask + ", " +
                 "taskEventQueuMap: "
-              + taskEventQueueMap.keySet() + " in executor " + executorId);
+              + taskEventQueueMap + " in executor " + executorId);
             }
           }
 
