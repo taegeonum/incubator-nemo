@@ -161,7 +161,7 @@ public final class OperatorExecutorThread implements ExecutorThread {
 
   @Override
   public void addNewTask(final TaskExecutor task) {
-    LOG.info("Add task {}", task.getId());
+    LOG.info("Add task {} in {}", task.getId(), executorId);
     taskIdExecutorMap.put(task.getId(), task);
 
     synchronized (unInitializedTasks) {
@@ -176,7 +176,8 @@ public final class OperatorExecutorThread implements ExecutorThread {
     synchronized (tasks) {
       tasks.add(task.getId());
     }
-    LOG.info("Add task to unInitializedTasks {} / {}", task.getId(), unInitializedTasks);
+    LOG.info("Add task to unInitializedTasks {} / {} in {}", task.getId(), unInitializedTasks,
+      executorId);
   }
 
   @Override
@@ -453,20 +454,27 @@ public final class OperatorExecutorThread implements ExecutorThread {
             final String activeTask = activeTaskIter.next();
             final Queue<TaskHandlingEvent> queue = taskEventQueueMap.get(activeTask);
 
-            activeTaskIter.remove();
+            try {
+              activeTaskIter.remove();
 
-            if (queue.isEmpty()) {
-              synchronized (emptyQueueTasks) {
-                emptyQueueTasks.add(activeTask);
+              if (queue.isEmpty()) {
+                synchronized (emptyQueueTasks) {
+                  emptyQueueTasks.add(activeTask);
+                }
+              } else {
+                int cnt = 0;
+                while (!queue.isEmpty() && cnt < 500) {
+                  handlingEvent(queue.poll());
+                  cnt += 1;
+                }
+                handlingControlEvent();
+                taskScheduler.schedule(activeTask);
               }
-            } else {
-              int cnt = 0;
-              while (!queue.isEmpty() && cnt < 500) {
-                handlingEvent(queue.poll());
-                cnt += 1;
-              }
-              handlingControlEvent();
-              taskScheduler.schedule(activeTask);
+            } catch (final Exception e) {
+              e.printStackTrace();
+              throw new RuntimeException("Exception while activtTask " + activeTask + ", " +
+                "taskEventQueuMap: "
+              + taskEventQueueMap.keySet() + " in executor " + executorId);
             }
           }
 
