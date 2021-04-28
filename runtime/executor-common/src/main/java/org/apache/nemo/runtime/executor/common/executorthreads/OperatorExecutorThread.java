@@ -122,7 +122,7 @@ public final class OperatorExecutorThread implements ExecutorThread {
             final String emptyTask = iterator.next();
             if (!taskEventQueueMap.get(emptyTask).isEmpty()) {
               activeWaitingQueueTasks.add(emptyTask);
-              iterator.remove();;
+              iterator.remove();
             }
           }
         }
@@ -176,7 +176,7 @@ public final class OperatorExecutorThread implements ExecutorThread {
     synchronized (tasks) {
       tasks.add(task.getId());
     }
-    LOG.info("Add task to unInitializedTasks {}, taskEventQueueMap: {}, " +
+    LOG.info("Add task {} to unInitializedTasks {}, taskEventQueueMap: {}, " +
         "activeWaitingQueueTasks: {}, {} in {}", task.getId(), unInitializedTasks,
       taskEventQueueMap.keySet(), activeWaitingQueueTasks,
       executorId);
@@ -346,6 +346,9 @@ public final class OperatorExecutorThread implements ExecutorThread {
     return currThread;
   }
 
+
+  final List<String> rescheduleTasks = new ArrayList<>();
+
   @Override
   public void handlingDataEvent(final TaskHandlingEvent event) {
     // Handling data
@@ -451,14 +454,11 @@ public final class OperatorExecutorThread implements ExecutorThread {
 
           handlingControlEvent();
           // process intermediate data
-          final Iterator<String> activeTaskIter = taskScheduler.getIterator();
-          while (activeTaskIter.hasNext()) {
-            final String activeTask = activeTaskIter.next();
+          while (taskScheduler.hasNextTask()) {
+            final String activeTask = taskScheduler.pollNextTask();
             final Queue<TaskHandlingEvent> queue = taskEventQueueMap.get(activeTask);
 
             try {
-              activeTaskIter.remove();
-
               if (queue.isEmpty()) {
                 synchronized (emptyQueueTasks) {
                   emptyQueueTasks.add(activeTask);
@@ -470,7 +470,7 @@ public final class OperatorExecutorThread implements ExecutorThread {
                   cnt += 1;
                 }
                 handlingControlEvent();
-                taskScheduler.schedule(activeTask);
+                rescheduleTasks.add(activeTask);
               }
             } catch (final Exception e) {
               e.printStackTrace();
@@ -479,6 +479,9 @@ public final class OperatorExecutorThread implements ExecutorThread {
               + taskEventQueueMap.keySet() + " in executor " + executorId);
             }
           }
+
+          taskScheduler.schedule(rescheduleTasks);
+          rescheduleTasks.clear();
 
           if (!activeWaitingQueueTasks.isEmpty()) {
             synchronized (activeWaitingQueueTasks) {

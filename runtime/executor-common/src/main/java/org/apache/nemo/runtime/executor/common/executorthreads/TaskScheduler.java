@@ -10,7 +10,7 @@ public interface TaskScheduler {
 
   void schedule(Collection<String> tasks);
   void schedule(String taskId);
-  Iterator<String> getIterator();
+  String pollNextTask();
   boolean hasNextTask();
   int getNumTasks();
 }
