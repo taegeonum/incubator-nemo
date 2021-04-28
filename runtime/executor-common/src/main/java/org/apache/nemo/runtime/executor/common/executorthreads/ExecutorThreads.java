@@ -53,11 +53,11 @@ public final class ExecutorThreads {
           taskScheduledMapSender, taskExecutorMapWrapper,
           taskScheduledMapWorker, false);
       } else {
-        et = new SourceExecutorThread(
+        et = new OperatorExecutorThread(
           i, executorId, taskControlEventHandler, Long.MAX_VALUE, executorMetrics,
           persistentConnectionToMasterMap, metricMessageSender,
           taskScheduledMapSender, taskExecutorMapWrapper,
-          taskScheduledMapWorker, false);
+          taskScheduledMapWorker, taskSchedulerFactory.createTaskScheduler(), false);
       }
 
       executorThreads.add(et);

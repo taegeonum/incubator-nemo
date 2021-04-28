@@ -456,50 +456,21 @@ public final class OperatorExecutorThread implements ExecutorThread {
 
           handlingControlEvent();
           // process intermediate data
-          while (taskScheduler.hasNextTask()) {
-            final String activeTask = taskScheduler.pollNextTask();
-            final Queue<TaskHandlingEvent> queue = taskEventQueueMap.get(activeTask);
+          final Iterator<String> iters = taskEventQueueMap.keySet().iterator();
+          processed = false;
+          for (final Map.Entry<String, Queue<TaskHandlingEvent>> entry : taskEventQueueMap.entrySet()) {
+            final Queue<TaskHandlingEvent> queue = entry.getValue();
 
-            try {
-              if (queue.isEmpty()) {
-                synchronized (emptyQueueTasks) {
-                  emptyQueueTasks.add(activeTask);
-                }
-              } else {
-                int cnt = 0;
-                while (!queue.isEmpty() && cnt < 500) {
-                  handlingEvent(queue.poll());
-                  cnt += 1;
-                }
-                handlingControlEvent();
-
-                if (!queue.isEmpty()) {
-                  rescheduleTasks.add(activeTask);
-                } else {
-                  synchronized (emptyQueueTasks) {
-                    emptyQueueTasks.add(activeTask);
-                  }
-                }
-              }
-            } catch (final Exception e) {
-              e.printStackTrace();
-              throw new RuntimeException("Exception while activtTask " + activeTask + ", " +
-                "taskEventQueuMap: "
-              + taskEventQueueMap + " in executor " + executorId);
+            int cnt = 0;
+            while (!queue.isEmpty() && cnt < 5000) {
+              handlingEvent(queue.poll());
+              cnt += 1;
+              processed = true;
             }
+            handlingControlEvent();
           }
 
-          rescheduleTasks.forEach(t -> taskScheduler.schedule(t));
-          rescheduleTasks.clear();
-
-          if (!activeWaitingQueueTasks.isEmpty()) {
-            synchronized (activeWaitingQueueTasks) {
-              activeWaitingQueueTasks.forEach(t -> taskScheduler.schedule(t));
-              activeWaitingQueueTasks.clear();
-            }
-          }
-
-          if (!taskScheduler.hasNextTask()) {
+          if (!processed) {
             Thread.sleep(5);
           }
         }
