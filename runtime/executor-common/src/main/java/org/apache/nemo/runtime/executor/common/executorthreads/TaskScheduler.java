@@ -12,4 +12,5 @@ public interface TaskScheduler {
   void schedule(String taskId);
   Iterator<String> getIterator();
   boolean hasNextTask();
+  int getNumTasks();
 }

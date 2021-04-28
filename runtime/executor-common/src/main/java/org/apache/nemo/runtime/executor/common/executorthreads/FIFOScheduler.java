@@ -32,4 +32,9 @@ public final class FIFOScheduler implements TaskScheduler {
   public boolean hasNextTask() {
     return !tasks.isEmpty();
   }
+
+  @Override
+  public int getNumTasks() {
+    return tasks.size();
+  }
 }

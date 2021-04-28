@@ -192,6 +192,7 @@ public final class ContainerManager {
       throw new RuntimeException("We never requested for an extra container " + executorId + "/");
     }
 
+
     evaluatorIdToResourceSpec.put(allocatedContainer, resourceSpecification);
 
     LOG.info("Container type (" + resourceSpecification.getContainerType()
@@ -220,6 +221,14 @@ public final class ContainerManager {
     // .addOption("-verbose:class");
     // LOG.info("Add jvm process for verbose:class");
 
+
+    // Resource configuration
+     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
+      .bindNamedParameter(JobConf.ExecutorResourceType.class,
+        resourceSpecification.getContainerType())
+      .build();
+
+
     // Poison handling
     final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
       .bindNamedParameter(JobConf.ExecutorResourceType.class, resourceSpecification.getContainerType())
@@ -227,7 +236,9 @@ public final class ContainerManager {
       .build();
 
     allocatedContainer.setProcess(jvmProcess);
-    allocatedContainer.submitContext(Configurations.merge(executorConfiguration, poisonConfiguration));
+    allocatedContainer.submitContext(Configurations.merge(executorConfiguration,
+      conf,
+      poisonConfiguration));
 
   }
 
