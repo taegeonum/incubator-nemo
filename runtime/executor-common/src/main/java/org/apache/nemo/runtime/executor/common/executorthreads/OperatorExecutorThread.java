@@ -92,7 +92,7 @@ public final class OperatorExecutorThread implements ExecutorThread {
     this.throttle = new AtomicBoolean(false);
     // this.queue = new ConcurrentLinkedQueue<>();
     this.controlShortcutQueue = new ConcurrentLinkedQueue<>();
-    this.taskEventQueueMap = new HashMap<>();
+    this.taskEventQueueMap = new ConcurrentHashMap<>();
     this.emptyQueueTasks = new ArrayList<>();
     this.taskScheduler = taskScheduler;
     this.activeWaitingQueueTasks = new ArrayList<>();
@@ -147,12 +147,11 @@ public final class OperatorExecutorThread implements ExecutorThread {
 
       taskIdExecutorMap.remove(task.getId());
 
-      synchronized (taskEventQueueMap) {
-        final Queue<TaskHandlingEvent> eventQueue = taskEventQueueMap.remove(task.getId());
-        if (!eventQueue.isEmpty()) {
-          throw new RuntimeException("Task has event " + eventQueue.size() + " but deleted " + task.getId());
-        }
+      final Queue<TaskHandlingEvent> eventQueue = taskEventQueueMap.remove(task.getId());
+      if (!eventQueue.isEmpty()) {
+        throw new RuntimeException("Task has event " + eventQueue.size() + " but deleted " + task.getId());
       }
+
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -169,9 +168,7 @@ public final class OperatorExecutorThread implements ExecutorThread {
       unInitializedTasks.add(task);
     }
 
-    synchronized (taskEventQueueMap) {
-      taskEventQueueMap.put(task.getId(), new LinkedBlockingQueue<>());
-    }
+    taskEventQueueMap.put(task.getId(), new LinkedBlockingQueue<>());
 
     synchronized (activeWaitingQueueTasks) {
       activeWaitingQueueTasks.add(task.getId());
