@@ -26,7 +26,6 @@ public final class ExecutorThreads {
 
   private final List<ExecutorThread> executorThreads;
   private final ExecutorMetrics executorMetrics;
-  private final TaskScheduler taskScheduler;
 
   @Inject
   private ExecutorThreads(@Parameter(EvalConf.ExecutorThreadNum.class) final int threadNum,
@@ -37,13 +36,12 @@ public final class ExecutorThreads {
                           final MetricMessageSender metricMessageSender,
                           final TaskExecutorMapWrapper taskExecutorMapWrapper,
                           final TaskScheduledMapWorker taskScheduledMapWorker,
-                          final TaskScheduler taskScheduler,
+                          final TaskSchedulerFactory taskSchedulerFactory,
                           final ExecutorMetrics executorMetrics) {
     final MessageSender<ControlMessage.Message> taskScheduledMapSender =
       persistentConnectionToMasterMap.getMessageSender(TASK_SCHEDULE_MAP_LISTENER_ID);
 
     this.executorMetrics = executorMetrics;
-    this.taskScheduler = taskScheduler;
     this.executorThreads = new ArrayList<>(threadNum);
     LOG.info("Executor resource type {}: {}", executorId, resourceType);
     for (int i = 0; i < threadNum; i++) {
@@ -59,7 +57,7 @@ public final class ExecutorThreads {
           i, executorId, taskControlEventHandler, Long.MAX_VALUE, executorMetrics,
           persistentConnectionToMasterMap, metricMessageSender,
           taskScheduledMapSender, taskExecutorMapWrapper,
-          taskScheduledMapWorker, taskScheduler, false);
+          taskScheduledMapWorker, taskSchedulerFactory.createTaskScheduler(), false);
       }
 
       executorThreads.add(et);

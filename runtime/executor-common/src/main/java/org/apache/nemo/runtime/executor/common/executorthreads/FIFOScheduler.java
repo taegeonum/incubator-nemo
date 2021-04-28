@@ -8,8 +8,7 @@ public final class FIFOScheduler implements TaskScheduler {
 
   private final Queue<String> tasks;
 
-  @Inject
-  private FIFOScheduler() {
+  public FIFOScheduler() {
     this.tasks = new LinkedBlockingQueue<>();
   }
 
