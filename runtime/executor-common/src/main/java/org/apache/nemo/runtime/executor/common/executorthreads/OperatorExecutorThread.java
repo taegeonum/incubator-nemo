@@ -147,9 +147,11 @@ public final class OperatorExecutorThread implements ExecutorThread {
 
       taskIdExecutorMap.remove(task.getId());
 
-      final Queue<TaskHandlingEvent> eventQueue = taskEventQueueMap.remove(task.getId());
+      final Queue<TaskHandlingEvent> eventQueue = taskEventQueueMap.get(task.getId());
       if (!eventQueue.isEmpty()) {
         throw new RuntimeException("Task has event " + eventQueue.size() + " but deleted " + task.getId());
+      } else {
+        taskEventQueueMap.remove(task.getId());
       }
 
     } catch (final Exception e) {
@@ -470,7 +472,10 @@ public final class OperatorExecutorThread implements ExecutorThread {
                   cnt += 1;
                 }
                 handlingControlEvent();
-                rescheduleTasks.add(activeTask);
+
+                if (!queue.isEmpty()) {
+                  rescheduleTasks.add(activeTask);
+                }
               }
             } catch (final Exception e) {
               e.printStackTrace();

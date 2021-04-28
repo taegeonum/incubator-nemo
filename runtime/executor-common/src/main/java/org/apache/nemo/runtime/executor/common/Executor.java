@@ -1132,7 +1132,7 @@ public final class Executor {
 
             taskExecutorMapWrapper.forEach(taskExecutor -> {
               final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
-              executorThread.addEvent(new TaskControlMessage(
+              executorThread.addShortcutEvent(new TaskControlMessage(
                 TaskControlMessage.TaskControlMessageType.TASK_SCHEDULED, -1, -1,
                 taskExecutor.getId(), scheduledTaskId));
             });
@@ -1184,7 +1184,7 @@ public final class Executor {
               if (taskExecutor.getTask().isTransientTask()) {
                 executorService.execute(() -> {
                   final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
-                  executorThread.addEvent(new TaskControlMessage(
+                  executorThread.addShortcutEvent(new TaskControlMessage(
                     TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER, -1, -1,
                     taskExecutor.getId(), false));
                 /*
