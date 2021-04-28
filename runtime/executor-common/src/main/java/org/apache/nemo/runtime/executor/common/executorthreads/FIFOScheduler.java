@@ -24,8 +24,8 @@ public final class FIFOScheduler implements TaskScheduler {
   }
 
   @Override
-  public Iterator<String> getIterator() {
-    return tasks.iterator();
+  public String pollNextTask() {
+    return tasks.poll();
   }
 
   @Override
