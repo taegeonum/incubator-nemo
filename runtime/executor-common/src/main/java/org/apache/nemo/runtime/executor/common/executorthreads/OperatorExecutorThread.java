@@ -113,9 +113,9 @@ public final class OperatorExecutorThread implements ExecutorThread {
       synchronized (activeWaitingQueueTasks) {
         synchronized (emptyQueueTasks) {
           if (System.currentTimeMillis() - l.get() >= 2000) {
-            //LOG.info("Empty queue tasks: {} / schedule tasks {} waiting tasks {} in executor {}",
-            //  emptyQueueTasks.size(), taskScheduler.getNumTasks(), activeWaitingQueueTasks.size(), executorId);
-            //l.set(System.currentTimeMillis());
+            LOG.info("Empty queue tasks: {} / schedule tasks {} waiting tasks {} in executor {}",
+              emptyQueueTasks.size(), taskScheduler.getNumTasks(), activeWaitingQueueTasks.size(), executorId);
+            l.set(System.currentTimeMillis());
           }
           final Iterator<String> iterator = emptyQueueTasks.iterator();
           while (iterator.hasNext()) {
