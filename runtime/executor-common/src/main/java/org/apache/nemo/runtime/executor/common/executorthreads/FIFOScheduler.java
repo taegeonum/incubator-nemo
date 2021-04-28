@@ -14,8 +14,8 @@ public final class FIFOScheduler implements TaskScheduler {
   }
 
   @Override
-  public void schedule(Collection<String> tasks) {
-    tasks.addAll(tasks);
+  public void schedule(Collection<String> stasks) {
+    this.tasks.addAll(stasks);
   }
 
   @Override
