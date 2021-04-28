@@ -168,9 +168,8 @@ public final class OperatorExecutorThread implements ExecutorThread {
       unInitializedTasks.add(task);
     }
 
-    taskEventQueueMap.put(task.getId(), new LinkedBlockingQueue<>());
-
     synchronized (activeWaitingQueueTasks) {
+      taskEventQueueMap.put(task.getId(), new LinkedBlockingQueue<>());
       activeWaitingQueueTasks.add(task.getId());
     }
 
