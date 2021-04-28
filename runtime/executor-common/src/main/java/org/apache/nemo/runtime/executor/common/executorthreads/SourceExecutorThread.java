@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
 
 public final class SourceExecutorThread implements ExecutorThread {
-  private static final Logger LOG = LoggerFactory.getLogger(OperatorExecutorThread.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(SourceExecutorThread.class.getName());
 
   private volatile boolean finished = false;
   //private final AtomicBoolean isPollingTime = new AtomicBoolean(false);

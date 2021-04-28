@@ -11,6 +11,8 @@ import org.apache.nemo.runtime.executor.common.TaskScheduledMapWorker;
 import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
 
 public final class ExecutorThreads {
+  private static final Logger LOG = LoggerFactory.getLogger(ExecutorThreads.class.getName());
 
   private final List<ExecutorThread> executorThreads;
   private final ExecutorMetrics executorMetrics;
@@ -42,6 +45,7 @@ public final class ExecutorThreads {
     this.executorMetrics = executorMetrics;
     this.taskScheduler = taskScheduler;
     this.executorThreads = new ArrayList<>(threadNum);
+    LOG.info("Executor resource type {}: {}", executorId, resourceType);
     for (int i = 0; i < threadNum; i++) {
       final ExecutorThread et;
       if (resourceType.equals(ResourcePriorityProperty.SOURCE)) {

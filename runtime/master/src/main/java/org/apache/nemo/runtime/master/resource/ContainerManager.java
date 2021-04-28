@@ -222,13 +222,6 @@ public final class ContainerManager {
     // LOG.info("Add jvm process for verbose:class");
 
 
-    // Resource configuration
-     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-      .bindNamedParameter(JobConf.ExecutorResourceType.class,
-        resourceSpecification.getContainerType())
-      .build();
-
-
     // Poison handling
     final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
       .bindNamedParameter(JobConf.ExecutorResourceType.class, resourceSpecification.getContainerType())
@@ -237,7 +230,6 @@ public final class ContainerManager {
 
     allocatedContainer.setProcess(jvmProcess);
     allocatedContainer.submitContext(Configurations.merge(executorConfiguration,
-      conf,
       poisonConfiguration));
 
   }
