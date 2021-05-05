@@ -722,7 +722,7 @@ public final class GBKFinalTransform<K, InputT>
       }
 
       if (getContext().getTaskId().contains("Stage5") || getContext().getTaskId().contains("Stage7")) {
-        LOG.info("Emitting output at {}: key {}", getContext().getTaskId(), output.getValue().getKey());
+        LOG.info("Emitting output at {}: key {}, val {}", getContext().getTaskId(), output.getValue().getKey(), output.getValue());
       }
 
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
