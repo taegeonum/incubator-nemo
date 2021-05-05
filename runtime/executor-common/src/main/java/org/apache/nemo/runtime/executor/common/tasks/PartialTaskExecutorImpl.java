@@ -212,6 +212,10 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
       setPairTaskStopped(true);
     }
 
+    // DEBUG !!!!!!!!!!!1
+    partialOutputEmitter = pToRemoteEmitter;
+
+
     this.taskWatermarkManager = restoreTaskInputWatermarkManagerAndState()
       .orElse(getTaskWatermarkManager());
 
@@ -279,7 +283,6 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     };
 
     this.serializer = serializerManager.getSerializer(mergerEdgeId);
-
 
     this.partialOutputCollector = new OutputCollector() {
       private long ts;
