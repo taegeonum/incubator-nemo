@@ -38,6 +38,7 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   public boolean isSink = false;
   public boolean isOffloading = false;
   public boolean isGBK = false;
+  public boolean isCombine = false;
   public boolean isPushback = false;
 
   /**

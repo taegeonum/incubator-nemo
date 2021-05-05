@@ -532,6 +532,7 @@ final class PipelineTranslator {
 
       final OperatorVertex partialCombineVertex = new OperatorVertex(partialCombineStreamTransform);
       partialCombineVertex.isGBK = true;
+      partialCombineVertex.isCombine = true;
       partialCombineVertex.setPartialToFinalTransform(
         new PartialToFinalTransform((Combine.CombineFn) finalCombineFn));
 
@@ -553,6 +554,7 @@ final class PipelineTranslator {
 
        finalCombine = new OperatorVertex(gbkFinal);
        finalCombine.isGBK = true;
+       finalCombine.isCombine = true;
 
        // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
        final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombineVertex,
