@@ -346,11 +346,11 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
 
-//    if (getContext().getTaskId().contains("Stage7")) {
-//      LOG.info("Final input receive at {}, timestamp: {}, inputWatermark: {} / {} / {}",
-//        getContext().getTaskId(),
-//        element.getTimestamp(), new Instant(inputWatermark.getTimestamp()), element, element.getWindows());
-//    }
+    if (getContext().getTaskId().contains("Stage5") || getContext().getTaskId().contains("Stage7") ) {
+      LOG.info("Final input receive at {}, timestamp: {}, inputWatermark: {} / {} / {}",
+        getContext().getTaskId(),
+        element.getTimestamp(), new Instant(inputWatermark.getTimestamp()), element, element.getWindows());
+    }
 
     if (keyCountMap.containsKey(element.getValue().getKey())) {
       keyCountMap.put(element.getValue().getKey(), keyCountMap.get(element.getValue().getKey()) + 1);
@@ -721,7 +721,9 @@ public final class GBKFinalTransform<K, InputT>
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
 
-      // LOG.info("Emitting output at {}: key {}", getContext().getTaskId(),  output.getValue().getKey());
+      if (getContext().getTaskId().contains("Stage5") || getContext().getTaskId().contains("Stage7")) {
+        LOG.info("Emitting output at {}: key {}", getContext().getTaskId(), output.getValue().getKey());
+      }
 
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
       outputCollector.emit(output);

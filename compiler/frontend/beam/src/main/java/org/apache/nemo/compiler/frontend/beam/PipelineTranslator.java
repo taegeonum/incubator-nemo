@@ -349,7 +349,6 @@ final class PipelineTranslator {
           partialSystemReduceFn));
       // SystemReduceFn.buffering(mainInput.getCoder())));
 
-
       // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
       final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombine, finalCombine);
       final Coder intermediateCoder = outputCoder;

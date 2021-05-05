@@ -24,6 +24,7 @@ public final class GBKFinalCombineFn<InputT> extends Combine.CombineFn<Collectio
 
   @Override
   public Collection<InputT> addInput(Collection<InputT> accumulator, Collection<InputT> input) {
+    // LOG.info("Add input {}, accum {}", input, accumulator);
     final List<InputT> arr = new ArrayList<>(accumulator.size() + input.size());
     arr.addAll(accumulator);
     arr.addAll(input);
@@ -33,12 +34,13 @@ public final class GBKFinalCombineFn<InputT> extends Combine.CombineFn<Collectio
   @Override
   public Coder<Collection<InputT>> getAccumulatorCoder(CoderRegistry registry,
                                                        Coder<Collection<InputT>> ac) {
-    LOG.info("Get accumCoder: {}", accumCoder);
+    // LOG.info("Get accumCoder: {}", accumCoder);
     return accumCoder;
   }
 
   @Override
   public Collection<InputT> mergeAccumulators(Iterable<Collection<InputT>> accumulators) {
+    // LOG.info("Merge accum in GBKFinalCombineFn  accum {}", accumulators);
     final List<Collection<InputT>> l = new LinkedList<>();
     final Iterator<Collection<InputT>> iterator = accumulators.iterator();
 

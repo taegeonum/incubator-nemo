@@ -348,11 +348,9 @@ public final class GBKCombineFinalTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
 
-//    if (getContext().getTaskId().contains("Stage7")) {
-//      LOG.info("Final input receive at {}, timestamp: {}, inputWatermark: {} / {} / {}",
-//        getContext().getTaskId(),
-//        element.getTimestamp(), new Instant(inputWatermark.getTimestamp()), element, element.getWindows());
-//    }
+    LOG.info("Final input receive at {}, timestamp: {}, inputWatermark: {} / {} / {}",
+      getContext().getTaskId(),
+      element.getTimestamp(), new Instant(inputWatermark.getTimestamp()), element, element.getWindows());
 
     if (keyCountMap.containsKey(element.getValue().getKey())) {
       keyCountMap.put(element.getValue().getKey(), keyCountMap.get(element.getValue().getKey()) + 1);
@@ -723,7 +721,7 @@ public final class GBKCombineFinalTransform<K, InputT>
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
 
-      // LOG.info("Emitting output at {}: key {}", getContext().getTaskId(),  output.getValue().getKey());
+      LOG.info("Emitting output at {}: key {}", getContext().getTaskId(),  output.getValue().getKey());
 
       final Object result = combineFn.extractOutput(output.getValue().getValue());
 
