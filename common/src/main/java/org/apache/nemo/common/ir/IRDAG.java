@@ -637,7 +637,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     // Find gbk finals
     // We should change its vertex to partial -> final combine
-    final IRVertex g = modifiedDAG.getTopologicalSort().stream().filter(vertex -> vertex.isGBK).findFirst().get();
+    final IRVertex g = modifiedDAG.getTopologicalSort().stream()
+      .filter(vertex -> vertex.isGBK &&
+        PassSharedData.originVertexToTransientVertexMap.containsKey(vertex)).findFirst().get();
 
     //final List<IRVertex> gbks = PassSharedData.originVertexToTransientVertexMap.keySet()
       // .stream().filter(vertex -> vertex.isGBK).collect(Collectors.toList());
