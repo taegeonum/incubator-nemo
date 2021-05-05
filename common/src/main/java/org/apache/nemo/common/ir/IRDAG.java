@@ -637,20 +637,22 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     // Find gbk finals
     // We should change its vertex to partial -> final combine
-    final List<IRVertex> gbks = PassSharedData.originVertexToTransientVertexMap.keySet()
+    final IRVertex g = modifiedDAG.getTopologicalSort().stream().filter(vertex -> vertex.isGBK).findFirst().get();
+
+    //final List<IRVertex> gbks = PassSharedData.originVertexToTransientVertexMap.keySet()
       // .stream().filter(vertex -> vertex.isGBK).collect(Collectors.toList());
-      .stream().filter(vertex -> vertex.getId().equals("vertex17")).collect(Collectors.toList());
+    final List<IRVertex> gbks = Collections.singletonList(g);
 
     final List<IRVertex> gbkTransientPaths = gbks.stream()
       .map(gbk -> PassSharedData.originVertexToTransientVertexMap.get(gbk)).collect(Collectors.toList());
 
     modifiedDAG.topologicalDo(vertex -> {
-      if (!vertex.getId().equals("vertex17") && !vertex.getId().equals(gbkTransientPaths.get(0).getId())) {
+      if (!vertex.getId().equals(g.getId()) && !vertex.getId().equals(gbkTransientPaths.get(0).getId())) {
         // Add origin vertex if it is not stateful
         LOG.info("Add vertex in R3 {}", vertex.getId());
         builder.addVertex(vertex);
         modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
-          if (!incomingEdge.getSrc().getId().equals("vertex17") &&
+          if (!incomingEdge.getSrc().getId().equals(g.getId()) &&
             !incomingEdge.getSrc().getId().equals(gbkTransientPaths.get(0).getId())) {
             // Add edge if src is not stateful
             builder.connectVertices(incomingEdge);
