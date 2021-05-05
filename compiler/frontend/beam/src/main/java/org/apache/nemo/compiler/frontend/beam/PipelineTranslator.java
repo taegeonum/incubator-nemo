@@ -335,44 +335,55 @@ final class PipelineTranslator {
         false);
 
 
-    // Original vertex
-    final IRVertex vertex = new OperatorVertex(
-      createGBKTransform(pTransform, mainInput, ctx, beamNode,
-        partialSystemReduceFn));
-        // SystemReduceFn.buffering(mainInput.getCoder())));
+    if (optimizationPolicy.contains("R3")) {
+      // Original vertex
+      final IRVertex vertex = new OperatorVertex(
+        createGBKTransform(pTransform, mainInput, ctx, beamNode,
+          partialSystemReduceFn));
+      // SystemReduceFn.buffering(mainInput.getCoder())));
 
-    final OperatorVertex partialCombine = new OperatorVertex(partialCombineStreamTransform);
-    partialCombine.isGBK = true;
-    partialCombine.setPartialToFinalTransform(new PartialToFinalTransform((Combine.CombineFn) finalCombineFn));
+      final OperatorVertex partialCombine = new OperatorVertex(partialCombineStreamTransform);
+      partialCombine.isGBK = true;
+      partialCombine.setPartialToFinalTransform(new PartialToFinalTransform((Combine.CombineFn) finalCombineFn));
 
-    final OperatorVertex finalCombine = new OperatorVertex(finalCombineStreamTransform);
-    finalCombine.isGBK = true;
+      final OperatorVertex finalCombine = new OperatorVertex(finalCombineStreamTransform);
+      finalCombine.isGBK = true;
 
+      // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
+      final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombine, finalCombine);
+      final Coder intermediateCoder = outputCoder;
+      ctx.setEdgeProperty(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
+      // ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
 
-    // (Step 1) Partial Combine
-    // ctx.addVertex(partialCombine);
-    // beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
+      ((OperatorVertex) vertex).setPartialCombine(partialCombine);
+      ((OperatorVertex) vertex).setFinalCombine(finalCombine);
+      ((OperatorVertex) vertex).setPartialToFinalEdge(edge);
+      ((OperatorVertex) vertex).setIsGlobalWindow(mainInput.getWindowingStrategy()
+        .getWindowFn() instanceof GlobalWindows);
 
-    // (Step 2) Final Combine
-    // ctx.addVertex(finalCombine);
-    // beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
+      vertex.isGBK = true;
+      ctx.addVertex(vertex);
+      beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+      beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
 
-    // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
-    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombine, finalCombine);
-    final Coder intermediateCoder = outputCoder;
-    ctx.setEdgeProperty(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
-    // ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
+    } else {
+      final IRVertex vertex = new OperatorVertex(
+        new GBKCombineFinalTransform(mainInput.getCoder(),
+          inputCoder.getKeyCoder(),
+          Collections.singletonMap(partialMainOutputTag, outputCoder),
+          partialMainOutputTag,
+          mainInput.getWindowingStrategy(),
+          ctx.getPipelineOptions(),
+          partialSystemReduceFn,
+          (Combine.CombineFn) finalCombineFn,
+          DisplayData.from(beamNode.getTransform()),
+          true));
 
-    ((OperatorVertex) vertex).setPartialCombine(partialCombine);
-    ((OperatorVertex) vertex).setFinalCombine(finalCombine);
-    ((OperatorVertex) vertex).setPartialToFinalEdge(edge);
-    ((OperatorVertex) vertex).setIsGlobalWindow(mainInput.getWindowingStrategy()
-    .getWindowFn() instanceof GlobalWindows);
-
-    vertex.isGBK = true;
-    ctx.addVertex(vertex);
-    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
-    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+      vertex.isGBK = true;
+      ctx.addVertex(vertex);
+      beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+      beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+    }
   }
 
   /**
