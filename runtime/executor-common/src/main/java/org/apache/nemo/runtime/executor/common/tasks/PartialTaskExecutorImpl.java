@@ -212,10 +212,6 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
       setPairTaskStopped(true);
     }
 
-    // DEBUG !!!!!!!!!!!1
-    partialOutputEmitter = pToRemoteEmitter;
-
-
     this.taskWatermarkManager = restoreTaskInputWatermarkManagerAndState()
       .orElse(getTaskWatermarkManager());
 

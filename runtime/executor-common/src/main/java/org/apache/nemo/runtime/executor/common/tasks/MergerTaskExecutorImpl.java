@@ -242,9 +242,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
     }
 
     this.dataRouter = new VMDataRouter(vmPathDstTask);
-    // this.dataHandler = new BypassDataHandler();
-    // DEBUGGING !!
-    this.dataHandler = new ToMergerDataHandler();
+    this.dataHandler = new BypassDataHandler();
 
     // Here, we reset data router and data handler
     this.taskWatermarkManager = getOrRestoreState();
