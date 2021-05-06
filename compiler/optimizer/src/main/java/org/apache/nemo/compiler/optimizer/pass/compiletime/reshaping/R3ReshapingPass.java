@@ -46,7 +46,7 @@ public final class R3ReshapingPass extends ReshapingPass {
 
   @Override
   public IRDAG apply(final IRDAG dag) {
-    dag.addStateMerger();
+    // dag.addStateMerger();
     return dag;
   }
 }
