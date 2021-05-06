@@ -680,7 +680,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             builder.connectVertices(incomingEdge);
           }
         });
-      }
+      });
 
     /*
     modifiedDAG.topologicalDo(vertex -> {
