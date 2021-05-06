@@ -670,14 +670,23 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
           // Add edge if src is not stateful
           if (incomingEdge.getSrc().isGBK) {
-            LOG.info("Add gbk vertex edge in R3 {}", vertex.getId());
+            LOG.info("Add gbk vertex edge 1 in R3 {}", vertex.getId());
             final IREdge edge = new IREdge(
               incomingEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
               map.get(incomingEdge.getSrc().getId()),
               incomingEdge.getDst());
             incomingEdge.copyExecutionPropertiesTo(edge);
             builder.connectVertices(edge);
-          } else {
+          } else if (incomingEdge.getDst().isGBK) {
+            LOG.info("Add gbk vertex edge 2 in R3 {}", vertex.getId());
+            final IREdge edge = new IREdge(
+              incomingEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
+              incomingEdge.getSrc(),
+              map.get(incomingEdge.getDst().getId()));
+            incomingEdge.copyExecutionPropertiesTo(edge);
+            builder.connectVertices(edge);
+          }
+          else {
             LOG.info("Add edge for in R3 {}->{}", incomingEdge.getSrc().getId(), incomingEdge.getDst().getId());
             builder.connectVertices(incomingEdge);
           }
