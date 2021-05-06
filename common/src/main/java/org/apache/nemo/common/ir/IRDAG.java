@@ -646,11 +646,37 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     //final List<IRVertex> gbks = PassSharedData.originVertexToTransientVertexMap.keySet()
     // .stream().filter(vertex -> vertex.isGBK).collect(Collectors.toList());
 
-    final List<IRVertex> gbks = Collections.singletonList(g);
-    // final List<IRVertex> gbks = Collections.emptyList();
+    // final List<IRVertex> gbks = Collections.singletonList(g);
+    final List<IRVertex> gbks = Collections.emptyList();
 
     final List<IRVertex> gbkTransientPaths = gbks.stream()
       .map(gbk -> PassSharedData.originVertexToTransientVertexMap.get(gbk)).collect(Collectors.toList());
+
+
+    final Map<IRVertex, IRVertex> map = new HashMap<>();
+    modifiedDAG.topologicalDo(vertex -> {
+      // Add origin vertex if it is not stateful
+      LOG.info("Add vertex in R3 {}", vertex.getId());
+      if (vertex.isGBK) {
+        builder.addVertex(((OperatorVertex)vertex).getPartialCombine());
+        map.put(vertex, ((OperatorVertex)vertex).getPartialCombine());
+      } else {
+        builder.addVertex(vertex);
+      }
+      modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
+        // Add edge if src is not stateful
+        if (incomingEdge.getSrc().isGBK) {
+          final IREdge edge = new IREdge(
+            incomingEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
+            map.get(incomingEdge.getSrc()),
+           incomingEdge.getDst());
+          incomingEdge.copyExecutionPropertiesTo(edge);
+          builder.connectVertices(edge);
+        } else {
+          builder.connectVertices(incomingEdge);
+        }
+      });
+    });
 
     /*
     modifiedDAG.topologicalDo(vertex -> {
@@ -664,6 +690,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     });
     */
 
+    /*
     modifiedDAG.topologicalDo(vertex -> {
       if (!vertex.getId().equals(g.getId()) && !vertex.getId().equals(gbkTransientPaths.get(0).getId())) {
         // Add origin vertex if it is not stateful
@@ -678,6 +705,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         });
       }
     });
+    */
 
     for (int i = 0; i < gbks.size(); i++) {
       final IRVertex originGBK = gbks.get(i);
