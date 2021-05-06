@@ -948,7 +948,7 @@ public final class Executor {
           if (false
             && task.isParitalCombine()) {
             taskExecutor =
-              new DefaultTaskExecutorImpl(
+              new PartialTaskExecutorImpl(
                 Thread.currentThread().getId(),
                 executorId,
                 task,
