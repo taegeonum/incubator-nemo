@@ -398,24 +398,24 @@ final class PipelineTranslator {
 
        // Stream data processing, using GBKTransform
        // (Step 1) Partial Combine
-       ctx.addVertex(partialCombine);
-        beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
-
-       // (Step 2) Final Combine
-       ctx.addVertex(finalCombine);
-       beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
-
-       // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
-       final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne,
-         partialCombine, finalCombine);
-
-       final Coder intermediateCoder = outputCoder;
-       ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
+//       ctx.addVertex(partialCombine);
+//        beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
+//
+//       // (Step 2) Final Combine
+//       ctx.addVertex(finalCombine);
+//       beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
+//
+//       // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
+//       final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle,
+//         partialCombine, finalCombine);
+//
+//       final Coder intermediateCoder = outputCoder;
+//       ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
 
       vertex.isGBK = true;
-//      ctx.addVertex(vertex);
-//      beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
-//      beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+      ctx.addVertex(vertex);
+      beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+      beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
     }
   }
 
@@ -605,7 +605,7 @@ final class PipelineTranslator {
        finalCombine.isCombine = true;
 
        // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
-       final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, partialCombineVertex,
+       final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombineVertex,
          finalCombineVertex);
        final Coder intermediateCoder = KvCoder.of(inputCoder.getKeyCoder(), accumCoder);
        ctx.setEdgeProperty(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
