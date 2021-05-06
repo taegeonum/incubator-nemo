@@ -653,30 +653,34 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       .map(gbk -> PassSharedData.originVertexToTransientVertexMap.get(gbk)).collect(Collectors.toList());
 
 
-    final Map<IRVertex, IRVertex> map = new HashMap<>();
+    final Map<String, IRVertex> map = new HashMap<>();
     modifiedDAG.topologicalDo(vertex -> {
       // Add origin vertex if it is not stateful
-      LOG.info("Add vertex in R3 {}", vertex.getId());
       if (vertex.isGBK) {
+        LOG.info("Add gbk vertex in R3 {}", vertex.getId());
         builder.addVertex(((OperatorVertex)vertex).getPartialCombine());
-        map.put(vertex, ((OperatorVertex)vertex).getPartialCombine());
+        map.put(vertex.getId(), ((OperatorVertex)vertex).getPartialCombine());
       } else {
         builder.addVertex(vertex);
       }
-      modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
-        // Add edge if src is not stateful
-        if (incomingEdge.getSrc().isGBK) {
-          final IREdge edge = new IREdge(
-            incomingEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
-            map.get(incomingEdge.getSrc()),
-           incomingEdge.getDst());
-          incomingEdge.copyExecutionPropertiesTo(edge);
-          builder.connectVertices(edge);
-        } else {
-          builder.connectVertices(incomingEdge);
-        }
-      });
     });
+
+    modifiedDAG.topologicalDo(vertex -> {
+        modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
+          // Add edge if src is not stateful
+          if (incomingEdge.getSrc().isGBK) {
+            LOG.info("Add gbk vertex edge in R3 {}", vertex.getId());
+            final IREdge edge = new IREdge(
+              incomingEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
+              map.get(incomingEdge.getSrc().getId()),
+              incomingEdge.getDst());
+            incomingEdge.copyExecutionPropertiesTo(edge);
+            builder.connectVertices(edge);
+          } else {
+            builder.connectVertices(incomingEdge);
+          }
+        });
+      }
 
     /*
     modifiedDAG.topologicalDo(vertex -> {
