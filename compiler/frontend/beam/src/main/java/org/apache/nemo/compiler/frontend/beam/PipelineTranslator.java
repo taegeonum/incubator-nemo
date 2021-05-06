@@ -588,15 +588,15 @@ final class PipelineTranslator {
      if (optimizationPolicy.contains("R3")) {
        finalCombine = new OperatorVertex(
          new GBKCombineFinalTransform(mainInput.getCoder(),
-            inputCoder.getKeyCoder(),
-            Collections.singletonMap(partialMainOutputTag, KvCoder.of(inputCoder.getKeyCoder(), accumCoder)),
-            partialMainOutputTag,
-            mainInput.getWindowingStrategy(),
-            ctx.getPipelineOptions(),
-            partialSystemReduceFn,
-            (Combine.CombineFn) finalCombineFn,
-            DisplayData.from(beamNode.getTransform()),
-            true));;
+           inputCoder.getKeyCoder(),
+           Collections.singletonMap(partialMainOutputTag, KvCoder.of(inputCoder.getKeyCoder(), accumCoder)),
+           partialMainOutputTag,
+           mainInput.getWindowingStrategy(),
+           ctx.getPipelineOptions(),
+           partialSystemReduceFn,
+           (Combine.CombineFn) finalCombineFn,
+           DisplayData.from(beamNode.getTransform()),
+           true));
 
        ctx.addVertex(finalCombine);
        beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(finalCombine, input));
@@ -611,7 +611,7 @@ final class PipelineTranslator {
        final Coder intermediateCoder = KvCoder.of(inputCoder.getKeyCoder(), accumCoder);
        ctx.setEdgeProperty(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
 
-       ((OperatorVertex) finalCombine).setPartialCombine(partialCombineVertex);
+       ((OperatorVertex) finalCombine).setPartialCombine((OperatorVertex) finalCombine);
        ((OperatorVertex) finalCombine).setFinalCombine(finalCombineVertex);
        ((OperatorVertex) finalCombine).setPartialToFinalEdge(edge);
 
