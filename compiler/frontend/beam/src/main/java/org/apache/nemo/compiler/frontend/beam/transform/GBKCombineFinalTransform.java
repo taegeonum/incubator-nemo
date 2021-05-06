@@ -724,7 +724,7 @@ public final class GBKCombineFinalTransform<K, InputT>
       final Object result = combineFn.extractOutput(output.getValue().getValue());
 
       LOG.info("Emitting output at {}: key {}, before extract: {} after extract; {}",
-        getContext().getTaskId(), output.getValue().getKey(), output.getValue(),
+        getContext().getIRVertex().getId(), output.getValue().getKey(), output.getValue(),
         result);
 
       originOc.setInputTimestamp(output.getTimestamp().getMillis());

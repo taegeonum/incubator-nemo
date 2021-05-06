@@ -725,7 +725,7 @@ public final class GBKFinalTransform<K, InputT>
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
 
-      LOG.info("Emitting output at {}: key {}, val {}", getContext().getTaskId(), output.getValue().getKey(), output.getValue());
+      LOG.info("Emitting output at {}: key {}, val {}", getContext().getIRVertex().getId(), output.getValue().getKey(), output.getValue());
 
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
       outputCollector.emit(output);

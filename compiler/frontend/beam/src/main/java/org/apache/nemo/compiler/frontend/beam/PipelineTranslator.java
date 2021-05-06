@@ -605,7 +605,7 @@ final class PipelineTranslator {
        finalCombine.isCombine = true;
 
        // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
-       final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombineVertex,
+       final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, partialCombineVertex,
          finalCombineVertex);
        final Coder intermediateCoder = KvCoder.of(inputCoder.getKeyCoder(), accumCoder);
        ctx.setEdgeProperty(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
