@@ -285,7 +285,8 @@ public final class TaskScheduledMapMaster {
       });
     });
 
-    if (optPolicy.contains("R1R3")) {
+   // if (optPolicy.contains("R1R3")) {
+   if (false) {
       //  Redirect task if it is partial and transient and it is moved from VM to LAMBDA
       if ((taskIdTaskMap.get(taskId).isParitalCombine() && taskIdTaskMap.get(taskId).isTransientTask())
         && representer.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {

@@ -449,7 +449,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   }
 
   private boolean isStatelessAfterMerger(final Task task) {
-    return evalConf.optimizationPolicy.contains("R3") &&
+    // return evalConf.optimizationPolicy.contains("R3") &&
+    return
       !task.isParitalCombine() &&
       task.getUpstreamTaskSet().size() == 1;
   }

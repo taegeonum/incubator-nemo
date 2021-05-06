@@ -236,6 +236,10 @@ public final class GBKFinalTransform<K, InputT>
     final Map<StateTag, Pair<State, Coder>> map = new ConcurrentHashMap<>();
     keyCountMap = new HashMap<>();
 
+    LOG.info("Set partial combine for vertex: {}, {}", getContext().getTaskId(),
+      this,
+      reduceFn);
+
     taskId = getContext().getTaskId();
     stateStore = getContext().getStateStore();
 
@@ -346,11 +350,11 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
 
-    if (getContext().getTaskId().contains("Stage5") || getContext().getTaskId().contains("Stage7") ) {
-      LOG.info("Final input receive at {}, timestamp: {}, inputWatermark: {} / {} / {}",
-        getContext().getTaskId(),
-        element.getTimestamp(), new Instant(inputWatermark.getTimestamp()), element, element.getWindows());
-    }
+//    if (getContext().getTaskId().contains("Stage5") || getContext().getTaskId().contains("Stage7") ) {
+//      LOG.info("Final input receive at {}, timestamp: {}, inputWatermark: {} / {} / {}",
+//        getContext().getTaskId(),
+//        element.getTimestamp(), new Instant(inputWatermark.getTimestamp()), element, element.getWindows());
+//    }
 
     if (keyCountMap.containsKey(element.getValue().getKey())) {
       keyCountMap.put(element.getValue().getKey(), keyCountMap.get(element.getValue().getKey()) + 1);
@@ -721,9 +725,7 @@ public final class GBKFinalTransform<K, InputT>
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
 
-      if (getContext().getTaskId().contains("Stage5") || getContext().getTaskId().contains("Stage7")) {
-        LOG.info("Emitting output at {}: key {}, val {}", getContext().getTaskId(), output.getValue().getKey(), output.getValue());
-      }
+      LOG.info("Emitting output at {}: key {}, val {}", getContext().getTaskId(), output.getValue().getKey(), output.getValue());
 
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
       outputCollector.emit(output);

@@ -944,10 +944,11 @@ public final class Executor {
                 false);
           }
         } else {
-          if (evalConf.optimizationPolicy.contains("R3")
+          // if (evalConf.optimizationPolicy.contains("R3")
+          if (false
             && task.isParitalCombine()) {
             taskExecutor =
-              new PartialTaskExecutorImpl(
+              new DefaultTaskExecutorImpl(
                 Thread.currentThread().getId(),
                 executorId,
                 task,

@@ -494,7 +494,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       final IRVertex transientGBK = new OperatorVertex((OperatorVertex) originGBK);
       originGBK.copyExecutionPropertiesTo(transientGBK);
 
-      final OperatorVertex partialOrigin = ((OperatorVertex) originGBK).getPartialCombine();
+      // final OperatorVertex partialOrigin = ((OperatorVertex) originGBK).getPartialCombine();
+      final OperatorVertex partialOrigin = ((OperatorVertex) originGBK);
+
       try {
         originGBK.getPropertyValue(ParallelismProperty.class)
           .ifPresent(p -> partialOrigin.setProperty(ParallelismProperty.of(p)));
@@ -643,12 +645,21 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     //final List<IRVertex> gbks = PassSharedData.originVertexToTransientVertexMap.keySet()
       // .stream().filter(vertex -> vertex.isGBK).collect(Collectors.toList());
-    final List<IRVertex> gbks = Collections.singletonList(g);
+    // final List<IRVertex> gbks = Collections.singletonList(g);
+
+    final List<IRVertex> gbks = Collections.emptyList();
 
     final List<IRVertex> gbkTransientPaths = gbks.stream()
       .map(gbk -> PassSharedData.originVertexToTransientVertexMap.get(gbk)).collect(Collectors.toList());
 
     modifiedDAG.topologicalDo(vertex -> {
+      builder.addVertex(vertex);
+        modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
+          // Add edge if src is not stateful
+          builder.connectVertices(incomingEdge);
+        });
+
+        /*
       if (!vertex.getId().equals(g.getId()) && !vertex.getId().equals(gbkTransientPaths.get(0).getId())) {
         // Add origin vertex if it is not stateful
         LOG.info("Add vertex in R3 {}", vertex.getId());
@@ -661,6 +672,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           }
         });
       }
+        */
     });
 
     for (int i = 0; i < gbks.size(); i++) {
