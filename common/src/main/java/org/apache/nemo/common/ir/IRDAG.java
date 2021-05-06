@@ -646,8 +646,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     //final List<IRVertex> gbks = PassSharedData.originVertexToTransientVertexMap.keySet()
     // .stream().filter(vertex -> vertex.isGBK).collect(Collectors.toList());
 
-    // final List<IRVertex> gbks = Collections.singletonList(g);
-    final List<IRVertex> gbks = Collections.emptyList();
+    final List<IRVertex> gbks = Collections.singletonList(g);
+    // final List<IRVertex> gbks = Collections.emptyList();
 
     final List<IRVertex> gbkTransientPaths = gbks.stream()
       .map(gbk -> PassSharedData.originVertexToTransientVertexMap.get(gbk)).collect(Collectors.toList());
