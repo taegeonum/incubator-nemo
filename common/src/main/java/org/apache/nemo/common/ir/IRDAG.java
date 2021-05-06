@@ -488,14 +488,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // Find StreamVertex -> GBK path
     // Change it to CR -> partial (lambda) -> final
     //                 -> partial (vm)     -> final
-
     for (int i = 0; i < gbks.size(); i++) {
       final IRVertex originGBK = gbks.get(i);
       final IRVertex transientGBK = new OperatorVertex((OperatorVertex) originGBK);
       originGBK.copyExecutionPropertiesTo(transientGBK);
 
-      // final OperatorVertex partialOrigin = ((OperatorVertex) originGBK).getPartialCombine();
-      final OperatorVertex partialOrigin = ((OperatorVertex) originGBK);
+      final OperatorVertex partialOrigin = ((OperatorVertex) originGBK).getPartialCombine();
+      // final OperatorVertex partialOrigin = ((OperatorVertex) originGBK);
 
       try {
         originGBK.getPropertyValue(ParallelismProperty.class)
@@ -657,9 +656,21 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     modifiedDAG.topologicalDo(vertex -> {
       // Add origin vertex if it is not stateful
       if (vertex.isGBK) {
-        LOG.info("Add gbk vertex in R3 {}", vertex.getId(), ((OperatorVertex)vertex).getPartialCombine().getId());
-        builder.addVertex(((OperatorVertex)vertex).getPartialCombine());
-        map.put(vertex.getId(), ((OperatorVertex)vertex).getPartialCombine());
+        if (((OperatorVertex)vertex).getPartialCombine() != null) {
+          LOG.info("Add gbk origin vertex in R3 {}", vertex.getId(),
+            ((OperatorVertex) vertex).getPartialCombine());
+
+          final OperatorVertex partialOrigin = ((OperatorVertex)vertex).getPartialCombine();
+          vertex.getPropertyValue(ParallelismProperty.class)
+            .ifPresent(p -> partialOrigin.setProperty(ParallelismProperty.of(p)));
+
+
+          builder.addVertex(partialOrigin);
+          map.put(vertex.getId(), partialOrigin);
+        } else {
+          LOG.info("Add gbk partial vertex in R3 {}", vertex.getId());
+          builder.addVertex(vertex);
+        }
       } else {
         LOG.info("Add vertex in R3 {}", vertex.getId());
         builder.addVertex(vertex);
@@ -669,7 +680,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     modifiedDAG.topologicalDo(vertex -> {
         modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
           // Add edge if src is not stateful
-          if (incomingEdge.getSrc().isGBK) {
+          if (incomingEdge.getSrc().isGBK && map.containsKey(incomingEdge.getSrc().getId())) {
             LOG.info("Add edge for in R3 1 {}->{}", incomingEdge.getSrc().getId(), incomingEdge.getDst().getId());
             final IREdge edge = new IREdge(
               incomingEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
@@ -677,7 +688,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
               incomingEdge.getDst());
             incomingEdge.copyExecutionPropertiesTo(edge);
             builder.connectVertices(edge);
-          } else if (incomingEdge.getDst().isGBK) {
+          } else if (incomingEdge.getDst().isGBK && map.containsKey(incomingEdge.getDst().getId())) {
             LOG.info("Add gbk vertex edge 2 in R3 {}->{} / {}", incomingEdge.getSrc().getId(),
               incomingEdge.getDst().getId(), map.get(incomingEdge.getDst().getId()).getId());
 
@@ -730,7 +741,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       final IRVertex originGBK = gbks.get(i);
       final IRVertex transientGBK = gbkTransientPaths.get(i);
 
-      final OperatorVertex partialOrigin = ((OperatorVertex)originGBK);
+      final OperatorVertex partialOrigin = ((OperatorVertex)originGBK).getPartialCombine();
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> partialOrigin.setProperty(ParallelismProperty.of(p)));
 
