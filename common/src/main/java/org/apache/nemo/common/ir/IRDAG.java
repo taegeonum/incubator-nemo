@@ -657,7 +657,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     modifiedDAG.topologicalDo(vertex -> {
       // Add origin vertex if it is not stateful
       if (vertex.isGBK) {
-        LOG.info("Add gbk vertex in R3 {}", vertex.getId());
+        LOG.info("Add gbk vertex in R3 {}", vertex.getId(), ((OperatorVertex)vertex).getPartialCombine().getId());
         builder.addVertex(((OperatorVertex)vertex).getPartialCombine());
         map.put(vertex.getId(), ((OperatorVertex)vertex).getPartialCombine());
       } else {
@@ -678,8 +678,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             incomingEdge.copyExecutionPropertiesTo(edge);
             builder.connectVertices(edge);
           } else if (incomingEdge.getDst().isGBK) {
-            LOG.info("Add gbk vertex edge 2 in R3 {}->{}", incomingEdge.getSrc().getId(),
-              incomingEdge.getDst().getId());
+            LOG.info("Add gbk vertex edge 2 in R3 {}->{} / {}", incomingEdge.getSrc().getId(),
+              incomingEdge.getDst().getId(), map.get(incomingEdge.getDst().getId()).getId());
 
             final IREdge edge = new IREdge(
               incomingEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
