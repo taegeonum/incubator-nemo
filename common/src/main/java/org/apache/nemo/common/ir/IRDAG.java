@@ -661,6 +661,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         builder.addVertex(((OperatorVertex)vertex).getPartialCombine());
         map.put(vertex.getId(), ((OperatorVertex)vertex).getPartialCombine());
       } else {
+        LOG.info("Add vertex in R3 {}", vertex.getId());
         builder.addVertex(vertex);
       }
     });
@@ -677,6 +678,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             incomingEdge.copyExecutionPropertiesTo(edge);
             builder.connectVertices(edge);
           } else {
+            LOG.info("Add edge for in R3 {}->{}", incomingEdge.getSrc().getId(), incomingEdge.getDst().getId());
             builder.connectVertices(incomingEdge);
           }
         });
