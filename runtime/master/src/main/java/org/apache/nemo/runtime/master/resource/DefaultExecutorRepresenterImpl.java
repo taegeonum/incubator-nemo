@@ -297,9 +297,10 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         + ", pending: " + activatedPendingTasks + ", active: " + activatedTasks);
     }
 
-    LOG.info("Activation done lambda task {} in {}", taskId, executorId);
     activatedPendingTasks.remove(taskId);
     activatedTasks.add(taskId);
+
+    LOG.info("Activation done lambda task {} in {}: {}", taskId, executorId, activatedPendingTasks);
   }
 
   @Override
