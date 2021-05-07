@@ -287,7 +287,6 @@ public final class NemoDriver {
                 LOG.info("Redirection to lambda start {} / {}", num, stages);
                 lambdaContainerManager.activateAllWorkers();
                 runtimeMaster.redirectionToLambda(num, stages, true);
-                runtimeMaster.throttleSource(10000000);
                 LOG.info("End of Redirection to lambda start {} / {}", num, stages);
               });
 
@@ -332,7 +331,6 @@ public final class NemoDriver {
                   }
                 });
 
-                runtimeMaster.throttleSource(10000000);
                 LOG.info("End of Redirection to lambda start {} / {}", num, stages);
               });
 
@@ -369,9 +367,12 @@ public final class NemoDriver {
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
-              runtimeMaster.redirectionDoneToLambda(num,
-                stages);
-
+              threadPool.execute(() -> {
+                LOG.info("Redirection done r2");
+                runtimeMaster.redirectionDoneToLambda(num,
+                  stages);
+                LOG.info("End of Redirection done r2");
+              });
             } else if (decision.equals("redirection-done")) {
               // FOR CR ROUTING!!
               // Lambda -> VM
@@ -385,9 +386,22 @@ public final class NemoDriver {
 
               final double ratio = num / 1.0 * evalConf.sourceParallelism;
 
-              scaleInOutManager.sendMigration(ratio,
-                executorRegistry.getLambdaExecutors(),
-                stages, false);
+              threadPool.execute(() -> {
+                LOG.info("Redirection done start {} / {}", num, stages);
+                scaleInOutManager.sendMigration(ratio,
+                  executorRegistry.getLambdaExecutors(),
+                  stages, false).forEach(future -> {
+                  try {
+                    future.get();
+                  } catch (InterruptedException e) {
+                    e.printStackTrace();
+                  } catch (ExecutionException e) {
+                    e.printStackTrace();
+                  }
+                });
+                LOG.info("End of Redirection done start {} / {}", num, stages);
+              });
+
 
 //              for (final String stage : stages) {
 //                if (runtimeMaster.isPartial(stage)) {
@@ -461,7 +475,9 @@ public final class NemoDriver {
             } else if (decision.equals("throttle-source")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
-              runtimeMaster.throttleSource(num / evalConf.sourceParallelism);
+              threadPool.execute(() -> {
+                runtimeMaster.throttleSource(num / evalConf.sourceParallelism);
+              });
               try {
                 Thread.sleep(1000);
               } catch (InterruptedException e) {
