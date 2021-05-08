@@ -477,12 +477,13 @@ public final class NemoDriver {
               final int num = new Integer(args[1]);
               threadPool.execute(() -> {
                 runtimeMaster.throttleSource(num / evalConf.sourceParallelism);
+                try {
+                  Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
               });
-              try {
-                Thread.sleep(1000);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
+
             } else {
               throw new RuntimeException("Invalid scaling decision " + decision);
             }
