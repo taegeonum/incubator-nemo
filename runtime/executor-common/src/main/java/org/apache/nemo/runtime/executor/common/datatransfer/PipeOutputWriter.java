@@ -220,7 +220,7 @@ public final class PipeOutputWriter implements OutputWriter {
           .collect(Collectors.toList());
       LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskId, dstIndices);
     } else {
-      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported " + comValue));
     }
     return dstTaskIds;
   }
