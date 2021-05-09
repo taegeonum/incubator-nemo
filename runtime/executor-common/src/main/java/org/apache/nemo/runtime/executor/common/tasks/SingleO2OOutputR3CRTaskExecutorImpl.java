@@ -593,7 +593,6 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
               }
 
             } else {
-
               if (edge.isTransientPath()) {
                 final String pairVMEdgeId = edge.getPropertyValue(PairEdgeProperty.class).get();
                 taskWatermarkManager.addDataFetcher(pairVMEdgeId, df.getEdgeId(), parallelism);
