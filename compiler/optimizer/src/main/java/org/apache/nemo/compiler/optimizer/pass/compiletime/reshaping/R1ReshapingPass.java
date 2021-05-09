@@ -50,11 +50,11 @@ public final class R1ReshapingPass extends ReshapingPass {
         .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
         .count();
 
-      if (edges.size() > 1 && o2ocount == 0) {
-        dag.insert(new StreamVertex(), edges);
-        //for (final IREdge edge : edges) {
-        //  dag.insert(new StreamVertex(), edge);
-        // }
+      if (edges.size() > 1) {
+        // dag.insert(new StreamVertex(), edges);
+        for (final IREdge edge : edges) {
+          dag.insert(new StreamVertex(), edge);
+         }
       } else {
         edges.forEach(edge -> {
           if (CommunicationPatternProperty.Value.Shuffle
