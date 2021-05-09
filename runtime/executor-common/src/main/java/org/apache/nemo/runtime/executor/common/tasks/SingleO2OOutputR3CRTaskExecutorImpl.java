@@ -682,7 +682,7 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException("Exception while processing data in " + taskId +
-        " from " + edgeId + "/" + taskHandlingEvent.getTaskId())
+        " from " + edgeId + "/" + taskHandlingEvent.getTaskId());
     }
   }
 
