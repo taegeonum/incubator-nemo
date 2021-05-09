@@ -245,7 +245,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     builder.addVertex(vertexToInsert);
 
     edges.forEach(edgeToStreamize -> {
-      edgeToStreamize.getSrc().getPropertyValue(ParallelismProperty.class)
+      edgeToStreamize.getDst().getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> vertexToInsert.setProperty(ParallelismProperty.of(p)));
     });
 
@@ -853,10 +853,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     builder.addVertex(vertexToInsert);
     builder.addVertex(partialCombine);
 
-    edgeToAdd.getSrc().getPropertyValue(ParallelismProperty.class)
+    edgeToAdd.getDst().getPropertyValue(ParallelismProperty.class)
       .ifPresent(p -> vertexToInsert.setProperty(ParallelismProperty.of(p)));
 
-    edgeToAdd.getSrc().getPropertyValue(ParallelismProperty.class)
+    edgeToAdd.getDst().getPropertyValue(ParallelismProperty.class)
       .ifPresent(p -> partialCombine.setProperty(ParallelismProperty.of(p)));
 
     // Build the new DAG to reflect the new topology.
