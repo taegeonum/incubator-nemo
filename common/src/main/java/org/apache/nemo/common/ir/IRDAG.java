@@ -1033,7 +1033,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // Insert the vertex.
     final IRVertex vertexToInsert = wrapSamplingVertexIfNeeded(streamVertex, edgeToStreamize.getSrc());
     builder.addVertex(vertexToInsert);
-    edgeToStreamize.getSrc().getPropertyValue(ParallelismProperty.class)
+    edgeToStreamize.getDst().getPropertyValue(ParallelismProperty.class)
       .ifPresent(p -> vertexToInsert.setProperty(ParallelismProperty.of(p)));
 
     // Build the new DAG to reflect the new topology.
