@@ -187,6 +187,7 @@ public final class PairStageTaskManager {
     final boolean hasTransientIncomingEdge = taskIncomingEdges.stream().anyMatch(edge ->
       edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
         edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientRR) ||
+        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientBroadcast) ||
         edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientShuffle));
     return hasTransientIncomingEdge;
   }

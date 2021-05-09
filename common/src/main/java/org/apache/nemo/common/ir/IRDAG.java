@@ -374,6 +374,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             newEdge.setPropertyPermanently(
               CommunicationPatternProperty
                 .of(CommunicationPatternProperty.Value.TransientShuffle));
+          } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.BroadCast)) {
+            newEdge.setPropertyPermanently(
+              CommunicationPatternProperty
+                .of(CommunicationPatternProperty.Value.TransientBroadcast));
           }
 
           newEdge.setProperty(
@@ -418,6 +423,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             newEdge.setPropertyPermanently(
               CommunicationPatternProperty
                 .of(CommunicationPatternProperty.Value.TransientShuffle));
+          } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.BroadCast)) {
+            newEdge.setPropertyPermanently(
+              CommunicationPatternProperty
+                .of(CommunicationPatternProperty.Value.TransientBroadcast));
           }
 
           newEdge.setProperty(
@@ -571,6 +581,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           toPartialTransientEdge.setPropertyPermanently(
             CommunicationPatternProperty
               .of(CommunicationPatternProperty.Value.TransientShuffle));
+        } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+          .equals(CommunicationPatternProperty.Value.BroadCast)) {
+          toPartialTransientEdge.setPropertyPermanently(
+            CommunicationPatternProperty
+              .of(CommunicationPatternProperty.Value.TransientBroadcast));
         }
 
         toPartialTransientEdge.setProperty(

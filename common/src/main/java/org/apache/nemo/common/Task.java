@@ -451,6 +451,7 @@ public final class Task implements Serializable {
       dstTaskIds = Collections.singletonList(
         RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0));
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientBroadcast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
@@ -504,6 +505,7 @@ public final class Task implements Serializable {
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientBroadcast)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
       || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
 
