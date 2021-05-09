@@ -671,12 +671,18 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
     // watermark handling
-    if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
-      final ByteBuf data = taskHandlingEvent.getDataByteBuf();
-      dataHandler.handleRemoteByteBuf(data, taskHandlingEvent);
-    } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
-      final Object data = taskHandlingEvent.getData();
-      dataHandler.handleLocalData(data, taskHandlingEvent);
+    try {
+      if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
+        final ByteBuf data = taskHandlingEvent.getDataByteBuf();
+        dataHandler.handleRemoteByteBuf(data, taskHandlingEvent);
+      } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
+        final Object data = taskHandlingEvent.getData();
+        dataHandler.handleLocalData(data, taskHandlingEvent);
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Exception while processing data in " + taskId +
+        " from " + edgeId + "/" + taskHandlingEvent.getTaskId())
     }
   }
 
