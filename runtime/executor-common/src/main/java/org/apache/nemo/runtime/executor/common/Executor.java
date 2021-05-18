@@ -771,50 +771,54 @@ public final class Executor {
 
       final ExecutorThread executorThread;
       synchronized (this) {
-        if (onLambda) {
-          // find min alloc executor
-          final int numTask = numReceivedTasks.getAndIncrement();
-          final OptionalInt minOccupancy =
-            executorThreads.getExecutorThreads().stream()
-              .map(et -> et.getNumTasks())
-              .mapToInt(i -> i).min();
 
-          executorThread = executorThreads.getExecutorThreads()
-            .stream()
-            .filter(et -> et.getNumTasks() == minOccupancy.getAsInt())
-            .findFirst()
-            .orElseThrow(() -> new RuntimeException("No such executor"));
-        } else {
-          final Set<String> o2oStages = task.getO2oStages();
+        final int index = numReceivedTasks.getAndIncrement() % executorThreads.getExecutorThreads().size();
+        executorThread = executorThreads.getExecutorThreads().get(index);
 
-          // locality-aware scheduling in executor
-          final Optional<ExecutorThread> o2oThread = o2oStages.stream()
-            .map(o2oStageId -> {
-              final String srcTaskId = RuntimeIdManager.generateTaskId(o2oStageId,
-                RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
-              return srcTaskId;
-            })
-            .filter(o2oTaskId -> taskExecutorMapWrapper.containsTask(o2oTaskId))
-            .map(o2oScheduleTaskId -> taskExecutorMapWrapper.getTaskExecutorThread(o2oScheduleTaskId))
-            .findFirst();
-
-          if (o2oThread.isPresent()) {
-            executorThread = o2oThread.get();
-          } else {
-            // find min alloc executor
-            final int numTask = numReceivedTasks.getAndIncrement();
-            final OptionalInt minOccupancy =
-              executorThreads.getExecutorThreads().stream()
-                .map(et -> et.getNumTasks())
-                .mapToInt(i -> i).min();
-
-            executorThread = executorThreads.getExecutorThreads()
-              .stream()
-              .filter(et -> et.getNumTasks() == minOccupancy.getAsInt())
-              .findFirst()
-              .orElseThrow(() -> new RuntimeException("No such executor"));
-          }
-        }
+//        if (onLambda) {
+//          // find min alloc executor
+//          final int numTask = numReceivedTasks.getAndIncrement();
+//          final OptionalInt minOccupancy =
+//            executorThreads.getExecutorThreads().stream()
+//              .map(et -> et.getNumTasks())
+//              .mapToInt(i -> i).min();
+//
+//          executorThread = executorThreads.getExecutorThreads()
+//            .stream()
+//            .filter(et -> et.getNumTasks() == minOccupancy.getAsInt())
+//            .findFirst()
+//            .orElseThrow(() -> new RuntimeException("No such executor"));
+//        } else {
+//          final Set<String> o2oStages = task.getO2oStages();
+//
+//          // locality-aware scheduling in executor
+//          final Optional<ExecutorThread> o2oThread = o2oStages.stream()
+//            .map(o2oStageId -> {
+//              final String srcTaskId = RuntimeIdManager.generateTaskId(o2oStageId,
+//                RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
+//              return srcTaskId;
+//            })
+//            .filter(o2oTaskId -> taskExecutorMapWrapper.containsTask(o2oTaskId))
+//            .map(o2oScheduleTaskId -> taskExecutorMapWrapper.getTaskExecutorThread(o2oScheduleTaskId))
+//            .findFirst();
+//
+//          if (o2oThread.isPresent()) {
+//            executorThread = o2oThread.get();
+//          } else {
+//            // find min alloc executor
+//            final int numTask = numReceivedTasks.getAndIncrement();
+//            final OptionalInt minOccupancy =
+//              executorThreads.getExecutorThreads().stream()
+//                .map(et -> et.getNumTasks())
+//                .mapToInt(i -> i).min();
+//
+//            executorThread = executorThreads.getExecutorThreads()
+//              .stream()
+//              .filter(et -> et.getNumTasks() == minOccupancy.getAsInt())
+//              .findFirst()
+//              .orElseThrow(() -> new RuntimeException("No such executor"));
+//          }
+//        }
       }
 
         TaskExecutor taskExecutor;
