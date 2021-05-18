@@ -119,6 +119,7 @@ public final class NemoDriver {
 
   private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
   private final ExecutorService threadPool = Executors.newSingleThreadExecutor();
+  private final ExecutorService vmExecutorPool = Executors.newSingleThreadExecutor();
 
   private final ScaleInOutManager scaleInOutManager;
   private final ExecutorRegistry executorRegistry;
@@ -224,7 +225,7 @@ public final class NemoDriver {
               final int slot = new Integer(args[3]);
               final int memory = new Integer(args[4]);
               addedExecutorType = ResourcePriorityProperty.VM;
-              threadPool.execute(() -> {
+              vmExecutorPool.execute(() -> {
                 long s = System.currentTimeMillis();
                 vmScalingUtils.startInstances(num);
                 runtimeMaster.requestLambdaContainer(num, capacity, slot, memory, ResourcePriorityProperty.VM);
