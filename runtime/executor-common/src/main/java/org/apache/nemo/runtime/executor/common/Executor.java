@@ -768,8 +768,9 @@ public final class Executor {
     */
 
     try {
+
+      final ExecutorThread executorThread;
       synchronized (this) {
-        final ExecutorThread executorThread;
         if (onLambda) {
           // find min alloc executor
           final int numTask = numReceivedTasks.getAndIncrement();
@@ -814,6 +815,7 @@ public final class Executor {
               .orElseThrow(() -> new RuntimeException("No such executor"));
           }
         }
+      }
 
         TaskExecutor taskExecutor;
 
@@ -1043,7 +1045,6 @@ public final class Executor {
 
         LOG.info("Put Task time {} to {} thread of {}, time {}", taskExecutor.getId(), executorThread, executorId,
           System.currentTimeMillis() - st);
-      }
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
