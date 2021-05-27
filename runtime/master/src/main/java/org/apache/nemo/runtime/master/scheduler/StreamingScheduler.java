@@ -237,11 +237,12 @@ public final class StreamingScheduler implements Scheduler {
     final List<Task> vmTasks = filteredTasks.stream()
       .filter(task -> !task.isTransientTask()).collect(Collectors.toList());
 
-    LOG.info("VM tasks: {}", vmTasks);
-    LOG.info("Lambda tasks: {}", vmTasks);
+    LOG.info("VM tasks num: {}", vmTasks.size());
+    // LOG.info("Lambda tasks: {}", vmTasks);
 
     pendingTaskCollectionPointer.addTasks(vmTasks);
-    pendingTaskCollectionPointer.addTasks(lambdaTasks);
+    // pendingTaskCollectionPointer.addTasks(lambdaTasks);
+
     taskDispatcher.onNewPendingTaskCollectionAvailable();
   }
 
