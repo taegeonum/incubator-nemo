@@ -170,6 +170,14 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     }
   }
 
+  public int getSameStageTasks(final String stageId) {
+    synchronized (tasks) {
+      return (int) tasks.stream().map(tid -> RuntimeIdManager.getStageIdFromTaskId(tid))
+        .filter(sid -> sid.equals(stageId))
+        .count();
+    }
+  }
+
   @Override
   public void addShortcutEvent(final TaskHandlingEvent event) {
     controlShortcutQueue.add(event);
